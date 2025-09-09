@@ -11,7 +11,15 @@ import httpx
 # FXCM REST Integration (modern and reliable)
 import asyncio
 from typing import Dict, Any
-from fxcm_rest_integration import get_fxcm_market_data, get_fxcm_account_info, get_fxcm_instruments
+try:
+    from fxcm_rest_integration import get_fxcm_market_data, get_fxcm_account_info, get_fxcm_instruments
+    FXCM_REST_AVAILABLE = True
+except ImportError:
+    print("Warning: FXCM REST integration module not found in current path")
+    get_fxcm_market_data = lambda *args: {"error": "FXCM module not available"}
+    get_fxcm_account_info = lambda: {"connected": False, "reason": "Module not available"}
+    get_fxcm_instruments = lambda: []
+    FXCM_REST_AVAILABLE = False
 FXCM_AVAILABLE = True  # Always available with fallback to mock data
 print("FXCM REST API integration loaded successfully")
 import logging
