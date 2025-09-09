@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-08T23:34:02.782885",
+  "symbol": "AUDUSD",
+  "signal_type": "BUY",
+  "reliability": 70,
+  "entry_price": 0.64712,
+  "stop_loss": 0.64467,
+  "take_profit": 0.65122,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": 4,
+    "momentum": -2,
+    "volatility": 8
+  },
+  "explanation": "Segnale AI BUY per AUDUSD. Affidabilità 70%. Segnale robusto supportato da analisi tecnica solida.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 8,
+    "trend_strength": 4,
+    "momentum": -2
+  }
+}

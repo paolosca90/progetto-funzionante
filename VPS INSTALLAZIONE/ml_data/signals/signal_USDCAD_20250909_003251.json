@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T00:32:51.848374",
+  "symbol": "USDCAD",
+  "signal_type": "BUY",
+  "reliability": 81,
+  "entry_price": 1.35458,
+  "stop_loss": 1.35217,
+  "take_profit": 1.35858,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": 9,
+    "momentum": -24,
+    "volatility": 20
+  },
+  "explanation": "Segnale AI BUY per USDCAD. Affidabilità 81%. Segnale molto forte con convergenza di multipli indicatori.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 20,
+    "trend_strength": 9,
+    "momentum": -24
+  }
+}

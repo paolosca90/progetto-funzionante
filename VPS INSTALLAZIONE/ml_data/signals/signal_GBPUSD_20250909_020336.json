@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T02:03:36.426577",
+  "symbol": "GBPUSD",
+  "signal_type": "SELL",
+  "reliability": 82,
+  "entry_price": 1.26057,
+  "stop_loss": 1.26408,
+  "take_profit": 1.25471,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": -23,
+    "momentum": 11,
+    "volatility": 16
+  },
+  "explanation": "Segnale AI SELL per GBPUSD. Affidabilità 82%. Segnale molto forte con convergenza di multipli indicatori.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 16,
+    "trend_strength": -23,
+    "momentum": 11
+  }
+}

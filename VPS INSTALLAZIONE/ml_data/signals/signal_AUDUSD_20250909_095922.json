@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T09:59:22.727744",
+  "symbol": "AUDUSD",
+  "signal_type": "HOLD",
+  "reliability": 73,
+  "entry_price": 0.64431,
+  "stop_loss": 0,
+  "take_profit": 0,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": 20,
+    "momentum": 12,
+    "volatility": 13
+  },
+  "explanation": "Segnale AI HOLD per AUDUSD. Affidabilità 73%. Segnale robusto supportato da analisi tecnica solida.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 13,
+    "trend_strength": 20,
+    "momentum": 12
+  }
+}

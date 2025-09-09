@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T01:21:02.136238",
+  "symbol": "US30",
+  "signal_type": "BUY",
+  "reliability": 80,
+  "entry_price": 0.99325,
+  "stop_loss": 0.99025,
+  "take_profit": 0.99825,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": 25,
+    "momentum": -5,
+    "volatility": 5
+  },
+  "explanation": "Segnale AI BUY per US30. Affidabilità 80%. Segnale molto forte con convergenza di multipli indicatori.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 5,
+    "trend_strength": 25,
+    "momentum": -5
+  }
+}

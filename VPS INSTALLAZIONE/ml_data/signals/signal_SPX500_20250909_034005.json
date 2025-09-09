@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T03:40:05.043809",
+  "symbol": "SPX500",
+  "signal_type": "HOLD",
+  "reliability": 85,
+  "entry_price": 1.00445,
+  "stop_loss": 0,
+  "take_profit": 0,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": -6,
+    "momentum": -12,
+    "volatility": 5
+  },
+  "explanation": "Segnale AI HOLD per SPX500. Affidabilità 85%. Segnale molto forte con convergenza di multipli indicatori.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 5,
+    "trend_strength": -6,
+    "momentum": -12
+  }
+}

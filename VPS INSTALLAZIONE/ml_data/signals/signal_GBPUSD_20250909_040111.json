@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T04:01:11.714704",
+  "symbol": "GBPUSD",
+  "signal_type": "BUY",
+  "reliability": 74,
+  "entry_price": 1.24477,
+  "stop_loss": 1.2413,
+  "take_profit": 1.25055,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": -10,
+    "momentum": 9,
+    "volatility": 20
+  },
+  "explanation": "Segnale AI BUY per GBPUSD. Affidabilità 74%. Segnale robusto supportato da analisi tecnica solida.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 20,
+    "trend_strength": -10,
+    "momentum": 9
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-08T21:30:54.123468",
+  "symbol": "EURUSD",
+  "signal_type": "SELL",
+  "reliability": 73,
+  "entry_price": 1.05241,
+  "stop_loss": 1.05502,
+  "take_profit": 1.04806,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": 11,
+    "momentum": 22,
+    "volatility": 14
+  },
+  "explanation": "Segnale AI SELL per EURUSD. Affidabilità 73%. Segnale robusto supportato da analisi tecnica solida.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 14,
+    "trend_strength": 11,
+    "momentum": 22
+  }
+}

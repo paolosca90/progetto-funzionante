@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T01:26:09.673854",
+  "symbol": "EURUSD",
+  "signal_type": "BUY",
+  "reliability": 76,
+  "entry_price": 1.05893,
+  "stop_loss": 1.05633,
+  "take_profit": 1.06327,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": 28,
+    "momentum": -6,
+    "volatility": 17
+  },
+  "explanation": "Segnale AI BUY per EURUSD. Affidabilità 76%. Segnale robusto supportato da analisi tecnica solida.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 17,
+    "trend_strength": 28,
+    "momentum": -6
+  }
+}

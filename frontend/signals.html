@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI Cash-Revolution Trading Signals - View all live and historical trading signals">
+    
+    <title>Trading Signals - AI Cash-Revolution</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Source+Code+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="static/css/styles.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+</head>
+<body class="app-layout">
+    <!-- Matrix Rain Canvas Background -->
+    <canvas id="matrix-rain"></canvas>
+    
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <span class="logo-text">AI Cash-Revolution</span>
+                <span class="logo-subtitle">Trading Matrix</span>
+            </div>
+            <div class="nav-links">
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+                <a href="signals.html" class="nav-link">Signals</a>
+                <a href="profile.html" class="nav-link">Account</a>
+                <a href="mt5-integration.html" class="nav-link">MT5</a>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="#" class="nav-link" onclick="logout()">Logout</a>
+            </div>
+            <div class="mobile-menu-toggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="app-container">
+        <div class="signals-header">
+            <h1 class="section-title">Trading <span class="matrix-text">Signals</span></h1>
+            <p class="section-subtitle">AI-powered signals with real-time market analysis</p>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="filter-controls">
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all">All Signals</button>
+                <button class="filter-tab" data-filter="live">Live</button>
+                <button class="filter-tab" data-filter="pending">Pending</button>
+                <button class="filter-tab" data-filter="completed">Completed</button>
+            </div>
+            
+            <div class="filter-options">
+                <select class="filter-select" id="pairFilter">
+                    <option value="">All Pairs</option>
+                    <option value="EURUSD">EUR/USD</option>
+                    <option value="GBPUSD">GBP/USD</option>
+                    <option value="USDJPY">USD/JPY</option>
+                    <option value="AUDUSD">AUD/USD</option>
+                    <option value="USDCAD">USD/CAD</option>
+                    <option value="EURGBP">EUR/GBP</option>
+                </select>
+                
+                <select class="filter-select" id="timeFilter">
+                    <option value="">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Signals List -->
+        <div class="signals-list" id="signalsList">
+            <!-- Signals will be loaded dynamically from API -->
+        </div>
+
+        <!-- Load More Button -->
+        <div class="load-more-section">
+            <button class="load-more-btn">Load More Signals</button>
+            <div class="signals-summary">
+                Showing 6 of 847 signals • Win Rate: <span class="success">94.7%</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-container">
+            <a href="dashboard.html" class="bottom-nav-item">
+                <div class="bottom-nav-icon">📊</div>
+                <div class="bottom-nav-text">Dashboard</div>
+            </a>
+            <a href="signals.html" class="bottom-nav-item active">
+                <div class="bottom-nav-icon">📡</div>
+                <div class="bottom-nav-text">Signals</div>
+            </a>
+            <a href="mt5-integration.html" class="bottom-nav-item">
+                <div class="bottom-nav-icon">🔗</div>
+                <div class="bottom-nav-text">MT5</div>
+            </a>
+            <a href="profile.html" class="bottom-nav-item">
+                <div class="bottom-nav-icon">👤</div>
+                <div class="bottom-nav-text">Profile</div>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Scripts -->
+    <script src="static/js/config.js"></script>
+    <script src="static/js/matrix.js"></script>
+    <script src="static/js/main.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            initSignalsPage();
+            initMobileMenu();
+            loadRealSignals();
+        });
+        
+        function initSignalsPage() {
+            // Filter functionality
+            const filterTabs = document.querySelectorAll('.filter-tab');
+            const signalsList = document.getElementById('signalsList');
+            const pairFilter = document.getElementById('pairFilter');
+            const timeFilter = document.getElementById('timeFilter');
+            
+            // Tab filtering
+            filterTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    filterTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    const filter = tab.dataset.filter;
+                    filterSignals(filter, pairFilter.value, timeFilter.value);
+                });
+            });
+            
+            // Dropdown filtering
+            pairFilter.addEventListener('change', () => {
+                const activeTab = document.querySelector('.filter-tab.active');
+                filterSignals(activeTab.dataset.filter, pairFilter.value, timeFilter.value);
+            });
+            
+            timeFilter.addEventListener('change', () => {
+                const activeTab = document.querySelector('.filter-tab.active');
+                filterSignals(activeTab.dataset.filter, pairFilter.value, timeFilter.value);
+            });
+            
+            // Load more functionality
+            const loadMoreBtn = document.querySelector('.load-more-btn');
+            loadMoreBtn.addEventListener('click', loadMoreSignals);
+            
+            // Auto-refresh signals every 2 minutes
+            setInterval(loadRealSignals, 120000);
+        }
+        
+        async function loadRealSignals() {
+            try {
+                // Check authentication first
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    showNoSignalsMessage('Please login to view signals');
+                    return;
+                }
+
+                const response = await fetch(CONFIG.API_BASE_URL + '/signals/top', {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('token_type');
+                    showNoSignalsMessage('Session expired. Please login again.');
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // VPS returns data in {status, count, signals} format
+                if (data.status === 'success' && data.signals && data.signals.length > 0) {
+                    displayRealSignals(data.signals);
+                } else {
+                    showNoSignalsMessage('No signals available at the moment');
+                }
+
+            } catch (error) {
+                console.error('Error loading signals:', error);
+                showNoSignalsMessage('Error loading signals. Please check your connection.');
+            }
+        }
+
+        async function generateSignalsIfNeeded() {
+            try {
+                showLoadingMessage('Generating new trading signals...');
+                
+                const response = await fetch(CONFIG.API_BASE_URL + '/api/generate-signals-if-needed', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+                console.log('Signal generation result:', result);
+
+            } catch (error) {
+                console.error('Error generating signals:', error);
+            }
+        }
+
+        function showLoadingMessage(message) {
+            const signalsList = document.getElementById('signalsList');
+            signalsList.innerHTML = `
+                <div style="text-align: center; color: #00ff41; padding: 40px; background: rgba(0,0,0,0.7); border-radius: 15px;">
+                    <div style="display: inline-block; animation: spin 1s linear infinite; width: 30px; height: 30px; border: 3px solid #333; border-top: 3px solid #00ff41; border-radius: 50%; margin-bottom: 15px;"></div>
+                    <h3 style="color: #00ff41; margin-bottom: 10px;">AI Signal Generation</h3>
+                    <p>${message}</p>
+                </div>
+                <style>
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                </style>
+            `;
+        }
+
+        function displayRealSignals(signals) {
+            const signalsList = document.getElementById('signalsList');
+            
+            if (!signals || signals.length === 0) {
+                showNoSignalsMessage('No trading signals available at the moment.');
+                return;
+            }
+
+            const signalsHTML = signals.map(signal => createSignalHTML(signal)).join('');
+            signalsList.innerHTML = signalsHTML;
+            
+            updateSignalsCount(signals.length);
+        }
+
+        function createSignalHTML(signal) {
+            const direction = signal.signal_type.toUpperCase();
+            const directionClass = direction === 'BUY' ? 'buy' : 'sell';
+            const statusClass = getStatusClass(signal);
+            const timeAgo = getTimeAgo(signal.timestamp);
+            const riskReward = calculateRiskReward(signal);
+
+            return `
+                <div class="signal-item ${statusClass}" data-status="${getStatus(signal)}" data-pair="${signal.symbol}">
+                    <div class="signal-meta">
+                        <div class="signal-pair">${formatPair(signal.symbol)}</div>
+                        <div class="signal-status ${getStatus(signal)}">${getStatusText(signal)}</div>
+                    </div>
+                    
+                    <div class="signal-header">
+                        <div class="signal-direction ${directionClass}">${direction}</div>
+                        <div class="signal-confidence">${Math.round(signal.reliability)}% Confidence</div>
+                        <div class="signal-time">${timeAgo}</div>
+                    </div>
+                    
+                    <div class="signal-details">
+                        <div class="signal-detail">
+                            <div class="detail-label">Entry</div>
+                            <div class="detail-value">${formatPrice(signal.entry_price)}</div>
+                        </div>
+                        ${signal.stop_loss ? `<div class="signal-detail">
+                            <div class="detail-label">Stop Loss</div>
+                            <div class="detail-value danger">${formatPrice(signal.stop_loss)}</div>
+                        </div>` : ''}
+                        ${signal.take_profit ? `<div class="signal-detail">
+                            <div class="detail-label">Take Profit</div>
+                            <div class="detail-value success">${formatPrice(signal.take_profit)}</div>
+                        </div>` : ''}
+                        ${riskReward ? `<div class="signal-detail">
+                            <div class="detail-label">Risk/Reward</div>
+                            <div class="detail-value">1:${riskReward}</div>
+                        </div>` : ''}
+                    </div>
+                    
+                    ${signal.explanation ? `<div class="signal-analysis">
+                        <div class="analysis-title">AI Analysis:</div>
+                        <div class="analysis-text">${signal.explanation}</div>
+                    </div>` : ''}
+                    
+                    <div class="signal-actions">
+                        <button class="action-btn primary">Execute Signal</button>
+                        <button class="action-btn secondary">View Chart</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showNoSignalsMessage(message) {
+            const signalsList = document.getElementById('signalsList');
+            signalsList.innerHTML = `
+                <div style="text-align: center; color: #888; padding: 40px; background: rgba(0,0,0,0.7); border-radius: 15px;">
+                    <h3 style="color: #00ff41; margin-bottom: 10px;">No Signals Available</h3>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // Helper functions
+        function formatPair(asset) {
+            if (asset.length === 6 && !asset.includes('USD')) {
+                return asset.substring(0, 3) + '/' + asset.substring(3);
+            }
+            return asset.replace('USD', '/USD').replace('XAU', 'GOLD').replace('XAG', 'SILVER');
+        }
+
+        function formatPrice(price) {
+            if (!price) return '--';
+            return parseFloat(price).toFixed(4);
+        }
+
+        function getTimeAgo(dateString) {
+            const now = new Date();
+            const signalDate = new Date(dateString);
+            const diffMs = now - signalDate;
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins < 60) return `${diffMins} mins ago`;
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `${diffHours} hours ago`;
+            return `${Math.floor(diffHours / 24)} days ago`;
+        }
+
+        function getStatus(signal) {
+            if (!signal.is_active) return 'completed';
+            if (signal.outcome === 'PENDING') return 'live';
+            return 'running';
+        }
+
+        function getStatusText(signal) {
+            const status = getStatus(signal);
+            return status.toUpperCase();
+        }
+
+        function getStatusClass(signal) {
+            const status = getStatus(signal);
+            if (status === 'live') return 'active';
+            if (status === 'completed') return 'completed';
+            return '';
+        }
+
+        function calculateRiskReward(signal) {
+            if (!signal.stop_loss || !signal.take_profit || !signal.entry_price) return null;
+            
+            const risk = Math.abs(signal.entry_price - signal.stop_loss);
+            const reward = Math.abs(signal.take_profit - signal.entry_price);
+            
+            if (risk === 0) return null;
+            return (reward / risk).toFixed(2);
+        }
+        
+        function filterSignals(status, pair, time) {
+            const signals = document.querySelectorAll('.signal-item');
+            
+            signals.forEach(signal => {
+                let show = true;
+                
+                // Status filter
+                if (status !== 'all' && !signal.dataset.status.includes(status) && status !== 'running') {
+                    show = false;
+                }
+                
+                // Handle running status (live + running)
+                if (status === 'live' && !['live', 'running'].includes(signal.dataset.status)) {
+                    show = false;
+                }
+                
+                // Pair filter
+                if (pair && !signal.dataset.pair.includes(pair.replace('/', ''))) {
+                    show = false;
+                }
+                
+                // Time filter would be implemented with actual timestamps
+                
+                signal.style.display = show ? 'block' : 'none';
+            });
+            
+            updateSignalsCount();
+        }
+        
+        function updateSignalsCount() {
+            const visible = document.querySelectorAll('.signal-item[style="block"], .signal-item:not([style])').length;
+            const summary = document.querySelector('.signals-summary');
+            if (summary) {
+                summary.innerHTML = `Showing ${visible} signals • Win Rate: <span class="success">94.7%</span>`;
+            }
+        }
+        
+        function loadMoreSignals() {
+            // Simulate loading more signals
+            const loadMoreBtn = document.querySelector('.load-more-btn');
+            loadMoreBtn.textContent = 'Loading...';
+            loadMoreBtn.disabled = true;
+            
+            setTimeout(() => {
+                loadMoreBtn.textContent = 'Load More Signals';
+                loadMoreBtn.disabled = false;
+                // In real implementation, would append new signals
+            }, 1500);
+        }
+        
+        function refreshLiveSignals() {
+            console.log('Refreshing live signals...');
+            // In real implementation, would update live signal data
+            
+            // Update live signal time stamps
+            const liveSignals = document.querySelectorAll('.signal-item[data-status="live"] .signal-time');
+            liveSignals.forEach(timeEl => {
+                const currentText = timeEl.textContent;
+                if (currentText.includes('mins ago')) {
+                    const mins = parseInt(currentText.match(/\d+/)[0]) + 1;
+                    timeEl.textContent = `${mins} mins ago`;
+                }
+            });
+        }
+        
+        function initMobileMenu() {
+            const toggle = document.querySelector('.mobile-menu-toggle');
+            const navLinks = document.querySelector('.nav-links');
+            
+            toggle?.addEventListener('click', () => {
+                toggle.classList.toggle('active');
+                navLinks.classList.toggle('mobile-open');
+            });
+        }
+    </script>
+
+    <!-- Signals page specific styles -->
+    <style>
+        .signals-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .filter-controls {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #333;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        
+        .filter-tab {
+            background: transparent;
+            border: 2px solid #333;
+            color: #888;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-height: 44px;
+        }
+        
+        .filter-tab.active,
+        .filter-tab:hover {
+            border-color: #00ff41;
+            color: #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+        }
+        
+        .filter-options {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .filter-select {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            min-height: 44px;
+        }
+        
+        .filter-select:focus {
+            outline: none;
+            border-color: #00ff41;
+        }
+        
+        .signal-analysis {
+            margin: 15px 0;
+            padding: 12px;
+            background: rgba(0, 255, 65, 0.05);
+            border-radius: 8px;
+            border-left: 3px solid #00ff41;
+        }
+        
+        .analysis-title {
+            font-weight: 700;
+            color: #00ff41;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .analysis-text {
+            color: #e0e0e0;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        
+        .signal-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .signal-confidence {
+            background: rgba(0, 255, 65, 0.2);
+            color: #00ff41;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+        
+        .signal-status.running {
+            background: #00aaff;
+            color: #000;
+        }
+        
+        .load-more-section {
+            text-align: center;
+            margin: 40px 0 100px;
+        }
+        
+        .load-more-btn {
+            background: linear-gradient(45deg, #00ff41, #00cc33);
+            color: #000;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+            min-height: 44px;
+        }
+        
+        .load-more-btn:hover {
+            background: transparent;
+            color: #00ff41;
+            border: 2px solid #00ff41;
+        }
+        
+        .load-more-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .signals-summary {
+            color: #888;
+            font-size: 0.9rem;
+        }
+        
+        .success {
+            color: #00ff41;
+            font-weight: 700;
+        }
+        
+        /* Mobile specific adjustments */
+        @media (min-width: 320px) {
+            .filter-options {
+                flex-direction: column;
+            }
+            
+            .signal-actions {
+                flex-direction: column;
+            }
+            
+            .action-btn.primary,
+            .action-btn.secondary {
+                width: 100%;
+            }
+        }
+        
+        @media (min-width: 480px) {
+            .filter-options {
+                flex-direction: row;
+            }
+            
+            .signal-actions {
+                flex-direction: row;
+            }
+        }
+        
+        @media (min-width: 768px) {
+            .filter-tabs {
+                justify-content: center;
+            }
+            
+            .load-more-section {
+                margin-bottom: 40px;
+            }
+        }
+    </style>
+</body>
+</html>

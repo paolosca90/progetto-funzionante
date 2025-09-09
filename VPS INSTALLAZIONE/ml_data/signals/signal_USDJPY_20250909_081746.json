@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T08:17:46.067190",
+  "symbol": "USDJPY",
+  "signal_type": "HOLD",
+  "reliability": 78,
+  "entry_price": 149.77556,
+  "stop_loss": 0,
+  "take_profit": 0,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": -7,
+    "momentum": 10,
+    "volatility": 6
+  },
+  "explanation": "Segnale AI HOLD per USDJPY. Affidabilità 78%. Segnale robusto supportato da analisi tecnica solida.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 6,
+    "trend_strength": -7,
+    "momentum": 10
+  }
+}

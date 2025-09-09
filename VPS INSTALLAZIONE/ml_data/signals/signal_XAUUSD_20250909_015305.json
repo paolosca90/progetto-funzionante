@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T01:53:05.240065",
+  "symbol": "XAUUSD",
+  "signal_type": "BUY",
+  "reliability": 80,
+  "entry_price": 2012.03099,
+  "stop_loss": 2012.02799,
+  "take_profit": 2012.03599,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": -20,
+    "momentum": 15,
+    "volatility": 18
+  },
+  "explanation": "Segnale AI BUY per XAUUSD. Affidabilità 80%. Segnale molto forte con convergenza di multipli indicatori.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 18,
+    "trend_strength": -20,
+    "momentum": 15
+  }
+}

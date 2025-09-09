@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-08T23:50:06.897959",
+  "symbol": "USDCAD",
+  "signal_type": "SELL",
+  "reliability": 78,
+  "entry_price": 1.34623,
+  "stop_loss": 1.3484,
+  "take_profit": 1.34262,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": -24,
+    "momentum": -8,
+    "volatility": 15
+  },
+  "explanation": "Segnale AI SELL per USDCAD. Affidabilità 78%. Segnale robusto supportato da analisi tecnica solida.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 15,
+    "trend_strength": -24,
+    "momentum": -8
+  }
+}

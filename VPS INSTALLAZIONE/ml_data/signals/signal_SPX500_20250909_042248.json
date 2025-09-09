@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T04:22:48.820775",
+  "symbol": "SPX500",
+  "signal_type": "BUY",
+  "reliability": 80,
+  "entry_price": 0.99887,
+  "stop_loss": 0.99587,
+  "take_profit": 1.00387,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": 17,
+    "momentum": 8,
+    "volatility": 10
+  },
+  "explanation": "Segnale AI BUY per SPX500. Affidabilità 80%. Segnale molto forte con convergenza di multipli indicatori.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 10,
+    "trend_strength": 17,
+    "momentum": 8
+  }
+}

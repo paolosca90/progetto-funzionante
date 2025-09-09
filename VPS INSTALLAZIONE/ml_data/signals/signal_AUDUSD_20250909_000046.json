@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T00:00:46.601446",
+  "symbol": "AUDUSD",
+  "signal_type": "SELL",
+  "reliability": 75,
+  "entry_price": 0.65072,
+  "stop_loss": 0.6529,
+  "take_profit": 0.64709,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": -1,
+    "momentum": -12,
+    "volatility": 6
+  },
+  "explanation": "Segnale AI SELL per AUDUSD. Affidabilità 75%. Segnale robusto supportato da analisi tecnica solida.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 6,
+    "trend_strength": -1,
+    "momentum": -12
+  }
+}

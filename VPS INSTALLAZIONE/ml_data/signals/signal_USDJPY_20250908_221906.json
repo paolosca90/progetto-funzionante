@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-08T22:19:06.352169",
+  "symbol": "USDJPY",
+  "signal_type": "SELL",
+  "reliability": 74,
+  "entry_price": 148.6701,
+  "stop_loss": 148.9701,
+  "take_profit": 148.1701,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": 18,
+    "momentum": -15,
+    "volatility": 13
+  },
+  "explanation": "Segnale AI SELL per USDJPY. Affidabilità 74%. Segnale robusto supportato da analisi tecnica solida.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 13,
+    "trend_strength": 18,
+    "momentum": -15
+  }
+}

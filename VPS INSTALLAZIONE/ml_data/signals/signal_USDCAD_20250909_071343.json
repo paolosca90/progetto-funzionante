@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T07:13:43.918627",
+  "symbol": "USDCAD",
+  "signal_type": "HOLD",
+  "reliability": 80,
+  "entry_price": 1.35499,
+  "stop_loss": 0,
+  "take_profit": 0,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": 7,
+    "momentum": 25,
+    "volatility": 20
+  },
+  "explanation": "Segnale AI HOLD per USDCAD. Affidabilità 80%. Segnale molto forte con convergenza di multipli indicatori.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 20,
+    "trend_strength": 7,
+    "momentum": 25
+  }
+}

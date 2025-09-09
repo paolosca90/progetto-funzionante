@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T08:39:19.767660",
+  "symbol": "NAS100",
+  "signal_type": "BUY",
+  "reliability": 84,
+  "entry_price": 0.99734,
+  "stop_loss": 0.99434,
+  "take_profit": 1.00234,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": 9,
+    "momentum": 17,
+    "volatility": 12
+  },
+  "explanation": "Segnale AI BUY per NAS100. Affidabilità 84%. Segnale molto forte con convergenza di multipli indicatori.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 12,
+    "trend_strength": 9,
+    "momentum": 17
+  }
+}

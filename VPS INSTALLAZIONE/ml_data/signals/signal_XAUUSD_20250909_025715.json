@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T02:57:15.579022",
+  "symbol": "XAUUSD",
+  "signal_type": "SELL",
+  "reliability": 76,
+  "entry_price": 1991.64265,
+  "stop_loss": 1991.64565,
+  "take_profit": 1991.63765,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": -18,
+    "momentum": -23,
+    "volatility": 17
+  },
+  "explanation": "Segnale AI SELL per XAUUSD. Affidabilità 76%. Segnale robusto supportato da analisi tecnica solida.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 17,
+    "trend_strength": -18,
+    "momentum": -23
+  }
+}

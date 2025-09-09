@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-08T23:28:40.056173",
+  "symbol": "USDJPY",
+  "signal_type": "BUY",
+  "reliability": 80,
+  "entry_price": 149.13511,
+  "stop_loss": 148.83511,
+  "take_profit": 149.63511,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": 20,
+    "momentum": -5,
+    "volatility": 14
+  },
+  "explanation": "Segnale AI BUY per USDJPY. Affidabilità 80%. Segnale molto forte con convergenza di multipli indicatori.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 14,
+    "trend_strength": 20,
+    "momentum": -5
+  }
+}

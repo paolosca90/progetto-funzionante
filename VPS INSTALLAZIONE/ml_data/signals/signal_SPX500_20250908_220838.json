@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-08T22:08:38.258765",
+  "symbol": "SPX500",
+  "signal_type": "SELL",
+  "reliability": 85,
+  "entry_price": 1.00925,
+  "stop_loss": 1.01225,
+  "take_profit": 1.00425,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": 15,
+    "momentum": 19,
+    "volatility": 5
+  },
+  "explanation": "Segnale AI SELL per SPX500. Affidabilità 85%. Segnale molto forte con convergenza di multipli indicatori.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 5,
+    "trend_strength": 15,
+    "momentum": 19
+  }
+}

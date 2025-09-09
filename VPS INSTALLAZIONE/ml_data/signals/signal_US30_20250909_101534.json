@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T10:15:34.023864",
+  "symbol": "US30",
+  "signal_type": "SELL",
+  "reliability": 84,
+  "entry_price": 0.99906,
+  "stop_loss": 1.00206,
+  "take_profit": 0.99406,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": 2,
+    "momentum": 10,
+    "volatility": 10
+  },
+  "explanation": "Segnale AI SELL per US30. Affidabilità 84%. Segnale molto forte con convergenza di multipli indicatori.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 10,
+    "trend_strength": 2,
+    "momentum": 10
+  }
+}

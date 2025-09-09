@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-09T07:19:11.973115",
+  "symbol": "NAS100",
+  "signal_type": "SELL",
+  "reliability": 80,
+  "entry_price": 0.99032,
+  "stop_loss": 0.99332,
+  "take_profit": 0.98532,
+  "risk_reward": 3.0,
+  "timeframe": "H1",
+  "technical_scores": {
+    "trend": -14,
+    "momentum": -10,
+    "volatility": 19
+  },
+  "explanation": "Segnale AI SELL per NAS100. Affidabilità 80%. Segnale molto forte con convergenza di multipli indicatori.",
+  "volume": 0.01,
+  "market_conditions": {
+    "volatility": 19,
+    "trend_strength": -14,
+    "momentum": -10
+  }
+}

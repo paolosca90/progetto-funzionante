@@ -1,0 +1,109 @@
+{
+  "major_pairs": {
+    "EURUSD": ["EURUSD", "EURUSDm", "EURUSD.", "EURUSD.raw", "EURUSD#", "EURUSD.pro", "EURUSDc"],
+    "GBPUSD": ["GBPUSD", "GBPUSDm", "GBPUSD.", "GBPUSD.raw", "GBPUSD#", "GBPUSD.pro", "GBPUSDc"],
+    "USDJPY": ["USDJPY", "USDJPYm", "USDJPY.", "USDJPY.raw", "USDJPY#", "USDJPY.pro", "USDJPYc"],
+    "USDCHF": ["USDCHF", "USDCHFm", "USDCHF.", "USDCHF.raw", "USDCHF#", "USDCHF.pro", "USDCHFc"],
+    "AUDUSD": ["AUDUSD", "AUDUSDm", "AUDUSD.", "AUDUSD.raw", "AUDUSD#", "AUDUSD.pro", "AUDUSDc"],
+    "USDCAD": ["USDCAD", "USDCADm", "USDCAD.", "USDCAD.raw", "USDCAD#", "USDCAD.pro", "USDCADc"],
+    "NZDUSD": ["NZDUSD", "NZDUSDm", "NZDUSD.", "NZDUSD.raw", "NZDUSD#", "NZDUSD.pro", "NZDUSDc"]
+  },
+  
+  "minor_pairs": {
+    "EURGBP": ["EURGBP", "EURGBPm", "EURGBP.", "EURGBP.raw", "EURGBP#", "EURGBP.pro", "EURGBPc"],
+    "EURJPY": ["EURJPY", "EURJPYm", "EURJPY.", "EURJPY.raw", "EURJPY#", "EURJPY.pro", "EURJPYc"],
+    "EURCHF": ["EURCHF", "EURCHFm", "EURCHF.", "EURCHF.raw", "EURCHF#", "EURCHF.pro", "EURCHFc"],
+    "EURAUD": ["EURAUD", "EURAUDm", "EURAUD.", "EURAUD.raw", "EURAUD#", "EURAUD.pro", "EURAUDc"],
+    "EURCAD": ["EURCAD", "EURCADm", "EURCAD.", "EURCAD.raw", "EURCAD#", "EURCAD.pro", "EURCADc"],
+    "GBPJPY": ["GBPJPY", "GBPJPYm", "GBPJPY.", "GBPJPY.raw", "GBPJPY#", "GBPJPY.pro", "GBPJPYc"],
+    "GBPCHF": ["GBPCHF", "GBPCHFm", "GBPCHF.", "GBPCHF.raw", "GBPCHF#", "GBPCHF.pro", "GBPCHFc"],
+    "GBPAUD": ["GBPAUD", "GBPAUDm", "GBPAUD.", "GBPAUD.raw", "GBPAUD#", "GBPAUD.pro", "GBPAUDc"],
+    "GBPCAD": ["GBPCAD", "GBPCADm", "GBPCAD.", "GBPCAD.raw", "GBPCAD#", "GBPCAD.pro", "GBPCADc"],
+    "AUDJPY": ["AUDJPY", "AUDJPYm", "AUDJPY.", "AUDJPY.raw", "AUDJPY#", "AUDJPY.pro", "AUDJPYc"],
+    "AUDCHF": ["AUDCHF", "AUDCHFm", "AUDCHF.", "AUDCHF.raw", "AUDCHF#", "AUDCHF.pro", "AUDCHFc"],
+    "AUDCAD": ["AUDCAD", "AUDCADm", "AUDCAD.", "AUDCAD.raw", "AUDCAD#", "AUDCAD.pro", "AUDCADc"],
+    "CADJPY": ["CADJPY", "CADJPYm", "CADJPY.", "CADJPY.raw", "CADJPY#", "CADJPY.pro", "CADJPYc"],
+    "CADCHF": ["CADCHF", "CADCHFm", "CADCHF.", "CADCHF.raw", "CADCHF#", "CADCHF.pro", "CADCHFc"],
+    "CHFJPY": ["CHFJPY", "CHFJPYm", "CHFJPY.", "CHFJPY.raw", "CHFJPY#", "CHFJPY.pro", "CHFJPYc"],
+    "NZDJPY": ["NZDJPY", "NZDJPYm", "NZDJPY.", "NZDJPY.raw", "NZDJPY#", "NZDJPY.pro", "NZDJPYc"]
+  },
+  
+  "metals": {
+    "XAUUSD": ["XAUUSD", "XAUUSDm", "XAUUSD.", "XAUUSD.raw", "XAUUSD#", "GOLD", "GOLDm", "GOLD.", "XAU/USD"],
+    "XAGUSD": ["XAGUSD", "XAGUSDm", "XAGUSD.", "XAGUSD.raw", "XAGUSD#", "SILVER", "SILVERm", "SILVER.", "XAG/USD"],
+    "XPTUSD": ["XPTUSD", "XPTUSDm", "XPTUSD.", "XPTUSD.raw", "XPTUSD#", "PLATINUM", "PLATINUMm"],
+    "XPDUSD": ["XPDUSD", "XPDUSDm", "XPDUSD.", "XPDUSD.raw", "XPDUSD#", "PALLADIUM", "PALLADIUMm"]
+  },
+  
+  "indices": {
+    "US500": ["US500", "US500m", "US500.", "US500.raw", "US500#", "SPX500", "SPX500m", "SP500", "S&P500", ".US500Cash"],
+    "US30": ["US30", "US30m", "US30.", "US30.raw", "US30#", "DJI30", "DJI30m", "DOW30", "DJIA"],
+    "NAS100": ["NAS100", "NAS100m", "NAS100.", "NAS100.raw", "NAS100#", "NASDAQ", "NASDAQm", "NDX100", ".USTECHCash"],
+    "GER40": ["GER40", "GER40m", "GER40.", "GER40.raw", "GER40#", "DAX40", "DAX40m", "DAX30"],
+    "UK100": ["UK100", "UK100m", "UK100.", "UK100.raw", "UK100#", "FTSE100", "FTSE100m"],
+    "FRA40": ["FRA40", "FRA40m", "FRA40.", "FRA40.raw", "FRA40#", "CAC40", "CAC40m"],
+    "JPN225": ["JPN225", "JPN225m", "JPN225.", "JPN225.raw", "JPN225#", "NIKKEI", "NIKKEIm", "N225"],
+    "AUS200": ["AUS200", "AUS200m", "AUS200.", "AUS200.raw", "AUS200#", "ASX200", "ASX200m"]
+  },
+  
+  "crypto": {
+    "BTCUSD": ["BTCUSD", "BTCUSDm", "BTCUSD.", "BTCUSD.raw", "BTCUSD#", "BITCOIN", "BTC/USD"],
+    "ETHUSD": ["ETHUSD", "ETHUSDm", "ETHUSD.", "ETHUSD.raw", "ETHUSD#", "ETHEREUM", "ETH/USD"],
+    "LTCUSD": ["LTCUSD", "LTCUSDm", "LTCUSD.", "LTCUSD.raw", "LTCUSD#", "LITECOIN", "LTC/USD"],
+    "XRPUSD": ["XRPUSD", "XRPUSDm", "XRPUSD.", "XRPUSD.raw", "XRPUSD#", "RIPPLE", "XRP/USD"]
+  },
+  
+  "commodities": {
+    "WTIUSD": ["WTIUSD", "WTI", "WTIm", "WTIUSD.", "WTIUSD#", "OIL", "OILm", "CRUDE"],
+    "BRENTUSD": ["BRENTUSD", "BRENT", "BRENTm", "BRENTUSD.", "BRENTUSD#", "BRENT.crude"],
+    "NATGAS": ["NATGAS", "NATGASm", "NATGAS.", "NATGAS#", "NG", "NGm", "NATURALGAS"]
+  },
+  
+  "settings": {
+    "min_reliability": 70,
+    "max_signals_per_hour": 5,
+    "analysis_timeframes": ["M1", "M5", "M15", "M30", "H1", "H4", "D1"],
+    "priority_timeframe": "M15",
+    "max_symbols_per_scan": 50,
+    "scan_interval_seconds": 60,
+    "signal_expiry_minutes": 30,
+    "min_volume_filter": 100,
+    "spread_filter_pips": 5.0,
+    "market_hours_only": true,
+    "exclude_news_times": true,
+    "news_buffer_minutes": 30
+  },
+  
+  "broker_specific": {
+    "icmarkets": {
+      "suffix": "m",
+      "gold": "XAUUSDm",
+      "silver": "XAGUSDm",
+      "oil": "WTIm"
+    },
+    "pepperstone": {
+      "suffix": ".",
+      "gold": "XAUUSD.",
+      "silver": "XAGUSD.", 
+      "oil": "WTIUSD."
+    },
+    "exness": {
+      "suffix": "",
+      "gold": "XAUUSD",
+      "silver": "XAGUSD",
+      "oil": "WTI"
+    },
+    "xm": {
+      "suffix": "",
+      "gold": "GOLD",
+      "silver": "SILVER",
+      "oil": "OIL"
+    },
+    "fxpro": {
+      "suffix": "c",
+      "gold": "XAUUSDc",
+      "silver": "XAGUSDc",
+      "oil": "WTIc"
+    }
+  }
+}
