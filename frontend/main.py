@@ -66,15 +66,7 @@ MT5_BRIDGE_API_KEY = os.getenv("BRIDGE_API_KEY", "default-bridge-key")
 # VPS API Key for authentication
 VPS_API_KEY = os.getenv("VPS_API_KEY", os.getenv("MT5_SECRET_KEY", "default-vps-key"))
 
-# Debug: Add endpoint to get current VPS API key (REMOVE IN PRODUCTION)
-@app.get("/debug/api-key")
-def debug_api_key():
-    """Temporary debug endpoint to check VPS API key setup"""
-    return {
-        "vps_api_key_hash": hash(VPS_API_KEY),
-        "vps_api_key_length": len(VPS_API_KEY),
-        "key_source": "VPS_API_KEY_env" if os.getenv("VPS_API_KEY") else "MT5_SECRET_KEY_env" if os.getenv("MT5_SECRET_KEY") else "default_vps_key"
-    }
+# Debug endpoint removed - VPN API key security protection
 
 # Global MT5 connection status
 mt5_connection_active = False
