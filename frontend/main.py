@@ -249,10 +249,15 @@ def debug_environment():
         "database_url_set": bool(os.getenv("DATABASE_URL")),
         "secret_key_set": bool(os.getenv("SECRET_KEY")),
         "bridge_api_key_set": bool(os.getenv("BRIDGE_API_KEY")),
+        "bridge_api_key_first_8": os.getenv("BRIDGE_API_KEY", "not-set")[:8] + "..." if os.getenv("BRIDGE_API_KEY") else "not-set",
         "mt5_secret_key_set": bool(os.getenv("MT5_SECRET_KEY")),
+        "mt5_secret_key_first_8": os.getenv("MT5_SECRET_KEY", "not-set")[:8] + "..." if os.getenv("MT5_SECRET_KEY") else "not-set",
+        "vps_api_key_resolved": VPS_API_KEY[:8] + "..." if VPS_API_KEY != "default-vps-key" else "default-vps-key",
         "resend_api_key_set": bool(os.getenv("RESEND_API_KEY")),
         "mt5_bridge_url": MT5_BRIDGE_URL,
         "cors_enabled": True,
+        "vps_push_system": "active",
+        "signal_receive_endpoint": "/api/signals/receive",
         "timestamp": datetime.utcnow()
     }
 
