@@ -7,9 +7,9 @@ import requests
 import json
 from datetime import datetime
 
-# Configuration
+# Configuration WITH CORRECT VPS API KEY from Railway Environment
 BASE_URL = "https://web-production-51f67.up.railway.app"  # Railway production URL
-VPS_API_KEY = "1d2376ae63aedb38f4d13e1041fb5f0b56cc48c44a8f106194d2da23e4039736"
+VPS_API_KEY = "1d99ed0d46e358e5c8a4abe8baba30af"  # MT5_SECRET_KEY from Railway Production Config
 
 HEADERS = {
     "Content-Type": "application/json",
