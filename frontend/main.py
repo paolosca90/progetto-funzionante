@@ -226,8 +226,13 @@ def api_root():
 
 # Explicit CORS preflight handler
 @app.options("/{path:path}")
-async def preflight_handler(request: Request, path: str):
+async def preflight_handler(request: Request, path: str, response: Response):
     """Handle CORS preflight requests"""
+    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-VPS-API-Key"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
     return {}
 
 # Health check
@@ -478,10 +483,11 @@ def get_recent_signals_preview(db: Session = Depends(get_db)):
 @app.get("/me", response_model=UserStatsOut)
 def get_current_user_info(response: Response, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     """Get current user information with statistics"""
-    # Add explicit CORS headers
-    response.headers["Access-Control-Allow-Origin"] = "*"
+    # Add explicit CORS headers for cash-revolution.com domain
+    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
     # Get user signals statistics
     total_signals = db.query(Signal).filter(Signal.creator_id == current_user.id).count()
     active_signals = db.query(Signal).filter(
