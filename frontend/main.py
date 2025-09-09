@@ -1567,85 +1567,79 @@ async def generate_custom_signal(
                 detail=f"Invalid symbol: {symbol}. Supported symbols: {', '.join(valid_symbols)}"
             )
         
-        # Create a custom signal using simplified logic for frontend generation
-        # In production, this would call the VPS signal engine or use real market data
+        # Connect to VPS backend to generate real signal using MT5 data
+        vps_url = os.getenv("VPS_BACKEND_URL", "http://154.61.187.189:8001")
         
-        # Simulate signal generation with realistic parameters
-        import random
-        from datetime import datetime, timedelta
-        
-        # Generate realistic price based on symbol
-        base_prices = {
-            'EURUSD': 1.0850, 'GBPUSD': 1.2650, 'USDJPY': 149.80,
-            'AUDUSD': 0.6720, 'USDCAD': 1.3580, 'USDCHF': 0.8940,
-            'NZDUSD': 0.6150, 'EURGBP': 0.8580, 'EURJPY': 162.50,
-            'GBPJPY': 189.40, 'XAUUSD': 2025.50, 'XAGUSD': 24.80,
-            'US500': 4520.25, 'US30': 35200.80, 'NAS100': 15800.40,
-            'GER30': 16250.30, 'UK100': 7650.20, 'JPN225': 28500.10
-        }
-        
-        base_price = base_prices.get(symbol, 1.0000)
-        
-        # Add small random variation (±0.1% to ±0.3%)
-        price_variation = random.uniform(-0.003, 0.003)
-        current_price = base_price * (1 + price_variation)
-        
-        # Generate signal direction based on simple logic
-        signal_types = [SignalTypeEnum.BUY, SignalTypeEnum.SELL]
-        signal_type = random.choice(signal_types)
-        
-        # Generate reliability (biased towards higher values for better UX)
-        reliability = random.uniform(65.0, 95.0)
-        
-        # Calculate stop loss and take profit based on symbol type
-        if symbol in ['XAUUSD', 'XAGUSD']:  # Metals - wider spreads
-            atr_estimate = base_price * 0.015  # 1.5% ATR
-        elif symbol in ['US500', 'US30', 'NAS100', 'GER30', 'UK100', 'JPN225']:  # Indices
-            atr_estimate = base_price * 0.008  # 0.8% ATR
-        else:  # Forex
-            atr_estimate = base_price * 0.005  # 0.5% ATR
-        
-        if signal_type == SignalTypeEnum.BUY:
-            stop_loss = current_price - (2 * atr_estimate)
-            take_profit = current_price + (3 * atr_estimate)
-        else:
-            stop_loss = current_price + (2 * atr_estimate)
-            take_profit = current_price - (3 * atr_estimate)
-        
-        # Generate AI explanation
-        direction_text = "bullish" if signal_type == SignalTypeEnum.BUY else "bearish"
-        explanations = [
-            f"Technical analysis indicates {direction_text} momentum in {symbol} with strong support/resistance levels.",
-            f"Market sentiment and price action suggest a {direction_text} opportunity in {symbol}.",
-            f"Multiple indicators align for a {direction_text} signal in {symbol} with favorable risk/reward ratio.",
-            f"Current market conditions show {direction_text} potential in {symbol} based on trend analysis.",
-        ]
-        
-        ai_analysis = random.choice(explanations)
-        
-        # Create the signal in database
-        new_signal = Signal(
-            symbol=symbol,
-            signal_type=signal_type,
-            entry_price=current_price,
-            stop_loss=stop_loss,
-            take_profit=take_profit,
-            reliability=reliability,
-            ai_analysis=ai_analysis,
-            confidence_score=reliability,
-            risk_level="MEDIUM",
-            is_public=False,  # Personal signals are private
-            is_active=True,
-            creator_id=current_user.id,
-            source="FRONTEND_CUSTOM",
-            expires_at=datetime.utcnow() + timedelta(hours=24)  # Expires in 24 hours
-        )
-        
-        db.add(new_signal)
-        db.commit()
-        db.refresh(new_signal)
-        
-        logger.info(f"Generated custom signal {new_signal.id} for {symbol}: {signal_type.value} @ {current_price}")
+        try:
+            logger.info(f"Requesting real signal generation from VPS for {symbol}")
+            
+            # Call VPS backend to generate signal with real MT5 data
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                vps_response = await client.post(
+                    f"{vps_url}/signals/generate",
+                    params={"symbol": symbol},
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if vps_response.status_code != 200:
+                    logger.error(f"VPS signal generation failed: {vps_response.status_code}")
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail=f"VPS signal generation service unavailable: {vps_response.status_code}"
+                    )
+                
+                vps_signal_data = vps_response.json()
+                logger.info(f"VPS signal response: {vps_signal_data}")
+                
+                if vps_signal_data.get("status") != "success" or not vps_signal_data.get("signal"):
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="VPS failed to generate valid signal"
+                    )
+                
+                vps_signal = vps_signal_data["signal"]
+                
+                # Parse signal type from VPS response
+                signal_type_str = vps_signal.get("signal_type", "BUY").upper()
+                signal_type = SignalTypeEnum.BUY if signal_type_str == "BUY" else SignalTypeEnum.SELL
+                
+                # Create signal in database using real VPS data
+                new_signal = Signal(
+                    symbol=symbol,
+                    signal_type=signal_type,
+                    entry_price=vps_signal.get("entry_price"),
+                    stop_loss=vps_signal.get("stop_loss"),
+                    take_profit=vps_signal.get("take_profit"),
+                    reliability=vps_signal.get("reliability", 0.0),
+                    ai_analysis=vps_signal.get("gemini_explanation") or vps_signal.get("explanation"),
+                    confidence_score=vps_signal.get("reliability", 0.0),
+                    risk_level=vps_signal.get("risk_level", "MEDIUM"),
+                    is_public=False,  # Personal signals are private
+                    is_active=True,
+                    creator_id=current_user.id,
+                    source="VPS_CUSTOM",  # Custom signal from VPS
+                    vps_id=vps_signal.get("id") or "custom",
+                    expires_at=datetime.utcnow() + timedelta(hours=24)
+                )
+                
+                db.add(new_signal)
+                db.commit()
+                db.refresh(new_signal)
+                
+                logger.info(f"Generated VPS custom signal {new_signal.id} for {symbol}: {signal_type.value} @ {new_signal.entry_price}")
+                
+        except httpx.TimeoutException:
+            logger.error(f"VPS connection timeout for {symbol}")
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="VPS backend timeout - signal generation unavailable"
+            )
+        except httpx.ConnectError:
+            logger.error(f"VPS connection failed for {symbol}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="VPS backend unavailable - signal generation unavailable"
+            )
         
         return APIResponse(
             status="success",
