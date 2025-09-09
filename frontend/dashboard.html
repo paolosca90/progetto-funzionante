@@ -1079,13 +1079,17 @@
                 
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('VPS Signals API Response:', data);
                     
                     if (data.status === 'success' && data.signals && data.signals.length > 0) {
+                        console.log(`Found ${data.signals.length} VPS signals:`, data.signals);
                         displayVPSSignals(data.signals);
                     } else {
+                        console.log('No VPS signals found:', data);
                         showVPSError(data.message || 'No signals available');
                     }
                 } else {
+                    console.error('VPS Signals API Error:', response.status, response.statusText);
                     showVPSError('Failed to load VPS signals');
                 }
             } catch (error) {
@@ -1096,6 +1100,8 @@
         
         function displayVPSSignals(signals) {
             const container = document.getElementById('vps-signals-container');
+            console.log('Displaying VPS signals in container:', container);
+            console.log('Signals to display:', signals);
             
             container.innerHTML = signals.map(signal => {
                 // Only signals with >55% reliability should appear (filtered by backend)
