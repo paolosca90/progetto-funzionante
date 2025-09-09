@@ -1324,23 +1324,24 @@ async def get_fxcm_market_data_endpoint(symbol: str):
 
 @app.get("/api/fxcm/account-status")
 async def get_fxcm_account_status():
-    """Get FXCM account connection status"""
+    """Get FXCM account connection status via REST API"""
     try:
-        if not FXCM_USERNAME or not FXCM_PASSWORD:
-            return {"connected": False, "reason": "FXCM credentials not configured"}
+        # Use REST API with fallback to mock data if credentials not configured
+        account_info = await get_fxcm_account_info()
 
-        connection = await get_fxcm_connection()
-        account_info = connection.get_accounts().T.iloc[0]
-        
-        return {
-            "connected": True,
-            "account_id": str(account_info.get("accountId", "N/A")),
-            "balance": float(account_info.get("balance", 0)),
-            "equity": float(account_info.get("grossPL", 0)),
-            "margin_used": float(account_info.get("usableMargin", 0)),
-            "currency": str(account_info.get("currency", "USD")),
-            "account_type": FXCM_TERMINAL
-        }
+        if account_info.get("connected", False):
+            return {
+                "connected": True,
+                "account_id": account_info.get("account_id", "N/A"),
+                "balance": account_info.get("balance", 0),
+                "equity": account_info.get("equity", 0),
+                "margin_used": account_info.get("margin_used", 0),
+                "currency": account_info.get("currency", "USD"),
+                "account_type": FXCM_TERMINAL
+            }
+        else:
+            return {"connected": False, "reason": account_info.get("reason", "FXCM not configured")}
+
     except Exception as e:
         logger.error(f"FXCM account status error: {e}")
         return {"connected": False, "reason": str(e)}
@@ -1426,26 +1427,31 @@ async def generate_fxcm_signal(request_data: Dict[str, Any]):
         return {"ok": False, "error": str(e)}
 
 @app.get("/api/fxcm/instruments")
-async def get_fxcm_instruments():
-    """Get list of available FXCM trading instruments"""
+async def get_fxcm_instruments_endpoint():
+    """Get list of available FXCM trading instruments via REST API"""
     try:
-        if not FXCM_ACCESS_TOKEN:
-            return {"ok": False, "error": "FXCM access token not configured"}
-        
-        connection = await get_fxcm_connection()
-        instruments = connection.get_instruments()
-        
-        # Filter for major currency pairs
-        major_pairs = []
-        for instrument in instruments:
-            if any(curr in instrument for curr in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD"]):
-                major_pairs.append({
-                    "symbol": instrument,
-                    "name": instrument.replace("/", ""),
-                    "type": "forex"
-                })
-        
-        return {"ok": True, "instruments": major_pairs[:10]}  # Top 10
+        # Use our REST API function which handles credentials and fallback internally
+        instruments = await get_fxcm_instruments()
+
+        if instruments:
+            # Filter for major currency pairs - our REST function already does filtering
+            major_pairs = []
+            for instrument in instruments:
+                symbol = instrument.get("symbol", "").upper()
+                # Handle both EURUSD and EUR/USD formats
+                clean_symbol = symbol.replace("/", "")
+                if any(curr in clean_symbol for curr in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD", "XAUUSD", "XTIUSD"]):
+                    major_pairs.append({
+                        "symbol": symbol,
+                        "name": clean_symbol,
+                        "type": "forex" if "USD" in clean_symbol else "commodity",
+                        "description": instrument.get("description", "")
+                    })
+
+            return {"ok": True, "instruments": major_pairs[:10]}  # Top 10
+        else:
+            return {"ok": False, "error": "No instruments available"}
+
     except Exception as e:
         logger.error(f"FXCM instruments error: {e}")
         return {"ok": False, "error": str(e)}
@@ -2060,15 +2066,6 @@ async def generate_fxcm_signal(request_data: Dict[str, Any]):
         logger.error(f"FXCM signal generation error: {e}")
         return {"ok": False, "error": str(e)}
 
-@app.get("/api/fxcm/instruments")
-async def get_fxcm_instruments():
-    """Get list of available FXCM trading instruments"""
-    try:
-        instruments = await get_fxcm_instruments()
-        return {"ok": True, "instruments": instruments}
-    except Exception as e:
-        logger.error(f"FXCM instruments error: {e}")
-        return {"ok": False, "error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
