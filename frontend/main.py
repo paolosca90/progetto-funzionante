@@ -433,14 +433,14 @@ def get_landing_page_stats(db: Session = Depends(get_db)):
         }
 
     except Exception as e:
-        # Return fallback stats if database error
+        # Return minimal stats if database error - no mock data
         return {
-            "active_traders": 10000,
-            "success_rate": 95.0,
-            "total_signals": 50000,
-            "countries_served": 127,
-            "total_profits": 2400000,
-            "uptime": 99.9
+            "active_traders": 0,
+            "success_rate": 0.0,
+            "total_signals": 0,
+            "countries_served": 0,
+            "total_profits": 0,
+            "uptime": 0.0
         }
 
 @app.get("/api/landing/recent-signals")
@@ -494,8 +494,11 @@ def get_current_user_info(response: Response, current_user: User = Depends(get_c
         Signal.status == SignalStatusEnum.CLOSED
     ).count()
     
-    # Simplified win rate calculation - will be enhanced later
-    winning_signals = closed_signals // 2 if closed_signals > 0 else 0  # Mock calculation
+    # Calculate actual win rate from signal outcomes
+    winning_signals = db.query(Signal).filter(
+        Signal.creator_id == current_user.id,
+        Signal.outcome == "WIN"
+    ).count()
     losing_signals = closed_signals - winning_signals
     total_completed = closed_signals
     win_rate = (winning_signals / total_completed * 100) if total_completed > 0 else 0
@@ -1238,7 +1241,8 @@ def get_latest_signals_for_dashboard(
     try:
         latest_signals = db.query(Signal).filter(
             Signal.is_active == True,
-            Signal.is_public == True
+            Signal.is_public == True,
+            Signal.reliability > 55.0  # Only show signals with reliability > 55%
         ).order_by(Signal.created_at.desc()).limit(limit).all()
         
         return {
@@ -1293,10 +1297,12 @@ def get_live_vps_signals(limit: int = 20, db: Session = Depends(get_db)):
     """
     try:
         # Get latest signals from database (received via VPS push)
+        # Filter to show only signals with reliability > 55% as requested
         latest_signals = db.query(Signal).filter(
             Signal.is_active == True,
             Signal.is_public == True,
-            Signal.source == "VPS_AI"  # Only VPS signals
+            Signal.source == "VPS_AI",  # Only VPS signals
+            Signal.reliability > 55.0  # Only signals with reliability > 55%
         ).order_by(Signal.created_at.desc()).limit(limit).all()
         
         # Format signals for frontend

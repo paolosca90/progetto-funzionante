@@ -244,19 +244,19 @@
             <h2 class="card-title">📊 Performance Overview</h2>
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-number" data-target="94.7">0</div>
+                    <div class="stat-number" data-target="0" id="win-rate-stat">0</div>
                     <div class="stat-label">Win Rate %</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" data-target="2847">0</div>
+                    <div class="stat-number" data-target="0" id="total-pips-stat">0</div>
                     <div class="stat-label">Total Pips</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" data-target="127">0</div>
+                    <div class="stat-number" data-target="0" id="active-signals-stat">0</div>
                     <div class="stat-label">Active Signals</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" data-target="15.3">0</div>
+                    <div class="stat-number" data-target="0" id="roi-stat">0</div>
                     <div class="stat-label">ROI %</div>
                 </div>
             </div>
@@ -501,10 +501,10 @@
         
         function updatePerformanceStatsFromUserData(userData) {
             // Update the main performance stats with real user data
-            const winRateStat = document.querySelector('.stat-number[data-target="94.7"]');
-            const activeSignalsStat = document.querySelector('.stat-number[data-target="127"]');
-            const totalPipsStat = document.querySelector('.stat-number[data-target="2847"]');
-            const roiStat = document.querySelector('.stat-number[data-target="15.3"]');
+            const winRateStat = document.getElementById('win-rate-stat');
+            const activeSignalsStat = document.getElementById('active-signals-stat');
+            const totalPipsStat = document.getElementById('total-pips-stat');
+            const roiStat = document.getElementById('roi-stat');
             
             if (winRateStat && userData.win_rate !== undefined) {
                 winRateStat.setAttribute('data-target', userData.win_rate.toString());
@@ -514,6 +514,13 @@
             if (activeSignalsStat && userData.active_signals !== undefined) {
                 activeSignalsStat.setAttribute('data-target', userData.active_signals.toString());
                 activeSignalsStat.textContent = userData.active_signals.toString();
+            }
+            
+            // Calculate estimated pips from reliability data
+            if (totalPipsStat && userData.average_reliability !== undefined) {
+                const estimatedPips = Math.floor(userData.average_reliability * 20); // Estimate pips from reliability
+                totalPipsStat.setAttribute('data-target', estimatedPips.toString());
+                totalPipsStat.textContent = estimatedPips.toString();
             }
             
             // Calculate estimated ROI from profit/loss data
@@ -655,9 +662,9 @@
             const winRate = totalSignals > 0 ? (winningSignals / totalSignals) * 100 : 0;
             
             // Update stats display
-            const winRateStat = document.querySelector('.stat-number[data-target="94.7"]');
-            const totalPipsStat = document.querySelector('.stat-number[data-target="2847"]');
-            const activeSignalsStat = document.querySelector('.stat-number[data-target="127"]');
+            const winRateStat = document.getElementById('win-rate-stat');
+            const totalPipsStat = document.getElementById('total-pips-stat');
+            const activeSignalsStat = document.getElementById('active-signals-stat');
             
             if (winRateStat) {
                 winRateStat.setAttribute('data-target', winRate.toFixed(1));
@@ -667,6 +674,14 @@
             if (activeSignalsStat) {
                 activeSignalsStat.setAttribute('data-target', totalSignals.toString());
                 activeSignalsStat.textContent = totalSignals.toString();
+            }
+            
+            // Calculate estimated pips from signal reliability
+            const avgReliability = signals.reduce((sum, s) => sum + (s.reliability || 0), 0) / totalSignals;
+            const estimatedPips = Math.floor(avgReliability * 20);
+            if (totalPipsStat) {
+                totalPipsStat.setAttribute('data-target', estimatedPips.toString());
+                totalPipsStat.textContent = estimatedPips.toString();
             }
         }
         
@@ -1083,8 +1098,9 @@
             const container = document.getElementById('vps-signals-container');
             
             container.innerHTML = signals.map(signal => {
+                // Only signals with >55% reliability should appear (filtered by backend)
                 const reliabilityClass = signal.reliability >= 75 ? 'reliability-high' : 
-                                       signal.reliability >= 55 ? 'reliability-medium' : 'reliability-low';
+                                       signal.reliability >= 65 ? 'reliability-medium' : 'reliability-low';
                 
                 const typeClass = signal.signal_type.toLowerCase();
                 
@@ -1131,10 +1147,13 @@
             const container = document.getElementById('vps-signals-container');
             container.innerHTML = `
                 <div style="text-align: center; padding: 30px; color: var(--text-dim);">
-                    <div style="font-size: 2em; margin-bottom: 10px;">⚠️</div>
-                    <div>VPS AI Signals: ${message}</div>
+                    <div style="font-size: 2em; margin-bottom: 10px;">🤖</div>
+                    <div><strong>VPS AI System Status:</strong> ${message}</div>
+                    <div style="font-size: 0.9em; margin-top: 10px; color: var(--text-dim);">
+                        Only signals with reliability > 55% are displayed
+                    </div>
                     <button onclick="loadVPSSignals()" style="margin-top: 15px; padding: 8px 16px; background: var(--accent-color); color: var(--primary-dark); border: none; border-radius: 6px; cursor: pointer;">
-                        Retry Connection
+                        🔄 Refresh Signals
                     </button>
                 </div>
             `;

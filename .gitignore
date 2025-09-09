@@ -62,3 +62,20 @@ logs/
 # Temporary files
 tmp/
 temp/
+
+# VPS files - excluded from Railway deployment
+../VPS INSTALLAZIONE/
+VPS_INSTALLAZIONE/
+"VPS INSTALLAZIONE"/
+
+# Backend directory with sensitive data - NEVER commit
+backend/
+**/backend/
+
+# Additional security exclusions
+*.key
+*.pem
+*.p12
+*_vps.py
+*_secret*
+api_keys.txt
