@@ -554,19 +554,20 @@
             
             try {
                 // Load live signals
-                const signalsResponse = await fetch(CONFIG.API_BASE_URL + '/signals', {
+                const signalsResponse = await fetch(CONFIG.API_BASE_URL + '/api/signals/latest?limit=5', {
                     headers: {
                         'Accept': 'application/json'
-                    }
+                    },
+                    signal: AbortSignal.timeout(5000) // 5 second timeout
                 });
 
                 let signalsData = null;
                 if (signalsResponse.ok) {
                     const data = await signalsResponse.json();
-                    if (data.status === 'success' && data.signals) {
+                                        if (data.status === 'success' && data.signals) {
                         signalsData = data.signals;
                         updateLiveSignals(data.signals);
-                        updateMarketOverview(data.signals);
+                        // updateMarketOverview(data.signals); // Disabled - Market Overview section removed
                     }
                 }
 
@@ -676,7 +677,8 @@
                 const response = await fetch(CONFIG.API_BASE_URL + '/api/mt5/quotes-public?symbols=EURUSD,GBPUSD,USDJPY,AUDUSD,USDCHF', {
                     headers: {
                         'Accept': 'application/json'
-                    }
+                    },
+                    signal: AbortSignal.timeout(5000) // 5 second timeout
                 });
                 
                 if (response.ok) {
@@ -1056,7 +1058,8 @@
                 const response = await fetch(CONFIG.API_BASE_URL + '/api/vps/signals/live?limit=5', {
                     headers: {
                         'Accept': 'application/json'
-                    }
+                    },
+                    signal: AbortSignal.timeout(5000) // 5 second timeout
                 });
                 
                 if (response.ok) {
