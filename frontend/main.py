@@ -8,8 +8,12 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta
 from typing import List, Optional
 import httpx
+import logging
 # Railway deployment restart
 import os
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 # Import our modules
 from database import SessionLocal, engine, check_database_health
@@ -1483,6 +1487,104 @@ def debug_register(user: UserCreate, db: Session = Depends(get_db)):
         db.rollback()
         print(f"DEBUG ERROR: {str(e)}")
         return {"status": "error", "error": str(e), "type": str(type(e).__name__)}
+
+@app.get("/admin/signals-by-source")
+async def get_signals_by_source(current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    """
+    ADMIN ONLY: Mostra tutti i segnali raggruppati per source
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin users can view signals by source"
+        )
+    
+    try:
+        # Query per raggruppare segnali per source
+        all_signals = db.query(Signal).all()
+        
+        signals_by_source = {}
+        for signal in all_signals:
+            source = signal.source or "UNKNOWN"
+            if source not in signals_by_source:
+                signals_by_source[source] = []
+            
+            signals_by_source[source].append({
+                "id": signal.id,
+                "symbol": signal.symbol,
+                "signal_type": signal.signal_type.value if signal.signal_type else "UNKNOWN",
+                "entry_price": signal.entry_price,
+                "reliability": signal.reliability,
+                "created_at": signal.created_at.isoformat() if signal.created_at else None,
+                "vps_id": signal.vps_id,
+                "is_active": signal.is_active
+            })
+        
+        # Conta per source
+        source_counts = {source: len(signals) for source, signals in signals_by_source.items()}
+        
+        return APIResponse(
+            status="success",
+            message="Signals grouped by source",
+            data={
+                "source_counts": source_counts,
+                "signals_by_source": signals_by_source,
+                "total_signals": len(all_signals),
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Error retrieving signals by source: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving signals: {str(e)}"
+        )
+
+@app.post("/admin/cleanup-non-vps-signals")
+async def cleanup_non_vps_signals(current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    """
+    ADMIN ONLY: Rimuove tutti i segnali che non sono stati generati dal backend VPS
+    Mantiene solo segnali con source="VPS_AI"
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin users can cleanup signals"
+        )
+    
+    try:
+        # Conta i segnali prima della pulizia
+        total_signals = db.query(Signal).count()
+        vps_signals = db.query(Signal).filter(Signal.source == "VPS_AI").count()
+        non_vps_signals = total_signals - vps_signals
+        
+        # Elimina tutti i segnali che NON sono VPS_AI
+        deleted_count = db.query(Signal).filter(Signal.source != "VPS_AI").delete()
+        db.commit()
+        
+        logger.info(f"Admin {current_user.username} cleaned up {deleted_count} non-VPS signals")
+        
+        return APIResponse(
+            status="success",
+            message=f"Cleanup completed: removed {deleted_count} non-VPS signals",
+            data={
+                "total_signals_before": total_signals,
+                "vps_signals_kept": vps_signals,
+                "non_vps_signals_removed": deleted_count,
+                "remaining_signals": vps_signals,
+                "cleanup_by": current_user.username,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error during signal cleanup: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error during cleanup: {str(e)}"
+        )
 
 if __name__ == "__main__":
     import uvicorn
