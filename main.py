@@ -16,3 +16,6 @@ from frontend.main import app
 
 # Export the app for Railway to use
 __all__ = ['app']
+
+# Also make the variable available directly for Railway
+app = app
