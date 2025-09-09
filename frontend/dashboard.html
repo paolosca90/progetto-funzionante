@@ -1109,8 +1109,8 @@
                 const reliabilityClass = signal.reliability >= 75 ? 'reliability-high' : 
                                        signal.reliability >= 65 ? 'reliability-medium' : 'reliability-low';
                 
-                const typeClass = signal.signal_type.toLowerCase();
-                console.log(`Signal ${signal.symbol}: type=${signal.signal_type}, reliability=${signal.reliability}`);
+                const typeClass = (signal.signal_type || 'buy').toLowerCase();
+                console.log(`Signal ${signal.symbol}: type=${signal.signal_type}, reliability=${signal.reliability}, typeClass=${typeClass}`);
                 
                 return `
                     <div class="vps-signal-item">
@@ -1151,7 +1151,12 @@
             }).join('');
             
             console.log('Generated HTML length:', container.innerHTML.length);
+            console.log('First 200 chars of HTML:', container.innerHTML.substring(0, 200));
             console.log('Container after update:', container);
+            
+            // Test if elements are actually in DOM
+            const signalItems = container.querySelectorAll('.vps-signal-item');
+            console.log('Signal items found in DOM:', signalItems.length);
         }
         
         function showVPSError(message) {
