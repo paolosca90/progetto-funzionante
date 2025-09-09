@@ -264,49 +264,6 @@
 
         <!-- Dashboard Grid -->
         <div class="dashboard-grid">
-            <!-- Recent Activity -->
-            <div class="dashboard-card">
-                <h2 class="card-title">📈 Recent Activity</h2>
-                <div class="card-content">
-                    <div class="activity-list">
-                        <div class="activity-item">
-                            <div class="activity-icon success">✓</div>
-                            <div class="activity-details">
-                                <div class="activity-pair">GBP/USD</div>
-                                <div class="activity-result">+187 pips</div>
-                                <div class="activity-time">1 hour ago</div>
-                            </div>
-                        </div>
-                        
-                        <div class="activity-item">
-                            <div class="activity-icon success">✓</div>
-                            <div class="activity-details">
-                                <div class="activity-pair">USD/JPY</div>
-                                <div class="activity-result">+94 pips</div>
-                                <div class="activity-time">3 hours ago</div>
-                            </div>
-                        </div>
-                        
-                        <div class="activity-item">
-                            <div class="activity-icon pending">⏳</div>
-                            <div class="activity-details">
-                                <div class="activity-pair">AUD/USD</div>
-                                <div class="activity-result">Running</div>
-                                <div class="activity-time">5 hours ago</div>
-                            </div>
-                        </div>
-                        
-                        <div class="activity-item">
-                            <div class="activity-icon success">✓</div>
-                            <div class="activity-details">
-                                <div class="activity-pair">EUR/GBP</div>
-                                <div class="activity-result">+156 pips</div>
-                                <div class="activity-time">8 hours ago</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Account Status -->
             <div class="dashboard-card">
@@ -320,45 +277,6 @@
                 </div>
             </div>
 
-            <!-- Market Overview -->
-            <div class="dashboard-card">
-                <h2 class="card-title">🌍 Market Overview</h2>
-                <div class="card-content">
-                    <div class="market-pairs">
-                        <div class="market-pair">
-                            <div class="pair-info">
-                                <span class="pair-name">EUR/USD</span>
-                                <span class="pair-price">1.0847</span>
-                            </div>
-                            <div class="pair-change positive">+0.12%</div>
-                        </div>
-                        
-                        <div class="market-pair">
-                            <div class="pair-info">
-                                <span class="pair-name">GBP/USD</span>
-                                <span class="pair-price">1.2634</span>
-                            </div>
-                            <div class="pair-change negative">-0.08%</div>
-                        </div>
-                        
-                        <div class="market-pair">
-                            <div class="pair-info">
-                                <span class="pair-name">USD/JPY</span>
-                                <span class="pair-price">150.42</span>
-                            </div>
-                            <div class="pair-change positive">+0.24%</div>
-                        </div>
-                        
-                        <div class="market-pair">
-                            <div class="pair-info">
-                                <span class="pair-name">AUD/USD</span>
-                                <span class="pair-price">0.6789</span>
-                            </div>
-                            <div class="pair-change positive">+0.15%</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- AI Insights */
             <div class="dashboard-card">
@@ -641,18 +559,20 @@
                         'Accept': 'application/json'
                     }
                 });
-                
+
+                let signalsData = null;
                 if (signalsResponse.ok) {
                     const data = await signalsResponse.json();
                     if (data.status === 'success' && data.signals) {
+                        signalsData = data.signals;
                         updateLiveSignals(data.signals);
                         updateMarketOverview(data.signals);
                     }
                 }
-                
-                // Update performance stats from real data  
-                updatePerformanceStats(data?.signals || []);
-                
+
+                // Update performance stats from real data
+                updatePerformanceStats(signalsData || []);
+
             } catch (error) {
                 console.error('Error refreshing dashboard data:', error);
                 if (error.message.includes('timeout')) {
