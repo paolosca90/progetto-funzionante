@@ -1104,11 +1104,13 @@
             console.log('Signals to display:', signals);
             
             container.innerHTML = signals.map(signal => {
+                console.log('Processing signal:', signal);
                 // Only signals with >55% reliability should appear (filtered by backend)
                 const reliabilityClass = signal.reliability >= 75 ? 'reliability-high' : 
                                        signal.reliability >= 65 ? 'reliability-medium' : 'reliability-low';
                 
                 const typeClass = signal.signal_type.toLowerCase();
+                console.log(`Signal ${signal.symbol}: type=${signal.signal_type}, reliability=${signal.reliability}`);
                 
                 return `
                     <div class="vps-signal-item">
@@ -1147,6 +1149,9 @@
                     </div>
                 `;
             }).join('');
+            
+            console.log('Generated HTML length:', container.innerHTML.length);
+            console.log('Container after update:', container);
         }
         
         function showVPSError(message) {
