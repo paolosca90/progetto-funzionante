@@ -13,7 +13,7 @@ import asyncio
 from typing import Dict, Any
 from fxcm_rest_integration import get_fxcm_market_data, get_fxcm_account_info, get_fxcm_instruments
 FXCM_AVAILABLE = True  # Always available with fallback to mock data
-print("✅ FXCM REST API integration loaded successfully")
+print("FXCM REST API integration loaded successfully")
 import logging
 # Railway deployment restart
 import os
@@ -1305,8 +1305,8 @@ def get_latest_signals_for_dashboard(
 async def get_fxcm_market_data_endpoint(symbol: str):
     """Get real-time market data from FXCM for specific symbol"""
     try:
-        if not FXCM_USERNAME or not FXCM_PASSWORD:
-            return {"ok": False, "error": "FXCM credentials not configured"}
+        if not FXCM_ACCESS_TOKEN:
+            return {"ok": False, "error": "FXCM access token not configured"}
 
         data = await get_fxcm_market_data(symbol.upper())
         return {"ok": True, "data": data}
@@ -1347,8 +1347,8 @@ async def generate_fxcm_signal(request_data: Dict[str, Any]):
         if not symbol:
             return {"ok": False, "error": "Symbol is required"}
         
-        if not FXCM_USERNAME or not FXCM_PASSWORD:
-            return {"ok": False, "error": "FXCM credentials not configured"}
+        if not FXCM_ACCESS_TOKEN:
+            return {"ok": False, "error": "FXCM access token not configured"}
 
         # Get real FXCM market data
         fxcm_data = await get_fxcm_market_data(symbol)
@@ -1421,8 +1421,8 @@ async def generate_fxcm_signal(request_data: Dict[str, Any]):
 async def get_fxcm_instruments():
     """Get list of available FXCM trading instruments"""
     try:
-        if not FXCM_USERNAME or not FXCM_PASSWORD:
-            return {"ok": False, "error": "FXCM credentials not configured"}
+        if not FXCM_ACCESS_TOKEN:
+            return {"ok": False, "error": "FXCM access token not configured"}
         
         connection = await get_fxcm_connection()
         instruments = connection.get_instruments()
