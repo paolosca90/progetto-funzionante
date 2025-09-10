@@ -898,9 +898,16 @@ async def generate_custom_signal(
             )
 
         try:
+            # Convert symbol to OANDA format (EURUSD -> EUR_USD)
+            oanda_symbol = symbol.upper()
+            if "_" not in oanda_symbol and len(oanda_symbol) == 6:
+                # Convert EURUSD to EUR_USD
+                oanda_symbol = f"{oanda_symbol[:3]}_{oanda_symbol[3:]}"
+            logger.info(f"Converted {symbol.upper()} to OANDA format: {oanda_symbol}")
+
             # Generate signal using OANDA analysis only
             signal = await oanda_signal_engine.generate_signal(
-                symbol.upper(),
+                oanda_symbol,
                 timeframe="H1"
             )
 
