@@ -370,6 +370,55 @@ def test_deployment_status():
         "timestamp": datetime.utcnow().isoformat()
     }
 
+# ========== TEMPORARY ADMIN CREATION (REMOVE AFTER RESET) ==========
+
+@app.post("/temp-create-admin")
+async def temp_create_admin(db: Session = Depends(get_db)):
+    """TEMPORARY: Create admin user for database reset (REMOVE AFTER USE)"""
+    try:
+        logger.warning("TEMPORARY ADMIN CREATION - REMEMBER TO REMOVE THIS ENDPOINT!")
+
+        # Hash password
+        hashed_pass = hash_password("TempAdmin2025!")
+
+        # Check if admin already exists
+        from models import User
+        existing_admin = db.query(User).filter(User.is_admin == True).first()
+        if existing_admin:
+            return {
+                "status": "admin_exists",
+                "message": f"Admin already exists: {existing_admin.username}",
+                "id": existing_admin.id
+            }
+
+        # Create new admin
+        admin = User(
+            username="temp_railway_admin",
+            email="temp_admin@railway.local",
+            hashed_password=hashed_pass,
+            full_name="Railway Admin",
+            is_admin=True
+        )
+
+        db.add(admin)
+        db.commit()
+        db.refresh(admin)
+
+        print(f"TEMPORARY ADMIN CREATED: {admin.username} (ID: {admin.id})")
+
+        return {
+            "status": "success",
+            "message": "Temporary admin created - REMOVE THIS ENDPOINT IMMEDIATELY",
+            "admin_id": admin.id,
+            "username": admin.username,
+            "password": "TempAdmin2025!"
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create temp admin: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create admin: {str(e)}")
+
 # ========== DATABASE MIGRATION ENDPOINT ==========
 
 @app.post("/admin/migrate-database")
