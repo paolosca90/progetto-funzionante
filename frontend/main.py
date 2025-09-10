@@ -381,49 +381,21 @@ async def final_database_reset(current_user: User = Depends(get_current_active_u
     try:
         logger.warning("🚨 FINAL DATABASE RESET - CLEARING EVERYTHING")
 
-        # Clear ALL existing tables in CORRECT ORDER to handle dependencies
+        # Clear ALL existing tables using EMERGENCY SCHEMA RESET
         try:
+            logger.warning("🔴 Using emergency schema reset approach")
             with engine.connect() as conn:
-                # Drop tables in reverse dependency order
-                tables_to_drop = [
-                    'signal_executions',  # Depends on signals + users
-                    'subscriptions',      # Depends on users
-                    'mt5_connections',    # Depends on users
-                    'oanda_connections',  # Depends on users
-                    'signals',            # Depends on users + others
-                    'users',              # No dependencies
-                ]
-
-                for table_name in tables_to_drop:
-                    try:
-                        # Try with CASCADE first
-                        conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
-                        logger.info(f"✅ Dropped table {table_name} with CASCADE")
-
-                        # Verify it's dropped by checking if we can create a place holder
-                        try:
-                            conn.execute(text(f"CREATE TABLE {table_name}_temp (id SERIAL PRIMARY KEY)"))
-                            conn.execute(text(f"DROP TABLE {table_name}_temp"))
-                        except:
-                            logger.warning(f"Table {table_name} might still exist")
-
-                    except Exception as table_error:
-                        logger.warning(f"Warning dropping {table_name}: {table_error}")
-
+                # Force drop of entire public schema and recreate it from scratch
+                conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE;"))
+                conn.execute(text("CREATE SCHEMA public;"))
+                conn.execute(text("GRANT ALL ON SCHEMA public TO postgres;"))
+                conn.execute(text("GRANT ALL ON SCHEMA public TO public;"))
                 conn.commit()
-            logger.info("✅ All existing tables dropped in correct order")
+            logger.info("✅ Emergency schema reset completed - ALL DATA GONE")
 
-        except Exception as drop_error:
-            logger.error(f"Ordered drop failed, using emergency approach: {drop_error}")
-            # Last resort: use raw SQL to force drop all
-            try:
-                with engine.connect() as conn:
-                    conn.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
-                    conn.commit()
-                logger.info("✅ Emergency schema reset completed")
-            except Exception as emergency_error:
-                logger.error(f"Emergency approach also failed: {emergency_error}")
-                raise Exception(f"All drop attempts failed. Last error: {drop_error}")
+        except Exception as schema_error:
+            logger.error(f"Schema reset failed: {schema_error}")
+            raise Exception(f"Unable to reset schema: {schema_error}")
 
         # Recreate ALL tables with perfect schema
         Base.metadata.create_all(bind=engine)
