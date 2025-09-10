@@ -176,7 +176,45 @@ def get_db():
 @app.get("/", response_class=HTMLResponse)
 async def serve_landing_page():
     """Serve the AI Cash-Revolution landing page"""
-    return FileResponse("index.html")
+    try:
+        # Prima prova nella directory corrente
+        if os.path.exists("index.html"):
+            return FileResponse("index.html")
+
+        # Poi prova nell'altra possibile directory
+        elif os.path.exists("frontend/index.html"):
+            return FileResponse("frontend/index.html")
+
+        else:
+            # Fallback semplice se i file HTML non esistono
+            return HTMLResponse("""
+                <!DOCTYPE html>
+                <html>
+                <head><title>Trading Signals API</title></head>
+                <body>
+                    <h1>AI Cash-Revolution Trading Signals</h1>
+                    <p>API Status: <span style="color:green;">Running</span></p>
+                    <p>Documentation: <a href="/docs">/docs</a></p>
+                    <p>Health Check: <a href="/health">/health</a></p>
+                </body>
+                </html>
+            """)
+    except Exception as e:
+        logger.error(f"Error serving landing page: {e}")
+        return HTMLResponse(f"<h1>Error: {str(e)}</h1>", status_code=500)
+
+# Migliorato static files mounting
+try:
+    if os.path.exists("static"):
+        app.mount("/static", StaticFiles(directory="static"), name="static")
+        print("Static files directory mounted successfully from root")
+    elif os.path.exists("frontend/static"):
+        app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
+        print("Static files directory mounted successfully from frontend")
+    else:
+        print("Warning: Static files directories not found")
+except Exception as e:
+    print(f"Warning: Error mounting static files: {e}")
 
 @app.get("/login.html", response_class=HTMLResponse)
 async def serve_login_page():
