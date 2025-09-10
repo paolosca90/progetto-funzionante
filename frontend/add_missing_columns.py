@@ -118,5 +118,4 @@ if __name__ == "__main__":
         print("\n❌ Migration encountered issues.")
         print("Please check Railway logs and consider manual column addition if needed.")
 
-    print("
-📝 You may need to restart your Railway deployment for changes to take effect."")
+    print("\n📝 You may need to restart your Railway deployment for changes to take effect.\n")
