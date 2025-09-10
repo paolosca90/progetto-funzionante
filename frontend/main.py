@@ -912,7 +912,7 @@ async def generate_custom_signal(
                 source="FRONTEND_CUSTOM",
                 timeframe=signal.timeframe,
                 risk_reward_ratio=signal.risk_reward_ratio,
-                position_size_suggestion=signal.position_size_suggestion,
+                position_size_suggestion=signal.position_size,
                 expires_at=signal.expires_at.replace(tzinfo=None)
             )
 
