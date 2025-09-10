@@ -661,7 +661,7 @@ async def generate_custom_signal(
                         is_active=True,
                         creator_id=current_user.id,
                         source="ADVANCED_OANDA",
-                        data_provider="OANDA_ADVANCED",
+                        # # data_provider  # Column not in production DB="OANDA_ADVANCED",  # Column not in production DB
                         timeframe="H1",
                         risk_reward_ratio=advanced_analysis.risk_reward_ratio,
                         position_size_suggestion=advanced_analysis.position_size_suggestion,
@@ -733,7 +733,7 @@ async def generate_custom_signal(
                         is_active=True,
                         creator_id=current_user.id,
                         source="FRONTEND_CUSTOM",
-                        data_provider="OANDA",
+                        # data_provider  # Column not in production DB="OANDA",
                         oanda_instrument=signal.market_context.symbol,
                         timeframe=signal.timeframe,
                         risk_reward_ratio=signal.risk_reward_ratio,
@@ -849,7 +849,7 @@ async def generate_custom_signal(
             is_active=True,
             creator_id=current_user.id,
             source="FRONTEND_CUSTOM",
-            data_provider="SIMULATED",
+            # data_provider  # Column not in production DB="SIMULATED",
             timeframe="H1",
             risk_reward_ratio=risk_reward_ratio,
             position_size_suggestion=0.01,
@@ -1140,7 +1140,7 @@ async def generate_signals_manually(
                 risk_level=signal.risk_level.value,
                 ai_analysis=signal.ai_analysis,
                 source="OANDA_AI",
-                data_provider="OANDA",
+                # data_provider  # Column not in production DB="OANDA",
                 oanda_instrument=signal.instrument,
                 timeframe=signal.timeframe,
                 risk_reward_ratio=signal.risk_reward_ratio,
@@ -1206,7 +1206,7 @@ async def generate_signals_if_needed(db: Session = Depends(get_db)):
                         risk_level=signal.risk_level.value,
                         ai_analysis=signal.ai_analysis,
                         source="OANDA_AI",
-                        data_provider="OANDA",
+                        # data_provider  # Column not in production DB="OANDA",
                         oanda_instrument=signal.instrument,
                         timeframe=signal.timeframe,
                         risk_reward_ratio=signal.risk_reward_ratio,
@@ -1287,7 +1287,7 @@ def get_latest_signals_for_dashboard(
                     "reliability": signal.reliability,
                     "created_at": signal.created_at.isoformat(),
                     "source": signal.source,
-                    "data_provider": signal.data_provider,
+                    "# data_provider  # Column not in production DB": signal.# data_provider  # Column not in production DB,
                     "ai_analysis": signal.ai_analysis[:200] + "..." if signal.ai_analysis and len(signal.ai_analysis) > 200 else signal.ai_analysis
                 }
                 for signal in latest_signals
@@ -1955,7 +1955,7 @@ async def generate_oanda_signal(
             is_active=True,
             creator_id=current_user.id,
             source="OANDA_AI",
-            data_provider="OANDA",
+            # data_provider  # Column not in production DB="OANDA",
             oanda_instrument=signal.market_context.symbol,
             timeframe=signal.timeframe,
             risk_reward_ratio=signal.risk_reward_ratio,
@@ -2089,7 +2089,7 @@ async def generate_oanda_signals_batch(
                     is_active=True,
                     creator_id=None,  # System generated
                     source="OANDA_AI_BATCH",
-                    data_provider="OANDA",
+                    # data_provider  # Column not in production DB="OANDA",
                     oanda_instrument=signal.market_context.symbol,
                     timeframe=signal.timeframe,
                     risk_reward_ratio=signal.risk_reward_ratio,
@@ -2159,7 +2159,7 @@ async def get_live_oanda_signals(
         latest_signals = db.query(Signal).filter(
             Signal.is_active == True,
             Signal.is_public == True,
-            Signal.data_provider == "OANDA",
+            Signal.# data_provider  # Column not in production DB == "OANDA",
             Signal.reliability >= min_reliability
         ).order_by(Signal.created_at.desc()).limit(limit).all()
         
@@ -2193,7 +2193,7 @@ async def get_live_oanda_signals(
                 },
                 "timestamp": signal.created_at.isoformat() if signal.created_at else "",
                 "expires_at": signal.expires_at.isoformat() if signal.expires_at else "",
-                "data_provider": signal.data_provider,
+                "# data_provider  # Column not in production DB": signal.# data_provider  # Column not in production DB,
                 "source": signal.source
             })
         

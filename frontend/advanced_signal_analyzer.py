@@ -22,6 +22,7 @@ class TimeFrame(Enum):
     M1 = "M1"
     M5 = "M5" 
     M15 = "M15"
+    M30 = "M30"  # Added M30 for intraday analysis
     H1 = "H1"
     H4 = "H4"
     D1 = "D1"
@@ -180,7 +181,8 @@ class AdvancedSignalAnalyzer:
         timeframes_data = {}
         key_levels = []
         
-        timeframes = [TimeFrame.M15, TimeFrame.H1, TimeFrame.H4, TimeFrame.D1]
+        # Intraday timeframes for scalping/day trading (M1, M5, M15, M30)
+        timeframes = [TimeFrame.M1, TimeFrame.M5, TimeFrame.M15, TimeFrame.M30]
         
         for tf in timeframes:
             try:
@@ -427,12 +429,12 @@ class AdvancedSignalAnalyzer:
         """Calculate overall trend from multiple timeframes"""
         trend_votes = {"BULLISH": 0, "BEARISH": 0, "SIDEWAYS": 0}
         
-        # Weight timeframes (higher timeframes get more weight)
+        # Weight timeframes for intraday trading (higher timeframes get more weight)
         weights = {
-            TimeFrame.M15: 1,
-            TimeFrame.H1: 2, 
-            TimeFrame.H4: 3,
-            TimeFrame.D1: 4
+            TimeFrame.M1: 1,    # Micro trends - noise
+            TimeFrame.M5: 2,    # Entry precision  
+            TimeFrame.M15: 3,   # Primary intraday trend
+            TimeFrame.M30: 4    # Market context and direction
         }
         
         for tf, data in timeframes_data.items():
@@ -468,16 +470,16 @@ class AdvancedSignalAnalyzer:
     def _detect_smart_money_from_structure(self, timeframes_data: Dict[TimeFrame, Dict[str, Any]]) -> SmartMoneyActivity:
         """Detect smart money activity from market structure"""
         try:
-            # Look for signs of accumulation/distribution
-            # This is a simplified version - in reality would be much more complex
+            # Look for signs of accumulation/distribution in intraday timeframes
+            # Smart money usually operates on different timeframe levels
             
-            higher_tf_trends = []
-            for tf in [TimeFrame.H4, TimeFrame.D1]:
+            higher_tf_trends = []  # Context timeframes
+            for tf in [TimeFrame.M15, TimeFrame.M30]:
                 if tf in timeframes_data and "trend" in timeframes_data[tf]:
                     higher_tf_trends.append(timeframes_data[tf]["trend"])
             
-            lower_tf_trends = []
-            for tf in [TimeFrame.M15, TimeFrame.H1]:
+            lower_tf_trends = []  # Entry timeframes
+            for tf in [TimeFrame.M1, TimeFrame.M5]:
                 if tf in timeframes_data and "trend" in timeframes_data[tf]:
                     lower_tf_trends.append(timeframes_data[tf]["trend"])
             
@@ -574,15 +576,216 @@ class AdvancedSignalAnalyzer:
         )
     
     async def _detect_smart_money_activity(self, symbol: str, mtf_analysis: MultiTimeframeAnalysis) -> Dict[str, Any]:
-        """Detect smart money activity patterns"""
+        """Detect intraday smart money activity patterns"""
+        
+        # Get M1 and M5 data for smart money analysis
+        m1_data = None
+        m5_data = None
+        
+        try:
+            m1_data = await self._get_oanda_candles(symbol, TimeFrame.M1, count=200)
+            m5_data = await self._get_oanda_candles(symbol, TimeFrame.M5, count=100)
+        except Exception as e:
+            logger.warning(f"Could not get intraday data for smart money analysis: {e}")
+        
+        # Analyze smart money patterns
+        liquidity_zones = self._identify_liquidity_zones(m1_data, m5_data)
+        order_blocks = self._identify_order_blocks(m5_data)
+        fair_value_gaps = self._identify_fair_value_gaps(m1_data)
+        institutional_levels = self._identify_institutional_levels(mtf_analysis.key_levels)
+        
         return {
             "activity_type": mtf_analysis.smart_money_activity.value,
-            "confidence": 75.0,
-            "liquidity_zones": [],
-            "order_blocks": [],
-            "fair_value_gaps": [],
-            "institutional_levels": []
+            "confidence": 85.0,  # Higher confidence for intraday analysis
+            "liquidity_zones": liquidity_zones,
+            "order_blocks": order_blocks,
+            "fair_value_gaps": fair_value_gaps,
+            "institutional_levels": institutional_levels,
+            "session_analysis": self._analyze_trading_session(),
+            "volume_clusters": self._identify_volume_clusters(m5_data)
         }
+    
+    def _identify_liquidity_zones(self, m1_data: Optional[pd.DataFrame], m5_data: Optional[pd.DataFrame]) -> List[Dict[str, Any]]:
+        """Identify liquidity zones where smart money operates"""
+        zones = []
+        
+        try:
+            if m5_data is not None and len(m5_data) > 20:
+                # Find zones with high volume and price rejection
+                for i in range(10, len(m5_data) - 10):
+                    current_candle = m5_data.iloc[i]
+                    prev_candles = m5_data.iloc[i-10:i]
+                    next_candles = m5_data.iloc[i+1:i+11]
+                    
+                    # High volume rejection candle
+                    if (current_candle['volume'] > prev_candles['volume'].mean() * 1.5 and
+                        abs(current_candle['close'] - current_candle['open']) < 
+                        (current_candle['high'] - current_candle['low']) * 0.3):
+                        
+                        zone = {
+                            "price": current_candle['high'] if current_candle['close'] < current_candle['open'] else current_candle['low'],
+                            "type": "liquidity_grab" if current_candle['close'] < current_candle['open'] else "liquidity_build",
+                            "strength": min(100, (current_candle['volume'] / prev_candles['volume'].mean()) * 20),
+                            "time": current_candle.name.isoformat()
+                        }
+                        zones.append(zone)
+                        
+        except Exception as e:
+            logger.error(f"Error identifying liquidity zones: {e}")
+            
+        return zones[-5:]  # Return last 5 zones
+    
+    def _identify_order_blocks(self, m5_data: Optional[pd.DataFrame]) -> List[Dict[str, Any]]:
+        """Identify institutional order blocks"""
+        order_blocks = []
+        
+        try:
+            if m5_data is not None and len(m5_data) > 30:
+                # Look for strong moves followed by consolidation
+                for i in range(20, len(m5_data) - 10):
+                    current_candle = m5_data.iloc[i]
+                    prev_candles = m5_data.iloc[i-20:i]
+                    next_candles = m5_data.iloc[i+1:i+11]
+                    
+                    # Strong bullish move followed by consolidation
+                    strong_move = (current_candle['close'] > current_candle['open'] and
+                                 (current_candle['close'] - current_candle['open']) > 
+                                 prev_candles['close'].std() * 2)
+                    
+                    consolidation = (next_candles['high'].max() - next_candles['low'].min()) < \
+                                  (current_candle['high'] - current_candle['low']) * 0.5
+                    
+                    if strong_move and consolidation:
+                        order_block = {
+                            "high": current_candle['high'],
+                            "low": current_candle['low'],
+                            "type": "bullish_order_block",
+                            "strength": 80.0,
+                            "time": current_candle.name.isoformat()
+                        }
+                        order_blocks.append(order_block)
+                        
+        except Exception as e:
+            logger.error(f"Error identifying order blocks: {e}")
+            
+        return order_blocks[-3:]  # Return last 3 order blocks
+    
+    def _identify_fair_value_gaps(self, m1_data: Optional[pd.DataFrame]) -> List[Dict[str, Any]]:
+        """Identify fair value gaps (FVGs) in price action"""
+        fvgs = []
+        
+        try:
+            if m1_data is not None and len(m1_data) > 3:
+                for i in range(1, len(m1_data) - 1):
+                    prev_candle = m1_data.iloc[i-1]
+                    current_candle = m1_data.iloc[i]
+                    next_candle = m1_data.iloc[i+1]
+                    
+                    # Bullish FVG: prev high < next low
+                    if prev_candle['high'] < next_candle['low']:
+                        fvg = {
+                            "gap_high": next_candle['low'],
+                            "gap_low": prev_candle['high'],
+                            "type": "bullish_fvg",
+                            "strength": 75.0,
+                            "time": current_candle.name.isoformat()
+                        }
+                        fvgs.append(fvg)
+                    
+                    # Bearish FVG: prev low > next high  
+                    elif prev_candle['low'] > next_candle['high']:
+                        fvg = {
+                            "gap_high": prev_candle['low'],
+                            "gap_low": next_candle['high'], 
+                            "type": "bearish_fvg",
+                            "strength": 75.0,
+                            "time": current_candle.name.isoformat()
+                        }
+                        fvgs.append(fvg)
+                        
+        except Exception as e:
+            logger.error(f"Error identifying fair value gaps: {e}")
+            
+        return fvgs[-10:]  # Return last 10 FVGs
+    
+    def _identify_institutional_levels(self, key_levels: List[PriceLevel]) -> List[Dict[str, Any]]:
+        """Identify key institutional levels from price levels"""
+        institutional_levels = []
+        
+        for level in key_levels:
+            if level.strength > 75 or level.touches > 2:
+                inst_level = {
+                    "price": level.price,
+                    "type": level.level_type,
+                    "strength": level.strength,
+                    "touches": level.touches,
+                    "classification": "institutional" if level.strength > 85 else "retail"
+                }
+                institutional_levels.append(inst_level)
+        
+        return institutional_levels
+    
+    def _analyze_trading_session(self) -> Dict[str, Any]:
+        """Analyze current trading session for smart money activity"""
+        from datetime import datetime
+        import pytz
+        
+        utc_now = datetime.utcnow()
+        
+        # Define trading sessions (simplified)
+        sessions = {
+            "london": {"start": 8, "end": 17, "timezone": "Europe/London"},
+            "new_york": {"start": 13, "end": 22, "timezone": "America/New_York"}, 
+            "tokyo": {"start": 0, "end": 9, "timezone": "Asia/Tokyo"}
+        }
+        
+        current_session = "off_hours"
+        session_strength = 30.0
+        
+        # Determine active session (simplified logic)
+        utc_hour = utc_now.hour
+        if 8 <= utc_hour <= 17:
+            current_session = "london"
+            session_strength = 90.0
+        elif 13 <= utc_hour <= 22:
+            current_session = "new_york"  
+            session_strength = 95.0
+        elif 0 <= utc_hour <= 9:
+            current_session = "tokyo"
+            session_strength = 70.0
+        
+        return {
+            "active_session": current_session,
+            "session_strength": session_strength,
+            "overlap_bonus": 10.0 if 13 <= utc_hour <= 17 else 0.0  # London-NY overlap
+        }
+    
+    def _identify_volume_clusters(self, m5_data: Optional[pd.DataFrame]) -> List[Dict[str, Any]]:
+        """Identify volume clusters indicating institutional activity"""
+        clusters = []
+        
+        try:
+            if m5_data is not None and len(m5_data) > 20:
+                # Calculate volume moving average
+                m5_data['volume_ma'] = m5_data['volume'].rolling(20).mean()
+                
+                # Find high volume clusters
+                high_volume_threshold = m5_data['volume_ma'].quantile(0.8)
+                
+                for i in range(len(m5_data)):
+                    if m5_data.iloc[i]['volume'] > high_volume_threshold:
+                        cluster = {
+                            "price": (m5_data.iloc[i]['high'] + m5_data.iloc[i]['low']) / 2,
+                            "volume": m5_data.iloc[i]['volume'],
+                            "relative_volume": m5_data.iloc[i]['volume'] / m5_data['volume_ma'].iloc[i],
+                            "time": m5_data.index[i].isoformat()
+                        }
+                        clusters.append(cluster)
+                        
+        except Exception as e:
+            logger.error(f"Error identifying volume clusters: {e}")
+            
+        return clusters[-8:]  # Return last 8 clusters
     
     async def _get_economic_events(self, symbol: str) -> List[EconomicEvent]:
         """Get relevant economic events for the symbol"""

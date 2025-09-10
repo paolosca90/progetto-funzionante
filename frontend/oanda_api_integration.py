@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 class OANDAEnvironment(Enum):
     DEMO = "demo"
+    PRACTICE = "practice"  # Alternative name for demo
     LIVE = "live"
 
 class OANDAAPIError(Exception):
@@ -61,7 +62,7 @@ class OANDAClient:
         self.environment = OANDAEnvironment(environment.lower())
         
         # Set base URL based on environment
-        if self.environment == OANDAEnvironment.DEMO:
+        if self.environment in [OANDAEnvironment.DEMO, OANDAEnvironment.PRACTICE]:
             self.base_url = "https://api-fxpractice.oanda.com"
             self.stream_url = "https://stream-fxpractice.oanda.com"
         else:
