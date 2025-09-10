@@ -423,6 +423,57 @@ async def migrate_database(current_user: User = Depends(get_current_active_user)
             detail=f"Database migration failed: {str(e)}"
         )
 
+@app.post("/admin/reset-database")
+async def reset_database_complete(current_user: User = Depends(get_current_active_user)):
+    """Admin-only endpoint to completely reset database (DROP ALL TABLES and recreate with new schema)"""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required for complete database reset"
+        )
+
+    try:
+        logger.warning(f"😤 COMPLETE DATABASE RESET initiated by admin: {current_user.username}")
+
+        from database import Base, engine
+
+        # Drop all tables
+        logger.info("Dropping all existing tables...")
+        Base.metadata.drop_all(bind=engine)
+        logger.info("✅ All tables dropped")
+
+        # Recreate all tables with new schema
+        logger.info("Creating new tables with complete schema...")
+        Base.metadata.create_all(bind=engine)
+        logger.info("✅ New tables created with latest schema")
+
+        return APIResponse(
+            status="success",
+            message="Database completely reset successfully",
+            data={
+                "operation": "complete_reset",
+                "message": "All data erased. Fresh database created with latest schema",
+                "warning": "All previous data has been permanently deleted",
+                "admin": current_user.username,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Database reset failed: {e}")
+        # Try to recreate tables if drop failed
+        try:
+            from database import Base, engine
+            Base.metadata.create_all(bind=engine)
+            logger.info("Partial recovery: attempted to create missing tables")
+        except:
+            pass
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database reset failed: {str(e)}. Check Railway logs."
+        )
+
 @app.get("/debug/database-schema")
 async def check_database_schema(db: Session = Depends(get_db)):
     """Debug endpoint to check current database schema"""
