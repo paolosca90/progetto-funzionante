@@ -357,16 +357,24 @@ class OANDASignalEngine:
         buy_signals = signals.count("BUY")
         sell_signals = signals.count("SELL")
         
+        # Calculate initial signal preference
         if buy_signals > sell_signals:
-            final_signal = SignalType.BUY
+            preferred_signal = SignalType.BUY
         elif sell_signals > buy_signals:
-            final_signal = SignalType.SELL
+            preferred_signal = SignalType.SELL
         else:
-            final_signal = SignalType.HOLD
+            preferred_signal = SignalType.HOLD
         
-        # Normalize score
+        # Normalize score (probability)
         max_possible_score = 2.6  # Sum of all possible scores
         normalized_score = min(score / max_possible_score, 1.0)
+        
+        # IMPORTANT: If probability is less than 60%, force HOLD signal
+        if normalized_score < 0.60:
+            final_signal = SignalType.HOLD
+            reasoning.append("Probabilità insufficiente per operare (<60%)")
+        else:
+            final_signal = preferred_signal
         
         return final_signal, normalized_score, " | ".join(reasoning)
     
@@ -421,33 +429,52 @@ class OANDASignalEngine:
         position_size = max(0.01, min(position_size, 10.0))
         return round(position_size, 2)
     
-    async def get_ai_analysis(self, instrument: str, signal_type: SignalType, indicators: TechnicalIndicators, market_context: str) -> str:
+    async def get_ai_analysis(self, instrument: str, signal_type: SignalType, indicators: TechnicalIndicators, market_context: str, confidence_score: float = 0.0) -> str:
         """Get AI-powered market analysis using Gemini"""
         if not self.gemini_model:
-            return f"Technical analysis suggests {signal_type.value} signal for {instrument} based on current indicators."
+            if signal_type == SignalType.HOLD:
+                return f"Non conviene operare ora su {instrument} (Probabilità: {confidence_score:.1%}). Le condizioni di mercato suggeriscono di attendere."
+            return f"Segnale {signal_type.value} per {instrument} (Probabilità: {confidence_score:.1%}) basato su analisi tecnica."
         
         try:
-            prompt = f"""
-            As a professional forex trading analyst, provide a concise analysis of {instrument} based on these indicators:
-            
-            Technical Indicators:
-            - RSI: {indicators.rsi:.1f}
-            - MACD Histogram: {indicators.macd_histogram:.5f}
-            - Price vs Bollinger Bands: Middle={indicators.bb_middle:.5f}, Upper={indicators.bb_upper:.5f}, Lower={indicators.bb_lower:.5f}
-            - ATR (volatility): {indicators.atr:.5f}
-            - EMA 9: {indicators.ema_9:.5f}, EMA 21: {indicators.ema_21:.5f}
-            - Volatility: {indicators.volatility:.3%}
-            
-            Market Context: {market_context}
-            Suggested Signal: {signal_type.value}
-            
-            Provide a 2-3 sentence analysis explaining:
-            1. Why this signal makes sense
-            2. Key risk factors to consider
-            3. Market conditions impact
-            
-            Keep it professional and actionable for traders.
-            """
+            if signal_type == SignalType.HOLD:
+                prompt = f"""
+                As a professional forex trading analyst, explain why {instrument} should be avoided for trading now.
+                
+                Technical Indicators:
+                - RSI: {indicators.rsi:.1f}
+                - MACD Histogram: {indicators.macd_histogram:.5f}
+                - Volatility: {indicators.volatility:.3%}
+                
+                Market Context: {market_context}
+                Confidence Score: {confidence_score:.1%}
+                
+                Provide 2-3 sentences in Italian explaining why it's better to wait and not trade this asset now.
+                Start with "Non conviene operare ora su {instrument} (Probabilità: {confidence_score:.1%})" and explain why this low probability makes it unsuitable for trading.
+                """
+            else:
+                prompt = f"""
+                As a professional forex trading analyst, provide a concise analysis of {instrument} based on these indicators:
+                
+                Technical Indicators:
+                - RSI: {indicators.rsi:.1f}
+                - MACD Histogram: {indicators.macd_histogram:.5f}
+                - Price vs Bollinger Bands: Middle={indicators.bb_middle:.5f}, Upper={indicators.bb_upper:.5f}, Lower={indicators.bb_lower:.5f}
+                - ATR (volatility): {indicators.atr:.5f}
+                - EMA 9: {indicators.ema_9:.5f}, EMA 21: {indicators.ema_21:.5f}
+                - Volatility: {indicators.volatility:.3%}
+                
+                Market Context: {market_context}
+                Suggested Signal: {signal_type.value}
+                Confidence Score: {confidence_score:.1%}
+                
+                Start your analysis with "{signal_type.value} {instrument} (Probabilità: {confidence_score:.1%})" and then provide 2-3 sentences explaining:
+                1. Why this signal makes sense with this probability level
+                2. Key risk factors to consider
+                3. Market conditions impact
+                
+                Keep it professional and actionable for traders.
+                """
             
             response = await asyncio.to_thread(self.gemini_model.generate_content, prompt)
             return response.text.strip()
@@ -466,7 +493,7 @@ class OANDASignalEngine:
             prices = await self.oanda_client.get_prices([instrument])
             if not prices:
                 logger.error(f"No price data available for {instrument}")
-                return None
+                raise OANDAAPIError(f"Unable to generate signal for {instrument} - no current market data available")
             
             current_market = prices[0]
             current_price = (current_market.bid + current_market.ask) / 2
@@ -477,9 +504,8 @@ class OANDASignalEngine:
             # Analyze signals
             signal_type, technical_score, reasoning = self.analyze_technical_signals(indicators, current_price)
             
-            if signal_type == SignalType.HOLD:
-                logger.info(f"No clear signal for {instrument}")
-                return None
+            # Always generate a signal - never return None
+            logger.info(f"Generated {signal_type.value} signal for {instrument}")
             
             # Calculate risk levels
             stop_loss, take_profit, risk_level = self.calculate_risk_levels(indicators, signal_type, current_price)
@@ -501,9 +527,6 @@ class OANDASignalEngine:
             
             market_context = f"Session: {market_session}, Volatility: {indicators.volatility:.3%}, Spread: {current_market.spread:.5f}"
             
-            # Get AI analysis
-            ai_analysis = await self.get_ai_analysis(instrument, signal_type, indicators, market_context)
-            
             # Calculate confidence score
             confidence_score = technical_score
             
@@ -515,6 +538,9 @@ class OANDASignalEngine:
                 confidence_score *= 0.8  # Reduce confidence for wide spreads
             
             confidence_score = min(confidence_score, 1.0)
+            
+            # Get AI analysis
+            ai_analysis = await self.get_ai_analysis(instrument, signal_type, indicators, market_context, confidence_score)
             
             # Create signal
             signal = TradingSignal(
@@ -544,7 +570,8 @@ class OANDASignalEngine:
             
         except Exception as e:
             logger.error(f"Error generating signal for {instrument}: {e}")
-            return None
+            raise OANDAAPIError(f"Unable to generate signal for {instrument} - {str(e)}")
+    
     
     async def generate_signals_batch(self, instruments: List[str], timeframe: str = "H1") -> List[TradingSignal]:
         """Generate signals for multiple instruments"""
@@ -556,7 +583,7 @@ class OANDASignalEngine:
         async def generate_single_signal(instrument: str):
             async with semaphore:
                 signal = await self.generate_signal(instrument, timeframe)
-                if signal and signal.confidence_score >= 0.6:  # Only return high-confidence signals
+                if signal:  # Always return signals (BUY/SELL/HOLD)
                     signals.append(signal)
         
         # Run all signal generation concurrently
