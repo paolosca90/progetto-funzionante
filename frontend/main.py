@@ -8,17 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta
 from typing import List, Optional
 import httpx
-# FXCM REST Integration (modern and reliable)
 import asyncio
 from typing import Dict, Any
-# FXCM REST Integration temporarily disabled for deployment stability
-FXCM_REST_AVAILABLE = False
-print("FXCM REST integration temporarily disabled")
-get_fxcm_market_data = lambda *args: {"error": "FXCM module temporarily disabled"}
-get_fxcm_account_info = lambda: {"connected": False, "reason": "Module temporarily disabled"}  
-get_fxcm_instruments = lambda: []
-FXCM_AVAILABLE = True  # Always available with fallback to mock data
-print("FXCM REST API integration loaded successfully")
 import logging
 # Railway deployment restart
 import os
@@ -59,12 +50,6 @@ except ImportError as e:
 from email_utils import send_registration_email
 # OANDA Signal Engine - Available on Railway
 
-# ========== FXCM INTEGRATION CONFIGURATION ==========
-# FXCM REST API Configuration from environment variables
-FXCM_ACCESS_TOKEN = os.getenv('FXCM_ACCESS_TOKEN')
-FXCM_REST_URL = os.getenv('FXCM_REST_URL', 'https://api.fxcm.com')
-FXCM_TERMINAL = os.getenv('FXCM_TERMINAL', 'Demo')  # Demo or Real
-FXCM_ACCOUNT_ID = os.getenv('FXCM_ACCOUNT_ID')
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -72,7 +57,7 @@ Base.metadata.create_all(bind=engine)
 # FastAPI app
 app = FastAPI(
     title="Trading Signals API",
-    description="Professional Trading Signals Platform with AI and MT5 Integration",
+    description="Professional Trading Signals Platform with AI and OANDA Integration",
     version="2.0.0"
 )
 
@@ -244,10 +229,6 @@ async def serve_profile():
     """Serve the profile page"""
     return serve_html_file("profile.html", "Profile - AI Cash-Revolution")
 
-@app.get("/fxcm-dashboard.html", response_class=HTMLResponse)
-async def serve_fxcm_dashboard():
-    """Serve the FXCM dashboard page with real-time trading data"""
-    return FileResponse("templates/fxcm-dashboard.html")
 
 # Favicon endpoint to avoid 405 errors
 @app.get("/favicon.ico")
@@ -1152,35 +1133,7 @@ def get_subscription_status(
         "last_payment": getattr(subscription, 'last_payment_date', None)
     }
 
-# ========== EA DOWNLOAD ENDPOINTS ==========
 
-@app.get("/download/ea")
-def download_expert_advisor(
-    current_user: User = Depends(get_current_active_user)
-):
-    """Download AI Cash-Revolution Expert Advisor for MT5"""
-    try:
-        ea_file_path = "AI_Cash_Revolution_EA.mq5"
-        if not os.path.exists(ea_file_path):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Expert Advisor file not found"
-            )
-
-        return FileResponse(
-            path=ea_file_path,
-            filename="AI_Cash_Revolution_EA.mq5",
-            media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": "attachment; filename=AI_Cash_Revolution_EA.mq5"
-            }
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Errore durante il download: {str(e)}"
-        )
 
 
 
@@ -1381,154 +1334,6 @@ def get_latest_signals_for_dashboard(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error fetching signals"
         )
-
-# ========== FXCM API ENDPOINTS ==========
-@app.get("/api/fxcm/market-data/{symbol}")
-async def get_fxcm_market_data_endpoint(symbol: str):
-    """Get real-time market data from FXCM for specific symbol"""
-    try:
-        if not FXCM_ACCESS_TOKEN:
-            return {"ok": False, "error": "FXCM access token not configured"}
-
-        data = await get_fxcm_market_data(symbol.upper())
-        return {"ok": True, "data": data}
-    except Exception as e:
-        logger.error(f"FXCM market data error: {e}")
-        return {"ok": False, "error": str(e)}
-
-@app.get("/api/fxcm/account-status")
-async def get_fxcm_account_status():
-    """Get FXCM account connection status via REST API"""
-    try:
-        # Use REST API with fallback to mock data if credentials not configured
-        account_info = await get_fxcm_account_info()
-
-        if account_info.get("connected", False):
-            return {
-                "connected": True,
-                "account_id": account_info.get("account_id", "N/A"),
-                "balance": account_info.get("balance", 0),
-                "equity": account_info.get("equity", 0),
-                "margin_used": account_info.get("margin_used", 0),
-                "currency": account_info.get("currency", "USD"),
-                "account_type": FXCM_TERMINAL
-            }
-        else:
-            return {"connected": False, "reason": account_info.get("reason", "FXCM not configured")}
-
-    except Exception as e:
-        logger.error(f"FXCM account status error: {e}")
-        return {"connected": False, "reason": str(e)}
-
-@app.post("/api/fxcm/generate-signal")
-async def generate_fxcm_signal(request_data: Dict[str, Any]):
-    """Generate AI trading signal using OANDA data and analysis"""
-    try:
-        symbol = request_data.get("symbol", "").upper()
-        capital = request_data.get("capital", 1000)
-        
-        if not symbol:
-            return {"ok": False, "error": "Symbol is required"}
-        
-        if not FXCM_ACCESS_TOKEN:
-            return {"ok": False, "error": "FXCM access token not configured"}
-
-        # Get real FXCM market data
-        fxcm_data = await get_fxcm_market_data(symbol)
-        current_price = fxcm_data["bid"]
-        
-        # Simple AI-based signal generation using RSI-like analysis
-        # Using OANDA market data with AI analysis
-        import random
-        rsi = 45 + random.uniform(-20, 20)  # Mock RSI for demo
-        
-        signal_data = {
-            "symbol": symbol,
-            "current_price": current_price,
-            "rsi": rsi,
-            "timestamp": datetime.utcnow().isoformat(),
-            "source": "FXCM_AI"
-        }
-        
-        if rsi < 30:
-            # BUY SIGNAL
-            stop_loss = current_price * 0.98  # 2% stop loss
-            take_profit = current_price * 1.04  # 4% take profit
-            signal_data.update({
-                "signal_type": "BUY",
-                "entry_price": current_price,
-                "stop_loss": stop_loss,
-                "take_profit": take_profit,
-                "reliability": 75.5 + random.uniform(-10, 10),
-                "ai_analysis": f"FXCM Data Analysis: RSI {rsi:.2f} indicates oversold conditions. Strong BUY opportunity with current price ${current_price:.5f}"
-            })
-        elif rsi > 70:
-            # SELL SIGNAL
-            stop_loss = current_price * 1.02  # 2% stop loss
-            take_profit = current_price * 0.96  # 4% take profit
-            signal_data.update({
-                "signal_type": "SELL",
-                "entry_price": current_price,
-                "stop_loss": stop_loss,
-                "take_profit": take_profit,
-                "reliability": 78.2 + random.uniform(-10, 10),
-                "ai_analysis": f"FXCM Data Analysis: RSI {rsi:.2f} indicates overbought conditions. Strong SELL opportunity with current price ${current_price:.5f}"
-            })
-        else:
-            # HOLD SIGNAL
-            signal_data.update({
-                "signal_type": "HOLD",
-                "entry_price": None,
-                "stop_loss": None,
-                "take_profit": None,
-                "reliability": 55.0 + random.uniform(-10, 10),
-                "ai_analysis": f"FXCM Data Analysis: RSI {rsi:.2f} indicates neutral conditions. HOLD and wait for better opportunities"
-            })
-        
-        # Calculate position size based on capital and risk
-        risk_percentage = 0.02  # 2% risk per trade
-        if signal_data["signal_type"] != "HOLD":
-            risk_amount = capital * risk_percentage
-            stop_distance = abs(current_price - signal_data["stop_loss"])
-            position_size = risk_amount / stop_distance if stop_distance > 0 else 0
-            signal_data["position_size"] = round(position_size, 2)
-            signal_data["risk_amount"] = round(risk_amount, 2)
-        
-        return {"ok": True, "signal": signal_data}
-    
-    except Exception as e:
-        logger.error(f"FXCM signal generation error: {e}")
-        return {"ok": False, "error": str(e)}
-
-@app.get("/api/fxcm/instruments")
-async def get_fxcm_instruments_endpoint():
-    """Get list of available FXCM trading instruments via REST API"""
-    try:
-        # Use our REST API function which handles credentials and fallback internally
-        instruments = await get_fxcm_instruments()
-
-        if instruments:
-            # Filter for major currency pairs - our REST function already does filtering
-            major_pairs = []
-            for instrument in instruments:
-                symbol = instrument.get("symbol", "").upper()
-                # Handle both EURUSD and EUR/USD formats
-                clean_symbol = symbol.replace("/", "")
-                if any(curr in clean_symbol for curr in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD", "XAUUSD", "XTIUSD"]):
-                    major_pairs.append({
-                        "symbol": symbol,
-                        "name": clean_symbol,
-                        "type": "forex" if "USD" in clean_symbol else "commodity",
-                        "description": instrument.get("description", "")
-                    })
-
-            return {"ok": True, "instruments": major_pairs[:10]}  # Top 10
-        else:
-            return {"ok": False, "error": "No instruments available"}
-
-    except Exception as e:
-        logger.error(f"FXCM instruments error: {e}")
-        return {"ok": False, "error": str(e)}
 
 
 
@@ -2041,11 +1846,6 @@ async def generate_oanda_signal(
             source="OANDA_AI",
             oanda_instrument=signal.instrument,
             timeframe=signal.timeframe,
-            risk_reward_ratio=signal.risk_reward_ratio,
-            position_size_suggestion=signal.position_size_suggestion,
-            spread=signal.market_context.spread,
-            volatility=signal.market_context.volatility,
-            technical_score=signal.metadata.get('technical_score', 0),
             rsi=signal.technical_indicators.rsi,
             macd_signal=signal.technical_indicators.macd_signal,
             market_session=signal.market_context.market_session,
@@ -2179,11 +1979,6 @@ async def generate_oanda_signals_batch(
                     source="OANDA_AI_BATCH",
                     oanda_instrument=signal.instrument,
                     timeframe=signal.timeframe,
-                    risk_reward_ratio=signal.risk_reward_ratio,
-                    position_size_suggestion=signal.position_size_suggestion,
-                    spread=signal.market_context.spread,
-                    volatility=signal.market_context.volatility,
-                    technical_score=signal.metadata.get('technical_score', 0),
                     rsi=signal.technical_indicators.rsi,
                     macd_signal=signal.technical_indicators.macd_signal,
                     market_session=signal.market_context.market_session,
@@ -2377,98 +2172,6 @@ async def get_oanda_market_data(symbol: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving market data: {str(e)}"
         )
-
-# ========== FXCM API ENDPOINTS ==========
-
-@app.get("/api/fxcm/market-data/{symbol}")
-async def get_fxcm_market_data_endpoint(symbol: str):
-    """Get real-time market data from FXCM REST API"""
-    try:
-        data = await get_fxcm_market_data(symbol.upper())
-        return {"ok": True, "data": data}
-    except Exception as e:
-        logger.error(f"FXCM market data error: {e}")
-        return {"ok": False, "error": str(e)}
-
-@app.get("/api/fxcm/account-status")
-async def get_fxcm_account_status():
-    """Get FXCM account connection status via REST API"""
-    try:
-        data = await get_fxcm_account_info()
-        return {"ok": True, "data": data}
-    except Exception as e:
-        logger.error(f"FXCM account status error: {e}")
-        return {"ok": False, "error": str(e), "connected": False}
-
-@app.post("/api/fxcm/generate-signal")
-async def generate_fxcm_signal(request_data: Dict[str, Any]):
-    """Generate AI trading signal using FXCM data"""
-    try:
-        symbol = request_data.get("symbol", "").upper()
-        capital = request_data.get("capital", 1000)
-
-        if not symbol:
-            return {"ok": False, "error": "Symbol is required"}
-
-        # Get real FXCM market data
-        fxcm_data = await get_fxcm_market_data(symbol)
-        current_price = fxcm_data["bid"]
-
-        # Simple AI signal generation
-        import random
-        rsi = 45 + random.uniform(-25, 25)
-        signal_data = {
-            "symbol": symbol,
-            "current_price": current_price,
-            "rsi": rsi,
-            "timestamp": datetime.utcnow().isoformat(),
-            "source": "FXCM_AI"
-        }
-
-        # Generate BUY/SELL/HOLD signal
-        if rsi < 30:
-            signal_data.update({
-                "signal_type": "BUY",
-                "entry_price": current_price,
-                "stop_loss": current_price * 0.98,
-                "take_profit": current_price * 1.04,
-                "reliability": 75 + random.uniform(0, 15),
-                "ai_analysis": f"FXCM AI: RSI {rsi:.1f} indicates oversold condition. BUY opportunity!"
-            })
-        elif rsi > 70:
-            signal_data.update({
-                "signal_type": "SELL",
-                "entry_price": current_price,
-                "stop_loss": current_price * 1.02,
-                "take_profit": current_price * 0.96,
-                "reliability": 75 + random.uniform(0, 15),
-                "ai_analysis": f"FXCM AI: RSI {rsi:.1f} indicates overbought condition. SELL opportunity!"
-            })
-        else:
-            signal_data.update({
-                "signal_type": "HOLD",
-                "entry_price": None,
-                "stop_loss": None,
-                "take_profit": None,
-                "reliability": 50 + random.uniform(-10, 10),
-                "ai_analysis": f"FXCM AI: RSI {rsi:.1f} indicates neutral condition. HOLD and wait!"
-            })
-
-        # Calculate position size if applicable
-        if signal_data["signal_type"] != "HOLD" and capital:
-            risk_amount = capital * 0.02  # 2% risk
-            if signal_data.get("stop_loss"):
-                stop_distance = abs(current_price - signal_data["stop_loss"])
-                if stop_distance > 0:
-                    position_size = risk_amount / stop_distance
-                    signal_data["position_size"] = round(position_size, 2)
-                    signal_data["risk_amount"] = round(risk_amount, 2)
-
-        return {"ok": True, "signal": signal_data}
-
-    except Exception as e:
-        logger.error(f"FXCM signal generation error: {e}")
-        return {"ok": False, "error": str(e)}
 
 
 if __name__ == "__main__":
