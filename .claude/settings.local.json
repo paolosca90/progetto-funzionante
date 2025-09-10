@@ -8,7 +8,8 @@
       "Bash(python -c \"import main; print(''Requirements test passed successfully!'')\")",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

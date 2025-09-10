@@ -10,6 +10,7 @@ Base = declarative_base()
 class SignalTypeEnum(enum.Enum):
     BUY = "BUY"
     SELL = "SELL"
+    HOLD = "HOLD"
 
 class SignalStatusEnum(enum.Enum):
     ACTIVE = "ACTIVE"
@@ -33,7 +34,7 @@ class User(Base):
     # Relationships
     signals = relationship("Signal", back_populates="creator")
     executions = relationship("SignalExecution", back_populates="user")
-    mt5_connections = relationship("MT5Connection", back_populates="user")
+    oanda_connection = relationship("OANDAConnection", back_populates="user", uselist=False)
 
 class Signal(Base):
     __tablename__ = "signals"
@@ -58,9 +59,23 @@ class Signal(Base):
     created_at = Column(DateTime, default=func.now())
     expires_at = Column(DateTime)
     
-    # VPS info
-    vps_id = Column(String(50))  # ID della VPS che ha generato il segnale
-    source = Column(String(50), default="VPS_AI")  # VPS_AI, MANUAL, API
+    # Data source info
+    source = Column(String(50), default="OANDA_AI")  # OANDA_AI, MANUAL, API
+    data_provider = Column(String(50), default="OANDA")  # OANDA, API
+    
+    # OANDA-specific fields
+    oanda_instrument = Column(String(20))  # OANDA format instrument (e.g., EUR_USD)
+    timeframe = Column(String(10), default="H1")  # Analysis timeframe
+    risk_reward_ratio = Column(Float, default=0.0)  # Risk/reward ratio
+    position_size_suggestion = Column(Float, default=0.01)  # Suggested position size
+    spread = Column(Float, default=0.0)  # Market spread at signal generation
+    volatility = Column(Float, default=0.0)  # Market volatility (ATR-based)
+    
+    # Technical analysis metadata
+    technical_score = Column(Float, default=0.0)  # Overall technical score
+    rsi = Column(Float)  # RSI at signal generation
+    macd_signal = Column(Float)  # MACD signal
+    market_session = Column(String(20))  # Market session (Asian/European/US)
     
     # Foreign keys
     creator_id = Column(Integer, ForeignKey("users.id"))
@@ -90,23 +105,6 @@ class SignalExecution(Base):
     signal = relationship("Signal", back_populates="executions")
     user = relationship("User", back_populates="executions")
 
-class MT5Connection(Base):
-    __tablename__ = "mt5_connections"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    
-    account_number = Column(String(20), nullable=False)
-    broker_server = Column(String(100), nullable=False)
-    is_active = Column(Boolean, default=False)
-    last_connected = Column(DateTime)
-    connection_status = Column(String(20), default="DISCONNECTED")
-    
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-    
-    # Relationship
-    user = relationship("User", back_populates="mt5_connections")
 
 class Subscription(Base):
     __tablename__ = "subscriptions"
@@ -115,29 +113,50 @@ class Subscription(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     
     plan_name = Column(String(50), default="TRIAL")
+    status = Column(String(20), default="ACTIVE")  # ACTIVE, EXPIRED, CANCELLED
     is_active = Column(Boolean, default=True)
     start_date = Column(DateTime, default=func.now())
     end_date = Column(DateTime)
+    payment_status = Column(String(20), default="PENDING")  # PENDING, PAID, FAILED
+    last_payment_date = Column(DateTime)
     
     created_at = Column(DateTime, default=func.now())
 
-class VPSHeartbeat(Base):
-    __tablename__ = "vps_heartbeats"
+class OANDAConnection(Base):
+    __tablename__ = "oanda_connections"
     
     id = Column(Integer, primary_key=True, index=True)
-    vps_id = Column(String(50), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True)
     
-    status = Column(String(20), default="active")  # active, error, maintenance
-    timestamp = Column(DateTime, default=func.now())
+    # OANDA Account Info
+    account_id = Column(String(50), nullable=False)
+    environment = Column(String(10), default="demo")  # demo or live
+    account_currency = Column(String(3), default="USD")
     
-    # Metrics
-    signals_generated = Column(Integer, default=0)
-    errors_count = Column(Integer, default=0)
-    uptime_seconds = Column(Integer, default=0)
+    # Connection Status
+    is_active = Column(Boolean, default=True)
+    last_connected = Column(DateTime)
+    connection_status = Column(String(20), default="DISCONNECTED")  # CONNECTED, DISCONNECTED, ERROR
     
-    # Additional data
-    version = Column(String(20))
-    last_signal_at = Column(DateTime)
-    mt5_status = Column(String(20))  # connected, disconnected, error
+    # Account Balance Info (cached)
+    balance = Column(Float, default=0.0)
+    equity = Column(Float, default=0.0)
+    margin_used = Column(Float, default=0.0)
+    margin_available = Column(Float, default=0.0)
+    unrealized_pl = Column(Float, default=0.0)
     
+    # Settings
+    auto_trading_enabled = Column(Boolean, default=False)
+    risk_tolerance = Column(String(10), default="MEDIUM")  # LOW, MEDIUM, HIGH
+    max_position_size = Column(Float, default=1.0)
+    daily_loss_limit = Column(Float, default=1000.0)
+    
+    # Metadata
     created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    last_sync_at = Column(DateTime)
+    
+    # Relationships
+    user = relationship("User", back_populates="oanda_connection")
+
+

@@ -17,8 +17,8 @@
     <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
     
     <style>
-        /* VPS Signals Styles */
-        #vps-signals-container {
+        /* AI Signals Styles */
+        #ai-signals-container {
             min-height: 200px;
         }
         
@@ -40,7 +40,7 @@
             animation: spin 1s linear infinite;
         }
         
-        .vps-signal-item {
+        .ai-signal-item {
             background: rgba(0, 255, 155, 0.05);
             border: 1px solid rgba(0, 255, 155, 0.2);
             border-radius: 8px;
@@ -49,7 +49,7 @@
             transition: all 0.3s ease;
         }
         
-        .vps-signal-item:hover {
+        .ai-signal-item:hover {
             background: rgba(0, 255, 155, 0.1);
             border-color: var(--accent-color);
             transform: translateY(-2px);
@@ -220,7 +220,6 @@
                 <a href="dashboard.html" class="nav-link">Dashboard</a>
                 <a href="signals.html" class="nav-link">Signals</a>
                 <a href="profile.html" class="nav-link">Account</a>
-                <a href="mt5-integration.html" class="nav-link">MT5</a>
                 <a href="index.html" class="nav-link">Home</a>
                 <a href="#" class="nav-link" onclick="logout()">Logout</a>
             </div>
@@ -307,18 +306,18 @@
                 </div>
             </div>
 
-            <!-- Live VPS Signals -->
+            <!-- Live AI Signals -->
             <div class="dashboard-card">
                 <h2 class="card-title">🤖 Live AI Signals</h2>
                 <div class="card-content">
-                    <div id="vps-signals-container">
+                    <div id="ai-signals-container">
                         <div class="loading-indicator">
                             <div class="loading-spinner"></div>
                             <span>Loading AI signals...</span>
                         </div>
                     </div>
                     <div class="signals-actions">
-                        <button onclick="refreshVPSSignals()" class="refresh-btn">🔄 Refresh</button>
+                        <button onclick="refreshAISignals()" class="refresh-btn">🔄 Refresh</button>
                         <a href="signals.html" class="view-all-btn">View All Signals →</a>
                     </div>
                 </div>
@@ -334,9 +333,9 @@
                             <div class="action-text">View All Signals</div>
                         </a>
                         
-                        <a href="mt5-integration.html" class="action-link">
+                        <a href="fxcm-dashboard.html" class="action-link">
                             <div class="action-icon">🔗</div>
-                            <div class="action-text">MT5 Settings</div>
+                            <div class="action-text">FXCM Trading</div>
                         </a>
                         
                         <a href="profile.html" class="action-link">
@@ -365,9 +364,9 @@
                 <div class="bottom-nav-icon">📡</div>
                 <div class="bottom-nav-text">Signals</div>
             </a>
-            <a href="mt5-integration.html" class="bottom-nav-item">
+            <a href="fxcm-dashboard.html" class="bottom-nav-item">
                 <div class="bottom-nav-icon">🔗</div>
-                <div class="bottom-nav-text">MT5</div>
+                <div class="bottom-nav-text">FXCM</div>
             </a>
             <a href="profile.html" class="bottom-nav-item">
                 <div class="bottom-nav-icon">👤</div>
@@ -393,14 +392,8 @@
             // Animate numbers on load
             animateNumbers();
             
-            // Load real MT5 quotes
-            loadRealMT5Quotes();
-            
             // Auto-refresh data every 30 seconds
             setInterval(refreshDashboardData, 30000);
-            
-            // Auto-refresh MT5 quotes every 10 seconds
-            setInterval(loadRealMT5Quotes, 10000);
             
             // Mobile menu functionality
             initMobileMenu();
@@ -685,32 +678,6 @@
             }
         }
         
-        async function loadRealMT5Quotes() {
-            try {
-                console.log('Loading real MT5 quotes...');
-                
-                const response = await fetch(CONFIG.API_BASE_URL + '/api/mt5/quotes-public?symbols=EURUSD,GBPUSD,USDJPY,AUDUSD,USDCHF', {
-                    headers: {
-                        'Accept': 'application/json'
-                    },
-                    signal: AbortSignal.timeout(5000) // 5 second timeout
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.status === 'success' && data.quotes) {
-                        updateMarketPairsWithRealData(data.quotes);
-                        console.log('MT5 quotes updated successfully:', data.quotes);
-                    } else {
-                        console.warn('MT5 Bridge not available:', data.message);
-                    }
-                } else {
-                    console.error('Failed to load MT5 quotes:', response.status);
-                }
-            } catch (error) {
-                console.error('Error loading MT5 quotes:', error);
-            }
-        }
         
         function updateMarketPairsWithRealData(quotes) {
             const marketPairs = document.querySelectorAll('.market-pair');
@@ -1063,14 +1030,14 @@
     </style>
     
     <script>
-        // VPS Signals functionality
-        async function loadVPSSignals() {
-            const container = document.getElementById('vps-signals-container');
+        // AI Signals functionality
+        async function loadAISignals() {
+            const container = document.getElementById('ai-signals-container');
             
             try {
-                console.log('Loading VPS AI signals...');
+                console.log('Loading AI signals...');
                 
-                const response = await fetch(CONFIG.API_BASE_URL + '/api/vps/signals/live?limit=5', {
+                const response = await fetch(CONFIG.API_BASE_URL + '/api/signals/latest?limit=5', {
                     headers: {
                         'Accept': 'application/json'
                     },
@@ -1079,33 +1046,32 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('VPS Signals API Response:', data);
+                    console.log('AI Signals API Response:', data);
                     
                     if (data.status === 'success' && data.signals && data.signals.length > 0) {
-                        console.log(`Found ${data.signals.length} VPS signals:`, data.signals);
-                        displayVPSSignals(data.signals);
+                        console.log(`Found ${data.signals.length} AI signals:`, data.signals);
+                        displayAISignals(data.signals);
                     } else {
-                        console.log('No VPS signals found:', data);
-                        showVPSError(data.message || 'No signals available');
+                        console.log('No AI signals found:', data);
+                        showAIError(data.message || 'No signals available');
                     }
                 } else {
-                    console.error('VPS Signals API Error:', response.status, response.statusText);
-                    showVPSError('Failed to load VPS signals');
+                    console.error('AI Signals API Error:', response.status, response.statusText);
+                    showAIError('Failed to load AI signals');
                 }
             } catch (error) {
-                console.error('Error loading VPS signals:', error);
-                showVPSError('Connection error');
+                console.error('Error loading AI signals:', error);
+                showAIError('Connection error');
             }
         }
         
-        function displayVPSSignals(signals) {
-            const container = document.getElementById('vps-signals-container');
-            console.log('Displaying VPS signals in container:', container);
+        function displayAISignals(signals) {
+            const container = document.getElementById('ai-signals-container');
+            console.log('Displaying AI signals in container:', container);
             console.log('Signals to display:', signals);
             
             container.innerHTML = signals.map(signal => {
                 console.log('Processing signal:', signal);
-                // Only signals with >55% reliability should appear (filtered by backend)
                 const reliabilityClass = signal.reliability >= 75 ? 'reliability-high' : 
                                        signal.reliability >= 65 ? 'reliability-medium' : 'reliability-low';
                 
@@ -1113,7 +1079,7 @@
                 console.log(`Signal ${signal.symbol}: type=${signal.signal_type}, reliability=${signal.reliability}, typeClass=${typeClass}`);
                 
                 return `
-                    <div class="vps-signal-item">
+                    <div class="ai-signal-item">
                         <div class="signal-header">
                             <div class="signal-symbol">${signal.symbol}</div>
                             <div class="signal-type ${typeClass}">${signal.signal_type}</div>
@@ -1144,7 +1110,7 @@
                         </div>
                         
                         <div class="signal-explanation">
-                            ${signal.explanation || 'AI analysis available'}
+                            ${signal.ai_analysis || 'AI analysis available'}
                         </div>
                     </div>
                 `;
@@ -1155,44 +1121,44 @@
             console.log('Container after update:', container);
             
             // Test if elements are actually in DOM
-            const signalItems = container.querySelectorAll('.vps-signal-item');
+            const signalItems = container.querySelectorAll('.ai-signal-item');
             console.log('Signal items found in DOM:', signalItems.length);
         }
         
-        function showVPSError(message) {
-            const container = document.getElementById('vps-signals-container');
+        function showAIError(message) {
+            const container = document.getElementById('ai-signals-container');
             container.innerHTML = `
                 <div style="text-align: center; padding: 30px; color: var(--text-dim);">
                     <div style="font-size: 2em; margin-bottom: 10px;">🤖</div>
-                    <div><strong>VPS AI System Status:</strong> ${message}</div>
+                    <div><strong>AI System Status:</strong> ${message}</div>
                     <div style="font-size: 0.9em; margin-top: 10px; color: var(--text-dim);">
-                        Only signals with reliability > 55% are displayed
+                        Loading latest AI trading signals...
                     </div>
-                    <button onclick="loadVPSSignals()" style="margin-top: 15px; padding: 8px 16px; background: var(--accent-color); color: var(--primary-dark); border: none; border-radius: 6px; cursor: pointer;">
+                    <button onclick="loadAISignals()" style="margin-top: 15px; padding: 8px 16px; background: var(--accent-color); color: var(--primary-dark); border: none; border-radius: 6px; cursor: pointer;">
                         🔄 Refresh Signals
                     </button>
                 </div>
             `;
         }
         
-        function refreshVPSSignals() {
-            const container = document.getElementById('vps-signals-container');
+        function refreshAISignals() {
+            const container = document.getElementById('ai-signals-container');
             container.innerHTML = `
                 <div class="loading-indicator">
                     <div class="loading-spinner"></div>
                     <span>Refreshing AI signals...</span>
                 </div>
             `;
-            loadVPSSignals();
+            loadAISignals();
         }
         
-        // Load VPS signals when page loads
+        // Load AI signals when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Dashboard loaded - initializing VPS signals...');
-            loadVPSSignals();
+            console.log('Dashboard loaded - initializing AI signals...');
+            loadAISignals();
             
             // Auto-refresh every 30 seconds
-            setInterval(loadVPSSignals, 30000);
+            setInterval(loadAISignals, 30000);
         });
         
         // Keep existing functionality for loadUserData etc

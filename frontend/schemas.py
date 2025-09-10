@@ -76,7 +76,6 @@ class SignalOut(SignalBase):
     is_active: bool
     created_at: datetime
     expires_at: Optional[datetime] = None
-    vps_id: Optional[str] = None
     source: str
     
     class Config:
@@ -119,53 +118,6 @@ class SignalExecutionOut(BaseModel):
     class Config:
         from_attributes = True
 
-# MT5 Connection schemas
-class MT5ConnectionCreate(BaseModel):
-    account_number: str = Field(..., min_length=4, max_length=20)
-    broker_server: str = Field(..., min_length=5, max_length=100)
-
-class MT5ConnectionOut(BaseModel):
-    id: int
-    account_number: str
-    broker_server: str
-    is_active: bool
-    connection_status: str
-    last_connected: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
-
-# VPS API schemas
-class VPSHeartbeatCreate(BaseModel):
-    vps_id: str
-    status: str = "active"
-    signals_generated: int = 0
-    errors_count: int = 0
-    uptime_seconds: int = 0
-    version: Optional[str] = None
-    mt5_status: Optional[str] = None
-
-class VPSHeartbeatOut(BaseModel):
-    id: int
-    vps_id: str
-    status: str
-    timestamp: datetime
-    signals_generated: int
-    errors_count: int
-    uptime_seconds: int
-    version: Optional[str] = None
-    mt5_status: Optional[str] = None
-    
-    class Config:
-        from_attributes = True
-
-class VPSSignalReceive(BaseModel):
-    vps_id: str
-    signal: SignalCreate
-    generated_at: datetime
-    reliability: Optional[float] = None
-    ai_analysis: Optional[str] = None
-    confidence_score: Optional[float] = None
 
 class HealthCheckResponse(BaseModel):
     status: str = "healthy"
@@ -174,8 +126,7 @@ class HealthCheckResponse(BaseModel):
     database: str = "connected"
     services: dict = {
         "api": "operational",
-        "database": "operational",
-        "vps_communication": "operational"
+        "database": "operational"
     }
 
 class APIResponse(BaseModel):

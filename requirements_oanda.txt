@@ -1,0 +1,49 @@
+# OANDA API Integration Requirements
+# ==================================
+
+# Core HTTP and async libraries
+aiohttp==3.9.5
+asyncio-throttle==1.0.2
+backoff==2.2.1
+
+# Data processing and analysis  
+pandas==2.2.2
+numpy==1.26.4
+
+# Technical analysis (optional but recommended)
+TA-Lib==0.4.29
+
+# Database and ORM
+sqlalchemy==2.0.31
+
+# Configuration and environment
+python-dotenv==1.0.1
+
+# Logging and monitoring
+structlog==24.2.0
+
+# JSON handling
+orjson==3.10.6
+
+# SSL and security
+certifi==2024.7.4
+cryptography==42.0.8
+
+# Testing (for development)
+pytest==8.3.2
+pytest-asyncio==0.23.8
+
+# AI integration (existing dependency)
+google-generativeai
+
+# Existing project dependencies (from requirements.txt)
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+passlib[bcrypt]
+python-jose[cryptography]
+email-validator
+pydantic[email]
+pydantic-settings
+requests
