@@ -111,8 +111,8 @@ async def startup_event():
     logger.info("Application startup complete")
 
 # === OANDA CONFIGURATION ===
-OANDA_API_KEY = os.getenv("OANDA_API_KEY", "b4354e4855d53550bc6eac7e5bb8ac2b-66726ffbb3e3eb85e007a6dbda5d0b18")
-OANDA_ACCOUNT_ID = os.getenv("OANDA_ACCOUNT_ID")
+OANDA_API_KEY = os.getenv("OANDA_API_KEY", "4618cdf696d08a4151d17a77fdb4b2d3-9252ffc76f12c40ffed367fecbe381ff")
+OANDA_ACCOUNT_ID = os.getenv("OANDA_ACCOUNT_ID", "101-001-37019635-001")
 OANDA_ENVIRONMENT = os.getenv("OANDA_ENVIRONMENT", "demo")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -706,178 +706,90 @@ async def generate_custom_signal(
             except Exception as e:
                 logger.error(f"Advanced OANDA signal generation failed: {e}")
         
-        # Fallback to basic OANDA if advanced fails
-        if OANDA_AVAILABLE and oanda_signal_engine:
-            try:
-                # Generate signal using basic OANDA data and AI analysis
-                signal = await oanda_signal_engine.generate_signal_for_symbol(
-                    symbol.upper(), 
-                    timeframe="H1",
-                    risk_tolerance="medium"
+        # Try OANDA analysis first, if fails return error
+        if not OANDA_AVAILABLE:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="OANDA service not available"
+            )
+
+        # Ensure OANDA engine is initialized
+        if not oanda_signal_engine:
+            await initialize_oanda_engine()
+
+        if not oanda_signal_engine:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="OANDA engine initialization failed"
+            )
+
+        try:
+            # Generate signal using OANDA analysis only
+            signal = await oanda_signal_engine.generate_signal(
+                symbol.upper(),
+                timeframe="H1"
+            )
+
+            if not signal:
+                raise HTTPException(
+                    status_code=status.HTTP_424_FAILED_DEPENDENCY,
+                    detail=f"Unable to generate signal for {symbol} - insufficient market data or analysis conditions"
                 )
-                
-                if signal:
-                    # Save to database for user
-                    db_signal = Signal(
-                        symbol=signal.symbol,
-                        signal_type=SignalTypeEnum.BUY if signal.signal_type.value == 'BUY' else SignalTypeEnum.SELL,
-                        entry_price=signal.entry_price,
-                        stop_loss=signal.stop_loss,
-                        take_profit=signal.take_profit,
-                        reliability=signal.reliability,
-                        confidence_score=signal.confidence,
-                        risk_level=signal.risk_level.value,
-                        ai_analysis=signal.ai_analysis,
-                        is_public=False,
-                        is_active=True,
-                        creator_id=current_user.id,
-                        source="FRONTEND_CUSTOM",
-                        oanda_instrument=signal.market_context.symbol,
-                        timeframe=signal.timeframe,
-                        risk_reward_ratio=signal.risk_reward_ratio,
-                        position_size_suggestion=signal.position_size_suggestion,
-                        expires_at=signal.expires_at.replace(tzinfo=None)
-                    )
-                    
-                    db.add(db_signal)
-                    db.commit()
-                    db.refresh(db_signal)
-                    
-                    return {
-                        "status": "success",
-                        "message": "Signal generated successfully",
-                        "signal": {
-                            "id": db_signal.id,
-                            "symbol": db_signal.symbol,
-                            "signal_type": db_signal.signal_type.value,
-                            "entry_price": db_signal.entry_price,
-                            "stop_loss": db_signal.stop_loss,
-                            "take_profit": db_signal.take_profit,
-                            "reliability": db_signal.reliability,
-                            "confidence": db_signal.confidence_score,
-                            "risk_level": db_signal.risk_level,
-                            "position_size_suggestion": db_signal.position_size_suggestion,
-                            "risk_reward_ratio": db_signal.risk_reward_ratio,
-                            "ai_analysis": db_signal.ai_analysis,
-                            "timeframe": db_signal.timeframe,
-                            "created_at": db_signal.created_at.isoformat(),
-                            "expires_at": db_signal.expires_at.isoformat()
-                        }
-                    }
-                    
-            except Exception as e:
-                logger.error(f"OANDA signal generation failed: {e}")
-        
-        # Fallback to simplified signal generation
-        import random
-        from datetime import datetime, timedelta
-        
-        # Mock current price (in real implementation, get from OANDA)
-        base_price = {
-            'EURUSD': 1.0800, 'GBPUSD': 1.2500, 'USDJPY': 150.00,
-            'AUDUSD': 0.6500, 'USDCAD': 1.3800, 'USDCHF': 0.9200,
-            'NZDUSD': 0.5900, 'XAUUSD': 2000.00, 'XAGUSD': 25.00
-        }.get(symbol.upper(), 1.0000)
-        
-        # Generate signal with some randomness
-        is_buy = random.choice([True, False])
-        current_price = base_price * (1 + random.uniform(-0.001, 0.001))
-        
-        if is_buy:
-            entry_price = current_price
-            stop_loss = entry_price * (1 - random.uniform(0.005, 0.015))  # 0.5-1.5% SL
-            take_profit = entry_price * (1 + random.uniform(0.015, 0.045))  # 1.5-4.5% TP
-            signal_type = "BUY"
-        else:
-            entry_price = current_price
-            stop_loss = entry_price * (1 + random.uniform(0.005, 0.015))  # 0.5-1.5% SL
-            take_profit = entry_price * (1 - random.uniform(0.015, 0.045))  # 1.5-4.5% TP
-            signal_type = "SELL"
-        
-        # Calculate risk/reward ratio
-        risk_distance = abs(entry_price - stop_loss)
-        reward_distance = abs(take_profit - entry_price)
-        risk_reward_ratio = reward_distance / risk_distance if risk_distance > 0 else 3.0
-        
-        reliability = random.uniform(70, 95)  # High reliability for demo
-        
-        # Generate AI analysis text
-        ai_analysis = f"""
-🤖 AI ANALYSIS FOR {symbol}:
 
-📊 MULTI-TIMEFRAME ANALYSIS:
-• H4: {random.choice(['Bullish trend', 'Bearish trend', 'Consolidation'])}
-• H1: Strong {signal_type.lower()} momentum detected
-• M15: Confirming entry opportunity
+            # Save to database for user
+            db_signal = Signal(
+                symbol=signal.symbol,
+                signal_type=SignalTypeEnum.BUY if signal.signal_type.value == 'BUY' else SignalTypeEnum.SELL,
+                entry_price=signal.entry_price,
+                stop_loss=signal.stop_loss,
+                take_profit=signal.take_profit,
+                reliability=signal.reliability,
+                confidence_score=signal.confidence_score,
+                risk_level=signal.risk_level.value,
+                ai_analysis=signal.ai_analysis,
+                is_public=False,
+                is_active=True,
+                creator_id=current_user.id,
+                source="FRONTEND_CUSTOM",
+                oanda_instrument=signal.symbol,
+                timeframe=signal.timeframe,
+                risk_reward_ratio=signal.risk_reward_ratio,
+                position_size_suggestion=signal.position_size_suggestion,
+                expires_at=signal.expires_at.replace(tzinfo=None)
+            )
 
-💰 PRICE ACTION & SMART MONEY:
-• Key level: {entry_price:.5f}
-• Volume profile: {random.choice(['High buying pressure', 'Selling pressure building'])}
-• Order flow: {random.choice(['Institutional buying', 'Smart money accumulation'])}
+            db.add(db_signal)
+            db.commit()
+            db.refresh(db_signal)
 
-📈 TECHNICAL INDICATORS:
-• RSI(14): {random.randint(30, 70)} - {random.choice(['Oversold bounce', 'Overbought rejection', 'Neutral momentum'])}
-• MACD: {random.choice(['Bullish crossover', 'Bearish crossover', 'Momentum building'])}
-• Bollinger Bands: Price near {random.choice(['lower band', 'upper band', 'middle line'])}
-
-🎯 TRADE SETUP:
-• Direction: {signal_type}
-• Confidence: {reliability:.1f}%
-• R:R Ratio: 1:{risk_reward_ratio:.1f}
-• Timeframe: H1
-
-⚠️ RISK MANAGEMENT:
-• Strict stop loss at {stop_loss:.5f}
-• Take profit target: {take_profit:.5f}
-• Position size: Conservative approach recommended
-        """.strip()
-        
-        # Create signal in database
-        db_signal = Signal(
-            symbol=symbol.upper(),
-            signal_type=SignalTypeEnum.BUY if signal_type == "BUY" else SignalTypeEnum.SELL,
-            entry_price=entry_price,
-            stop_loss=stop_loss,
-            take_profit=take_profit,
-            reliability=reliability,
-            confidence_score=reliability/100,
-            risk_level="MEDIUM",
-            ai_analysis=ai_analysis,
-            is_public=False,
-            is_active=True,
-            creator_id=current_user.id,
-            source="FRONTEND_CUSTOM",
-            timeframe="H1",
-            risk_reward_ratio=risk_reward_ratio,
-            position_size_suggestion=0.01,
-            expires_at=datetime.utcnow() + timedelta(hours=8)
-        )
-        
-        db.add(db_signal)
-        db.commit()
-        db.refresh(db_signal)
-        
-        return {
-            "status": "success",
-            "message": "Custom signal generated successfully",
-            "signal": {
-                "id": db_signal.id,
-                "symbol": db_signal.symbol,
-                "signal_type": db_signal.signal_type.value,
-                "entry_price": db_signal.entry_price,
-                "stop_loss": db_signal.stop_loss,
-                "take_profit": db_signal.take_profit,
-                "reliability": db_signal.reliability,
-                "confidence": db_signal.confidence_score,
-                "risk_level": db_signal.risk_level,
-                "position_size_suggestion": db_signal.position_size_suggestion,
-                "risk_reward_ratio": db_signal.risk_reward_ratio,
-                "ai_analysis": db_signal.ai_analysis,
-                "timeframe": db_signal.timeframe,
-                "created_at": db_signal.created_at.isoformat(),
-                "expires_at": db_signal.expires_at.isoformat()
+            return {
+                "status": "success",
+                "message": "Advanced OANDA signal generated successfully",
+                "signal": {
+                    "id": db_signal.id,
+                    "symbol": db_signal.symbol,
+                    "signal_type": db_signal.signal_type.value,
+                    "entry_price": db_signal.entry_price,
+                    "stop_loss": db_signal.stop_loss,
+                    "take_profit": db_signal.take_profit,
+                    "reliability": db_signal.reliability,
+                    "confidence": db_signal.confidence_score,
+                    "risk_level": db_signal.risk_level,
+                    "position_size_suggestion": db_signal.position_size_suggestion,
+                    "risk_reward_ratio": db_signal.risk_reward_ratio,
+                    "ai_analysis": db_signal.ai_analysis,
+                    "timeframe": db_signal.timeframe,
+                    "created_at": db_signal.created_at.isoformat(),
+                    "expires_at": db_signal.expires_at.isoformat()
+                }
             }
-        }
+
+        except Exception as e:
+            logger.error(f"OANDA signal generation failed for {symbol}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Analysis failed for {symbol} - insufficient market data or technical conditions not met"
+            )
         
     except HTTPException:
         raise
@@ -1914,10 +1826,9 @@ async def generate_oanda_signal(
             )
         
         # Generate signal using OANDA engine
-        signal = await oanda_signal_engine.generate_signal_for_symbol(
-            symbol.upper(), 
-            timeframe, 
-            risk_tolerance
+        signal = await oanda_signal_engine.generate_signal(
+            symbol.upper(),
+            timeframe
         )
         
         if not signal:

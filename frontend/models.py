@@ -61,7 +61,6 @@ class Signal(Base):
     
     # Data source info
     source = Column(String(50), default="OANDA_AI")  # OANDA_AI, MANUAL, API
-    data_provider = Column(String(50), default="OANDA")  # OANDA, API
     
     # OANDA-specific fields
     oanda_instrument = Column(String(20))  # OANDA format instrument (e.g., EUR_USD)
