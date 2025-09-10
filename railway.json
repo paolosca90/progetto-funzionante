@@ -18,7 +18,15 @@
         "RESEND_API_KEY": "$RESEND_API_KEY",
         "FXCM_ACCESS_TOKEN": "$FXCM_ACCESS_TOKEN",
         "FXCM_REST_URL": "https://api.fxcm.com",
-        "PORT": "$PORT"
+        "PORT": "$PORT",
+        "OANDA_API_KEY": "$OANDA_API_KEY",
+        "OANDA_ACCOUNT_ID": "$OANDA_ACCOUNT_ID",
+        "OANDA_ENVIRONMENT": "$OANDA_ENVIRONMENT",
+        "GEMINI_API_KEY": "$GEMINI_API_KEY",
+        "JWT_SECRET_KEY": "$JWT_SECRET_KEY",
+        "EMAIL_HOST": "$EMAIL_HOST",
+        "EMAIL_USER": "$EMAIL_USER",
+        "EMAIL_PASSWORD": "$EMAIL_PASSWORD"
       }
     }
   }

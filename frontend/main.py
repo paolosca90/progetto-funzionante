@@ -95,8 +95,13 @@ app.add_middleware(
     expose_headers=["*"]
 )
 
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Mount static files (only if directory exists)
+import os
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+    print("Static files directory mounted successfully")
+else:
+    print("Warning: Static files directory not found, skipping static file mounting")
 
 # Startup event to initialize OANDA engine
 @app.on_event("startup")

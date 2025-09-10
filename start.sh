@@ -11,6 +11,14 @@ export MT5_SECRET_KEY="${MT5_SECRET_KEY:-}"
 export VPS_API_KEY="${VPS_API_KEY:-default-vps-key}"
 export BRIDGE_API_KEY="${BRIDGE_API_KEY:-default-bridge-key}"
 export RESEND_API_KEY="${RESEND_API_KEY:-}"
+export OANDA_API_KEY="${OANDA_API_KEY:-}"
+export OANDA_ACCOUNT_ID="${OANDA_ACCOUNT_ID:-}"
+export OANDA_ENVIRONMENT="${OANDA_ENVIRONMENT:-demo}"
+export GEMINI_API_KEY="${GEMINI_API_KEY:-}"
+export JWT_SECRET_KEY="${JWT_SECRET_KEY:-${SECRET_KEY}}"
+export EMAIL_HOST="${EMAIL_HOST:-}"
+export EMAIL_USER="${EMAIL_USER:-}"
+export EMAIL_PASSWORD="${EMAIL_PASSWORD:-}"
 
 # Validate PORT is a number
 if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
@@ -23,6 +31,10 @@ echo "   PORT: $PORT"
 echo "   DATABASE_URL Set: $([ -n "$DATABASE_URL" ] && echo '✅' || echo '❌')"
 echo "   SECRET_KEY Set: $([ -n "$SECRET_KEY" ] && echo '✅' || echo '❌')"
 echo "   MT5_SECRET_KEY Set: $([ -n "$MT5_SECRET_KEY" ] && echo '✅' || echo '❌')"
+echo "   OANDA_API_KEY Set: $([ -n "$OANDA_API_KEY" ] && echo '✅' || echo '❌')"
+echo "   OANDA_ACCOUNT_ID Set: $([ -n "$OANDA_ACCOUNT_ID" ] && echo '✅' || echo '❌')"
+echo "   GEMINI_API_KEY Set: $([ -n "$GEMINI_API_KEY" ] && echo '✅' || echo '❌')"
+echo "   JWT_SECRET_KEY Set: $([ -n "$JWT_SECRET_KEY" ] && echo '✅' || echo '❌')"
 
 # Start the application
 echo "🔄 Starting FastAPI server..."
