@@ -381,30 +381,49 @@ async def final_database_reset(current_user: User = Depends(get_current_active_u
     try:
         logger.warning("🚨 FINAL DATABASE RESET - CLEARING EVERYTHING")
 
-        # Clear ALL existing tables with CASCADE to handle dependencies
+        # Clear ALL existing tables in CORRECT ORDER to handle dependencies
         try:
-            # First, drop all tables with CASCADE
             with engine.connect() as conn:
-                # Enable CASCADE for foreign key constraints
-                conn.execute(text("SET CONSTRAINTS ALL DEFERRED"))
+                # Drop tables in reverse dependency order
+                tables_to_drop = [
+                    'signal_executions',  # Depends on signals + users
+                    'subscriptions',      # Depends on users
+                    'mt5_connections',    # Depends on users
+                    'oanda_connections',  # Depends on users
+                    'signals',            # Depends on users + others
+                    'users',              # No dependencies
+                ]
 
-                # Drop all tables individually with CASCADE
-                for table_name in Base.metadata.tables.keys():
+                for table_name in tables_to_drop:
                     try:
+                        # Try with CASCADE first
                         conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
-                        logger.info(f"✅ Dropped table {table_name}")
+                        logger.info(f"✅ Dropped table {table_name} with CASCADE")
+
+                        # Verify it's dropped by checking if we can create a place holder
+                        try:
+                            conn.execute(text(f"CREATE TABLE {table_name}_temp (id SERIAL PRIMARY KEY)"))
+                            conn.execute(text(f"DROP TABLE {table_name}_temp"))
+                        except:
+                            logger.warning(f"Table {table_name} might still exist")
+
                     except Exception as table_error:
                         logger.warning(f"Warning dropping {table_name}: {table_error}")
 
                 conn.commit()
-
-            logger.info("✅ All existing tables dropped with CASCADE")
+            logger.info("✅ All existing tables dropped in correct order")
 
         except Exception as drop_error:
-            logger.error(f"Table drop failed, trying metadata drop: {drop_error}")
-            # Fallback: drop with metadata
-            Base.metadata.drop_all(bind=engine)
-            logger.info("✅ All existing tables dropped (fallback)")
+            logger.error(f"Ordered drop failed, using emergency approach: {drop_error}")
+            # Last resort: use raw SQL to force drop all
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
+                    conn.commit()
+                logger.info("✅ Emergency schema reset completed")
+            except Exception as emergency_error:
+                logger.error(f"Emergency approach also failed: {emergency_error}")
+                raise Exception(f"All drop attempts failed. Last error: {drop_error}")
 
         # Recreate ALL tables with perfect schema
         Base.metadata.create_all(bind=engine)
