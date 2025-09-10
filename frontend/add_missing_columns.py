@@ -119,4 +119,4 @@ if __name__ == "__main__":
         print("Please check Railway logs and consider manual column addition if needed.")
 
     print("
-📝 You may need to restart your Railway deployment for changes to take effect."
+📝 You may need to restart your Railway deployment for changes to take effect."")
