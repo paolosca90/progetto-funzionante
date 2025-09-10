@@ -370,73 +370,11 @@ def test_deployment_status():
         "timestamp": datetime.utcnow().isoformat()
     }
 
-# ========== FINAL DATABASE RESET ENDPOINT ==========
-
-@app.post("/final-database-reset")
-async def final_database_reset(current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
-    """FINAL RESET: Clear and recreate ALL tables with perfect schema"""
-    if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Admin access required")
-
-    try:
-        logger.warning("🚨 FINAL DATABASE RESET - CLEARING EVERYTHING")
-
-        # Clear ALL existing tables using EMERGENCY SCHEMA RESET
-        try:
-            logger.warning("🔴 Using emergency schema reset approach")
-            with engine.connect() as conn:
-                # Import text for SQL execution
-                from sqlalchemy import text
-                # Force drop of entire public schema and recreate it from scratch
-                conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE;"))
-                conn.execute(text("CREATE SCHEMA public;"))
-                conn.execute(text("GRANT ALL ON SCHEMA public TO postgres;"))
-                conn.execute(text("GRANT ALL ON SCHEMA public TO public;"))
-                conn.commit()
-            logger.info("✅ Emergency schema reset completed - ALL DATA GONE")
-
-        except Exception as schema_error:
-            logger.error(f"Schema reset failed: {schema_error}")
-            raise Exception(f"Unable to reset schema: {schema_error}")
-
-        # Recreate ALL tables with perfect schema
-        Base.metadata.create_all(bind=engine)
-        logger.info("✅ All tables recreated with correct schema")
-
-        # Create fresh admin
-        hashed_password = hash_password("Admin2025!")
-        fresh_admin = User(
-            username="admin_final",
-            email="admin@final-test.com",
-            hashed_password=hashed_password,
-            full_name="Final Test Admin",
-            is_admin=True
-        )
-
-        db.add(fresh_admin)
-        db.commit()
-        db.refresh(fresh_admin)
-
-        return {
-            "status": "FINAL RESET COMPLETE",
-            "message": "Database perfectly recreated",
-            "new_admin": {
-                "username": "admin_final",
-                "password": "Admin2025!",
-                "email": "admin@final-test.com"
-            },
-            "ready_for": ["user_registration", "signal_creation", "full_app_functionality"]
-        }
-
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Final reset failed: {e}")
-        return {"status": "ERROR", "message": f"Reset failed: {str(e)}"}
-
 # ========== EMERGENCY ENDPOINT REMOVED FOR SECURITY ==========
-# Emergency endpoint was used to reset database and is now removed
+# All emergency endpoints have been removed after successful database fix
+# App is now fully functional with perfect database schema
 
-# ========== DATABASE MIGRATION ENDPOINT ==========
+# All emergency endpoints removed for security - database is now fully functional
 
 @app.post("/admin/migrate-database")
 async def migrate_database(current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
