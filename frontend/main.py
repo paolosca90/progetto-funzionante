@@ -2057,7 +2057,7 @@ async def get_live_oanda_signals(
                 "reliability": signal.reliability or 0,
                 "confidence": signal.confidence_score or 0,
                 "risk_level": signal.risk_level or "MEDIUM",
-                "position_size_suggestion": signal.position_size_suggestion or 0.01,
+                "position_size_suggestion": signal.position_size or 0.01,
                 "risk_reward_ratio": signal.risk_reward_ratio or 0,
                 "explanation": signal.ai_analysis or "AI analysis available",
                 "timeframe": signal.timeframe or "H1",
@@ -2171,6 +2171,133 @@ async def get_oanda_market_data(symbol: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving market data: {str(e)}"
+        )
+
+@app.post("/api/calculate-position-size")
+async def calculate_position_size(
+    symbol: str,
+    risk_amount: float,  # Quanto il cliente è disposto a perdere
+    stop_loss_pips: float,  # Distanza stop loss in pips
+    leverage: int = 500  # Default leverage 1:500
+):
+    """
+    Calcola la position size in base al risk management del cliente
+    
+    Args:
+        symbol: Coppia valutaria (es. EURUSD)
+        risk_amount: Quanto il cliente è disposto a perdere in USD
+        stop_loss_pips: Distanza dello stop loss in pips
+        leverage: Leva finanziaria (default 30:1)
+    
+    Returns:
+        Dimensione della posizione calcolata secondo metodologia risk management
+    """
+    try:
+        if not OANDA_AVAILABLE:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="OANDA integration not available"
+            )
+        
+        # Validate input
+        if risk_amount <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Risk amount must be positive"
+            )
+        
+        if stop_loss_pips <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Stop loss pips must be positive"
+            )
+        
+        if leverage <= 0 or leverage > 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Leverage must be between 1 and 100"
+            )
+        
+        # Create OANDA client
+        client = create_oanda_client(
+            api_key=OANDA_API_KEY,
+            environment=OANDA_ENVIRONMENT
+        )
+        
+        async with client:
+            # Normalize symbol
+            oanda_symbol = client.normalize_instrument(symbol)
+            
+            # Get current price
+            prices = await client.get_current_prices([oanda_symbol])
+            
+            if not prices:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No price data available for {symbol}"
+                )
+            
+            current_price = prices[0].mid
+            
+            # Calculate pip value for the currency pair
+            # For most EUR/USD like pairs: 1 pip = 0.0001
+            pip_size = 0.0001
+            if symbol.endswith('JPY'):
+                pip_size = 0.01  # JPY pairs have different pip size
+            
+            # Calculate pip value in account currency (USD)
+            # Pip Value = (Pip Size / Exchange Rate) × Position Size × 10,000 (per mini lot)
+            # For direct quotes like EUR/USD: Pip Value = Pip Size × Position Size
+            # For simplicity, we'll calculate for standard 1 lot first
+            pip_value_per_lot = pip_size
+            if not symbol.startswith('USD'):
+                # For base currency other than USD, pip value = pip_size
+                pip_value_per_lot = pip_size
+            
+            # Position Size calculation based on Risk Management
+            # Position Size = Risk Amount ÷ (Stop Loss Pips × Pip Value per unit)
+            # Where pip value per unit = pip_size for direct quotes
+            position_size = risk_amount / (stop_loss_pips * pip_size)
+            
+            # Convert to standard lot size (typically expressed in units of base currency)
+            # 1 standard lot = 100,000 units, 1 mini lot = 10,000 units
+            # Round to appropriate decimal places for forex (typically 0.01 for mini lots)
+            position_size = round(position_size, 2)
+            
+            # Calculate margin requirement based on leverage
+            margin_required = (position_size * current_price) / leverage
+            
+            # Calculate actual pip value for this position size
+            pip_value_actual = position_size * pip_size
+            
+            return {
+                "symbol": symbol,
+                "risk_amount": risk_amount,
+                "stop_loss_pips": stop_loss_pips,
+                "leverage": leverage,
+                "current_price": current_price,
+                "calculated_position_size": position_size,
+                "margin_required": margin_required,
+                "pip_size": pip_size,
+                "pip_value_per_position": pip_value_actual,
+                "currency": "USD",
+                "risk_validation": {
+                    "max_loss_if_stop_hit": stop_loss_pips * pip_value_actual,
+                    "target_risk_amount": risk_amount,
+                    "risk_difference": abs(risk_amount - (stop_loss_pips * pip_value_actual))
+                },
+                "calculation_info": {
+                    "formula": "Position Size = Risk Amount ÷ (Stop Loss Pips × Pip Size)",
+                    "example": f"{risk_amount} ÷ ({stop_loss_pips} × {pip_size}) = {position_size}",
+                    "explanation": "La size è calcolata per limitare la perdita massima all'importo specificato"
+                }
+            }
+            
+    except Exception as e:
+        logger.error(f"Error calculating position size for {symbol}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error calculating position size: {str(e)}"
         )
 
 
