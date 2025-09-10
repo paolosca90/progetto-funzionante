@@ -1183,8 +1183,31 @@ async def generate_signals_manually(
         generated_count = 0
         for signal in signals:
             # Convert OANDA signal to database signal
+            # Convert OANDA symbols to frontend-compatible symbols
+            frontend_symbol = signal.instrument
+            symbol_mapping = {
+                # Forex - remove underscore
+                'EUR_USD': 'EURUSD', 'GBP_USD': 'GBPUSD', 'USD_JPY': 'USDJPY',
+                'AUD_USD': 'AUDUSD', 'USD_CAD': 'USDCAD', 'NZD_USD': 'NZDUSD',
+                'EUR_GBP': 'EURGBP', 'EUR_CHF': 'EURCHF', 'GBP_JPY': 'GBPJPY',
+                'AUD_JPY': 'AUDJPY', 'USD_CHF': 'USDCHF', 'EUR_AUD': 'EURAUD',
+                'CHF_JPY': 'CHFJPY', 'AUD_CAD': 'AUDCAD', 'CAD_JPY': 'CADJPY',
+                'EUR_CAD': 'EURCAD', 'GBP_CAD': 'GBPCAD', 'EUR_JPY': 'EURJPY',
+                'GBP_AUD': 'GBPAUD',
+                
+                # Metals - keep as is
+                'XAU_USD': 'XAUUSD', 'XAG_USD': 'XAGUSD',
+                
+                # Indices - map to frontend symbols
+                'US30_USD': 'US30', 'NAS100_USD': 'NAS100', 'SPX500_USD': 'US500',
+                'UK100_GBP': 'UK100', 'DE30_EUR': 'GER30', 'FR40_EUR': 'FR40',
+                'JP225_USD': 'JPN225', 'HK33_HKD': 'HK33'
+            }
+            
+            frontend_symbol = symbol_mapping.get(signal.instrument, signal.instrument.replace("_", ""))
+            
             db_signal = Signal(
-                symbol=signal.instrument.replace("_", ""),  # Convert EUR_USD to EURUSD
+                symbol=frontend_symbol,
                 signal_type=SignalTypeEnum(signal.signal_type.value),
                 entry_price=signal.entry_price,
                 stop_loss=signal.stop_loss,
@@ -1247,8 +1270,18 @@ async def generate_signals_if_needed(db: Session = Depends(get_db)):
                 
                 # Add top 3 signals to database
                 for signal in signals[:3]:
+                    # Use same symbol mapping as admin endpoint
+                    symbol_mapping = {
+                        'EUR_USD': 'EURUSD', 'GBP_USD': 'GBPUSD', 'USD_JPY': 'USDJPY',
+                        'AUD_USD': 'AUDUSD', 'USD_CAD': 'USDCAD', 'NZD_USD': 'NZDUSD',
+                        'XAU_USD': 'XAUUSD', 'XAG_USD': 'XAGUSD',
+                        'US30_USD': 'US30', 'NAS100_USD': 'NAS100', 'SPX500_USD': 'US500',
+                        'UK100_GBP': 'UK100', 'DE30_EUR': 'GER30', 'JP225_USD': 'JPN225'
+                    }
+                    frontend_symbol = symbol_mapping.get(signal.instrument, signal.instrument.replace("_", ""))
+                    
                     db_signal = Signal(
-                        symbol=signal.instrument.replace("_", ""),
+                        symbol=frontend_symbol,
                         signal_type=SignalTypeEnum(signal.signal_type.value),
                         entry_price=signal.entry_price,
                         stop_loss=signal.stop_loss,
