@@ -321,7 +321,22 @@ def api_root():
 @app.options("/{path:path}")
 async def preflight_handler(request: Request, path: str, response: Response):
     """Handle CORS preflight requests"""
-    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+    origin = request.headers.get("Origin")
+    allowed_origins = [
+        "https://www.cash-revolution.com",
+        "https://cash-revolution.com",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "https://web-production-51f67.up.railway.app"
+    ]
+
+    # Allow origin if it's in our allowed list
+    if origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+    else:
+        # For Railway environment, allow the deployment domain dynamically
+        response.headers["Access-Control-Allow-Origin"] = "https://web-production-51f67.up.railway.app"
+
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-API-Key"
     response.headers["Access-Control-Allow-Credentials"] = "true"
@@ -346,7 +361,7 @@ def debug_environment():
         "timestamp": datetime.utcnow()
     }
 
-@app.get("/debug/deployment-test") 
+@app.get("/debug/deployment-test")
 def test_deployment_status():
     """Test endpoint to verify latest deployment is active"""
     return {
@@ -354,6 +369,93 @@ def test_deployment_status():
         "system_architecture": "STANDALONE_FRONTEND",
         "timestamp": datetime.utcnow().isoformat()
     }
+
+# ========== DATABASE MIGRATION ENDPOINT ==========
+
+@app.post("/admin/migrate-database")
+async def migrate_database(current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    """Admin-only endpoint to migrate database schema (add missing technical analysis columns)"""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required for database migration"
+        )
+
+    try:
+        from add_missing_columns import add_missing_columns, check_missing_columns, verify_migration
+
+        logger.info(f"Database migration initiated by admin: {current_user.username}")
+
+        # Check what columns are missing
+        missing_cols = check_missing_columns()
+
+        if not missing_cols:
+            return APIResponse(
+                status="success",
+                message="Database schema is already up to date",
+                data={"missing_columns": [], "migration_needed": False}
+            )
+
+        # Perform migration
+        success = add_missing_columns()
+
+        if not success:
+            raise Exception("Migration failed")
+
+        # Verify migration
+        verification_success = verify_migration()
+
+        return APIResponse(
+            status="success",
+            message="Database migration completed successfully",
+            data={
+                "missing_columns_found": len(missing_cols),
+                "columns_added": list(missing_cols.keys()),
+                "verification_success": verification_success,
+                "message": "Database schema updated with technical analysis columns"
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Database migration failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database migration failed: {str(e)}"
+        )
+
+@app.get("/debug/database-schema")
+async def check_database_schema(db: Session = Depends(get_db)):
+    """Debug endpoint to check current database schema"""
+    try:
+        from sqlalchemy import inspect
+        from database import engine
+
+        inspector = inspect(engine)
+        columns = inspector.get_columns('signals')
+        column_names = [col['name'] for col in columns]
+
+        # Check for technical analysis columns
+        required_cols = [
+            'timeframe', 'risk_reward_ratio', 'position_size_suggestion',
+            'spread', 'volatility', 'technical_score', 'rsi', 'market_session'
+        ]
+
+        missing_cols = [col for col in required_cols if col not in column_names]
+
+        return {
+            "status": "success",
+            "total_columns": len(column_names),
+            "column_names": column_names,
+            "required_technical_columns": required_cols,
+            "missing_technical_columns": missing_cols,
+            "migration_needed": len(missing_cols) > 0
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Schema check failed: {str(e)}"
+        )
 
 
 # ========== AUTHENTICATION ENDPOINTS ==========
