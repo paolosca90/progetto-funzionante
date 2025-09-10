@@ -63,7 +63,7 @@ class Signal(Base):
     source = Column(String(50), default="OANDA_AI")  # OANDA_AI, MANUAL, API
     
     # OANDA-specific fields
-    oanda_instrument = Column(String(20))  # OANDA format instrument (e.g., EUR_USD)
+    # oanda_instrument = Column(String(20))  # OANDA format instrument (e.g., EUR_USD)
     timeframe = Column(String(10), default="H1")  # Analysis timeframe
     risk_reward_ratio = Column(Float, default=0.0)  # Risk/reward ratio
     position_size_suggestion = Column(Float, default=0.01)  # Suggested position size

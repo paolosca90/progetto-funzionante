@@ -620,7 +620,7 @@ async def generate_custom_signal(
         # Add explicit CORS headers
         response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-API-Key"
+        response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-API-Key, Authorization"
         response.headers["Access-Control-Allow-Credentials"] = "true"
         # Check if user has active subscription
         subscription = db.query(Subscription).filter(Subscription.user_id == current_user.id).first()
@@ -751,7 +751,6 @@ async def generate_custom_signal(
                 is_active=True,
                 creator_id=current_user.id,
                 source="FRONTEND_CUSTOM",
-                oanda_instrument=signal.symbol,
                 timeframe=signal.timeframe,
                 risk_reward_ratio=signal.risk_reward_ratio,
                 position_size_suggestion=signal.position_size_suggestion,
@@ -1049,7 +1048,6 @@ async def generate_signals_manually(
                 risk_level=signal.risk_level.value,
                 ai_analysis=signal.ai_analysis,
                 source="OANDA_AI",
-                oanda_instrument=signal.instrument,
                 timeframe=signal.timeframe,
                 risk_reward_ratio=signal.risk_reward_ratio,
                 position_size_suggestion=signal.position_size,
@@ -1114,7 +1112,6 @@ async def generate_signals_if_needed(db: Session = Depends(get_db)):
                         risk_level=signal.risk_level.value,
                         ai_analysis=signal.ai_analysis,
                         source="OANDA_AI",
-                        oanda_instrument=signal.instrument,
                         timeframe=signal.timeframe,
                         risk_reward_ratio=signal.risk_reward_ratio,
                         position_size_suggestion=signal.position_size,
@@ -1432,7 +1429,6 @@ async def get_signals_by_source(current_user: User = Depends(get_current_active_
                 "entry_price": signal.entry_price,
                 "reliability": signal.reliability,
                 "created_at": signal.created_at.isoformat() if signal.created_at else None,
-                "vps_id": signal.vps_id,
                 "is_active": signal.is_active
             })
         
@@ -2091,7 +2087,7 @@ async def get_live_oanda_signals(
                 "market_data": {
                     "spread": signal.spread,
                     "volatility": signal.volatility,
-                    "oanda_instrument": signal.oanda_instrument
+                    "oanda_instrument": signal.symbol  # Use symbol instead of non-existent column
                 },
                 "timestamp": signal.created_at.isoformat() if signal.created_at else "",
                 "expires_at": signal.expires_at.isoformat() if signal.expires_at else "",
