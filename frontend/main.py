@@ -385,6 +385,8 @@ async def final_database_reset(current_user: User = Depends(get_current_active_u
         try:
             logger.warning("🔴 Using emergency schema reset approach")
             with engine.connect() as conn:
+                # Import text for SQL execution
+                from sqlalchemy import text
                 # Force drop of entire public schema and recreate it from scratch
                 conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE;"))
                 conn.execute(text("CREATE SCHEMA public;"))
