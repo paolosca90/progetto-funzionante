@@ -919,12 +919,12 @@ async def generate_custom_signal(
 
             # Save to database for user
             db_signal = Signal(
-                symbol=signal.symbol,
+                symbol=signal.instrument,
                 signal_type=SignalTypeEnum.BUY if signal.signal_type.value == 'BUY' else SignalTypeEnum.SELL,
                 entry_price=signal.entry_price,
                 stop_loss=signal.stop_loss,
                 take_profit=signal.take_profit,
-                reliability=signal.reliability,
+                reliability=signal.confidence_score * 100,  # Convert confidence to reliability percentage
                 confidence_score=signal.confidence_score,
                 risk_level=signal.risk_level.value,
                 ai_analysis=signal.ai_analysis,
@@ -2024,20 +2024,25 @@ async def generate_oanda_signal(
         
         # Save signal to database
         db_signal = Signal(
-            symbol=signal.symbol,
+            symbol=signal.instrument,
             signal_type=db_signal_type,
             entry_price=signal.entry_price,
             stop_loss=signal.stop_loss,
             take_profit=signal.take_profit,
-            reliability=signal.reliability,
-            confidence_score=signal.confidence,
+            reliability=signal.confidence_score * 100,  # Convert confidence to reliability percentage
+            confidence_score=signal.confidence_score,
             risk_level=signal.risk_level.value,
             ai_analysis=signal.ai_analysis,
+            technical_score=signal.technical_score,
+            risk_reward_ratio=signal.risk_reward_ratio,
+            position_size_suggestion=signal.position_size,
+            spread=signal.spread,
+            volatility=signal.volatility,
             is_public=False,  # User-generated signals are private
             is_active=True,
             creator_id=current_user.id,
             source="OANDA_AI",
-            oanda_instrument=signal.market_context.symbol,
+            oanda_instrument=signal.instrument,
             timeframe=signal.timeframe,
             risk_reward_ratio=signal.risk_reward_ratio,
             position_size_suggestion=signal.position_size_suggestion,
@@ -2157,20 +2162,25 @@ async def generate_oanda_signals_batch(
                     continue  # Skip HOLD signals for now
                 
                 db_signal = Signal(
-                    symbol=signal.symbol,
+                    symbol=signal.instrument,
                     signal_type=db_signal_type,
                     entry_price=signal.entry_price,
                     stop_loss=signal.stop_loss,
                     take_profit=signal.take_profit,
-                    reliability=signal.reliability,
-                    confidence_score=signal.confidence,
+                    reliability=signal.confidence_score * 100,  # Convert confidence to reliability percentage
+                    confidence_score=signal.confidence_score,
                     risk_level=signal.risk_level.value,
                     ai_analysis=signal.ai_analysis[:1000] if signal.ai_analysis else None,  # Truncate for storage
+                    technical_score=signal.technical_score,
+                    risk_reward_ratio=signal.risk_reward_ratio,
+                    position_size_suggestion=signal.position_size,
+                    spread=signal.spread,
+                    volatility=signal.volatility,
                     is_public=True,  # Batch signals are public
                     is_active=True,
                     creator_id=None,  # System generated
                     source="OANDA_AI_BATCH",
-                    oanda_instrument=signal.market_context.symbol,
+                    oanda_instrument=signal.instrument,
                     timeframe=signal.timeframe,
                     risk_reward_ratio=signal.risk_reward_ratio,
                     position_size_suggestion=signal.position_size_suggestion,
@@ -2197,7 +2207,7 @@ async def generate_oanda_signals_batch(
                 })
                 
             except Exception as e:
-                logger.error(f"Failed to save signal for {signal.symbol}: {e}")
+                logger.error(f"Failed to save signal for {signal.instrument}: {e}")
                 continue
         
         db.commit()
@@ -2268,7 +2278,7 @@ async def get_live_oanda_signals(
                 "market_data": {
                     "spread": signal.spread,
                     "volatility": signal.volatility,
-                    "oanda_instrument": signal.symbol  # Use symbol instead of non-existent column
+                    "oanda_instrument": signal.oanda_instrument or signal.symbol  # Use oanda_instrument or fallback to symbol
                 },
                 "timestamp": signal.created_at.isoformat() if signal.created_at else "",
                 "expires_at": signal.expires_at.isoformat() if signal.expires_at else "",
