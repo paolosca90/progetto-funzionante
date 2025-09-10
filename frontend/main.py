@@ -1165,9 +1165,20 @@ async def generate_signals_manually(
         if not oanda_signal_engine:
             raise HTTPException(status_code=503, detail="Failed to initialize OANDA engine")
         
-        # Generate signals for major pairs
-        major_pairs = ["EUR_USD", "GBP_USD", "USD_JPY", "AUD_USD", "USD_CAD", "NZD_USD", "EUR_GBP"]
-        signals = await oanda_signal_engine.generate_signals_batch(major_pairs)
+        # Generate signals for all supported instruments
+        instruments = [
+            # Major forex pairs
+            "EUR_USD", "GBP_USD", "USD_JPY", "AUD_USD", "USD_CAD", "NZD_USD", "EUR_GBP",
+            # Cross pairs and exotics
+            "EUR_AUD", "EUR_CHF", "GBP_JPY", "AUD_JPY", "EUR_JPY", "GBP_AUD", 
+            "USD_CHF", "CHF_JPY", "AUD_CAD", "CAD_JPY", "EUR_CAD", "GBP_CAD",
+            # Precious metals
+            "XAU_USD", "XAG_USD",
+            # Major indices CFDs
+            "US30_USD", "NAS100_USD", "SPX500_USD", "UK100_GBP", "DE30_EUR", 
+            "FR40_EUR", "JP225_USD", "HK33_HKD"
+        ]
+        signals = await oanda_signal_engine.generate_signals_batch(instruments)
         
         generated_count = 0
         for signal in signals:
@@ -1231,8 +1242,8 @@ async def generate_signals_if_needed(db: Session = Depends(get_db)):
                 await initialize_oanda_engine()
             
             if oanda_signal_engine:
-                major_pairs = ["EUR_USD", "GBP_USD", "USD_JPY", "AUD_USD"]
-                signals = await oanda_signal_engine.generate_signals_batch(major_pairs)
+                priority_instruments = ["EUR_USD", "US30_USD", "NAS100_USD", "XAU_USD", "XAG_USD", "SPX500_USD"]
+                signals = await oanda_signal_engine.generate_signals_batch(priority_instruments)
                 
                 # Add top 3 signals to database
                 for signal in signals[:3]:

@@ -2806,3 +2806,170 @@ body.modal-open {
         font-size: 0.9rem;
     }
 }
+
+/* ===== INTEGRATED TRADING CHART STYLES ===== */
+.trading-chart-container {
+    background: rgba(0, 20, 0, 0.95);
+    border: 2px solid #00ff00;
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+    animation: matrix-glow 2s ease-in-out infinite alternate;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #00ff00;
+}
+
+.chart-title {
+    color: #00ff00;
+    font-family: 'Orbitron', monospace;
+    font-size: 1.2rem;
+    margin: 0;
+    text-shadow: 0 0 10px #00ff00;
+}
+
+.chart-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.chart-btn {
+    background: rgba(0, 255, 0, 0.1);
+    border: 1px solid #00ff00;
+    color: #00ff00;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.chart-btn:hover {
+    background: rgba(0, 255, 0, 0.2);
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+.chart-btn.active {
+    background: #00ff00;
+    color: #000;
+    font-weight: bold;
+}
+
+.tradingview-widget-container {
+    height: 400px;
+    margin: 15px 0;
+    border: 1px solid #00ff00;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#tradingview_chart {
+    height: 100%;
+    width: 100%;
+}
+
+.tradingview-widget-copyright {
+    text-align: center;
+    padding: 5px;
+    font-size: 0.75rem;
+    color: #00ff00;
+    opacity: 0.7;
+}
+
+.chart-levels {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #00ff00;
+}
+
+.level-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.level-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid;
+    border-radius: 8px;
+    padding: 12px 15px;
+    font-family: 'Source Code Pro', monospace;
+}
+
+.level-item.entry {
+    border-color: #ffff00;
+    box-shadow: 0 0 15px rgba(255, 255, 0, 0.3);
+}
+
+.level-item.stop-loss {
+    border-color: #ff0040;
+    box-shadow: 0 0 15px rgba(255, 0, 64, 0.3);
+}
+
+.level-item.take-profit {
+    border-color: #00ff40;
+    box-shadow: 0 0 15px rgba(0, 255, 64, 0.3);
+}
+
+.level-label {
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.level-item.entry .level-label,
+.level-item.entry .level-value {
+    color: #ffff00;
+}
+
+.level-item.stop-loss .level-label,
+.level-item.stop-loss .level-value {
+    color: #ff0040;
+}
+
+.level-item.take-profit .level-label,
+.level-item.take-profit .level-value {
+    color: #00ff40;
+}
+
+.level-value {
+    font-weight: bold;
+    font-size: 1rem;
+    text-shadow: 0 0 5px currentColor;
+}
+
+/* Responsive chart */
+@media (max-width: 768px) {
+    .chart-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+    
+    .chart-controls {
+        justify-content: center;
+    }
+    
+    .chart-btn {
+        flex: 1;
+        text-align: center;
+    }
+    
+    .level-info {
+        grid-template-columns: 1fr;
+    }
+    
+    .tradingview-widget-container {
+        height: 300px;
+    }
+}

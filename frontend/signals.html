@@ -129,7 +129,45 @@
                 
                 <div class="signal-actions">
                     <button class="action-btn secondary" onclick="generateNewSignal()">Generate New Signal</button>
-                    <button class="action-btn secondary" onclick="viewChart()">View Chart</button>
+                    <button class="action-btn secondary" onclick="toggleChart()">📈 Show/Hide Chart</button>
+                </div>
+                
+                <!-- Integrated Trading Chart -->
+                <div class="trading-chart-container" id="chartContainer" style="display: none;">
+                    <div class="chart-header">
+                        <h3 class="chart-title">📊 Trading Chart - <span id="chartSymbol">Select Asset</span></h3>
+                        <div class="chart-controls">
+                            <button class="chart-btn" onclick="changeTimeframe('1')">1M</button>
+                            <button class="chart-btn active" onclick="changeTimeframe('15')">15M</button>
+                            <button class="chart-btn" onclick="changeTimeframe('60')">1H</button>
+                            <button class="chart-btn" onclick="changeTimeframe('240')">4H</button>
+                            <button class="chart-btn" onclick="changeTimeframe('D')">1D</button>
+                        </div>
+                    </div>
+                    <div class="tradingview-widget-container">
+                        <div id="tradingview_chart"></div>
+                        <div class="tradingview-widget-copyright">
+                            <a href="https://www.tradingview.com/symbols/EURUSD/" rel="noopener" target="_blank">
+                                <span class="blue-text">Chart by TradingView</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="chart-levels">
+                        <div class="level-info">
+                            <div class="level-item entry">
+                                <span class="level-label">📍 Entry:</span>
+                                <span class="level-value" id="entryLevel">-</span>
+                            </div>
+                            <div class="level-item stop-loss">
+                                <span class="level-label">🛑 Stop Loss:</span>
+                                <span class="level-value" id="stopLossLevel">-</span>
+                            </div>
+                            <div class="level-item take-profit">
+                                <span class="level-label">🎯 Take Profit:</span>
+                                <span class="level-value" id="takeProfitLevel">-</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -454,12 +492,154 @@
             document.querySelector('.signal-generator').scrollIntoView({ behavior: 'smooth' });
         }
 
-        function viewChart() {
+        // Chart variables
+        let tradingViewWidget = null;
+        let currentTimeframe = '15';
+        let chartVisible = false;
+
+        function toggleChart() {
+            const chartContainer = document.getElementById('chartContainer');
+            chartVisible = !chartVisible;
+            
+            if (chartVisible) {
+                chartContainer.style.display = 'block';
+                if (currentAsset && currentSignal) {
+                    initTradingViewChart();
+                    updateChartLevels();
+                }
+                // Smooth scroll to chart
+                setTimeout(() => {
+                    chartContainer.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+            } else {
+                chartContainer.style.display = 'none';
+                if (tradingViewWidget) {
+                    tradingViewWidget.remove();
+                    tradingViewWidget = null;
+                }
+            }
+        }
+
+        function changeTimeframe(timeframe) {
+            currentTimeframe = timeframe;
+            
+            // Update active button
+            document.querySelectorAll('.chart-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Reinitialize chart with new timeframe
+            if (chartVisible && currentAsset) {
+                initTradingViewChart();
+            }
+        }
+
+        function initTradingViewChart() {
             if (!currentAsset) return;
             
-            // Open TradingView chart (you can customize this URL)
-            const chartUrl = `https://www.tradingview.com/chart/?symbol=${currentAsset.symbol}`;
-            window.open(chartUrl, '_blank');
+            // Clear existing chart
+            const chartContainer = document.getElementById('tradingview_chart');
+            chartContainer.innerHTML = '';
+            
+            // Update chart symbol display
+            document.getElementById('chartSymbol').textContent = currentAsset.symbol;
+            
+            // Convert OANDA symbol to correct TradingView symbol
+            let tvSymbol;
+            let exchange = 'FX';
+            
+            // Get the OANDA symbol (with underscore)
+            const oandaSymbol = currentAsset.symbol;
+            
+            // Map OANDA symbols to correct TradingView symbols
+            const symbolMap = {
+                // Forex pairs (TradingView uses no underscore)
+                'EUR_USD': 'EURUSD',
+                'GBP_USD': 'GBPUSD', 
+                'USD_JPY': 'USDJPY',
+                'AUD_USD': 'AUDUSD',
+                'USD_CAD': 'USDCAD',
+                'NZD_USD': 'NZDUSD',
+                'EUR_GBP': 'EURGBP',
+                'EUR_CHF': 'EURCHF',
+                'GBP_JPY': 'GBPJPY',
+                'AUD_JPY': 'AUDJPY',
+                'USD_CHF': 'USDCHF',
+                
+                // Metals (use CFD versions for correct pricing)
+                'XAU_USD': 'GOLD',
+                'XAG_USD': 'SILVER',
+                
+                // Indices CFDs (use TradingView CFD symbols)
+                'US30_USD': 'US30',
+                'NAS100_USD': 'NAS100',
+                'SPX500_USD': 'US500',
+                'UK100_GBP': 'UKX',
+                'DE30_EUR': 'DAX',
+                'FR40_EUR': 'CAC',
+                'JP225_USD': 'NKY',
+                'HK33_HKD': 'HSI'
+            };
+            
+            tvSymbol = symbolMap[oandaSymbol] || oandaSymbol.replace('_', '');
+            
+            // Set correct exchange for different instrument types
+            if (oandaSymbol.includes('US30') || oandaSymbol.includes('NAS100') || oandaSymbol.includes('SPX500') || 
+                oandaSymbol.includes('UK100') || oandaSymbol.includes('DE30') || oandaSymbol.includes('FR40') ||
+                oandaSymbol.includes('JP225') || oandaSymbol.includes('HK33')) {
+                exchange = 'OANDA';  // Use OANDA exchange for CFDs
+            } else if (oandaSymbol.includes('XAU') || oandaSymbol.includes('XAG')) {
+                exchange = 'OANDA';  // Use OANDA exchange for metals CFDs
+            } else {
+                exchange = 'FX';     // Standard forex
+            }
+            
+            console.log(`Mapping ${oandaSymbol} -> ${exchange}:${tvSymbol}`);
+            
+            // Initialize TradingView widget
+            tradingViewWidget = new TradingView.widget({
+                "width": "100%",
+                "height": 400,
+                "symbol": `${exchange}:${tvSymbol}`,
+                "interval": currentTimeframe,
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "1",
+                "locale": "en",
+                "toolbar_bg": "#f1f3f6",
+                "enable_publishing": false,
+                "hide_top_toolbar": false,
+                "hide_legend": false,
+                "save_image": false,
+                "container_id": "tradingview_chart",
+                "studies": [
+                    "RSI@tv-basicstudies",
+                    "MACD@tv-basicstudies"
+                ],
+                "overrides": {
+                    "paneProperties.background": "#000000",
+                    "paneProperties.vertGridProperties.color": "#00ff00",
+                    "paneProperties.horzGridProperties.color": "#00ff00",
+                    "symbolWatermarkProperties.transparency": 90,
+                    "scalesProperties.textColor": "#00ff00",
+                    "mainSeriesProperties.candleStyle.upColor": "#00ff00",
+                    "mainSeriesProperties.candleStyle.downColor": "#ff0040",
+                    "mainSeriesProperties.candleStyle.borderUpColor": "#00ff00",
+                    "mainSeriesProperties.candleStyle.borderDownColor": "#ff0040",
+                    "mainSeriesProperties.candleStyle.wickUpColor": "#00ff00",
+                    "mainSeriesProperties.candleStyle.wickDownColor": "#ff0040"
+                }
+            });
+        }
+
+        function updateChartLevels() {
+            if (!currentSignal) return;
+            
+            // Update level displays
+            document.getElementById('entryLevel').textContent = currentSignal.entry_price.toFixed(5);
+            document.getElementById('stopLossLevel').textContent = currentSignal.stop_loss.toFixed(5);
+            document.getElementById('takeProfitLevel').textContent = currentSignal.take_profit.toFixed(5);
         }
 
         function addToTradingHistory(signal, riskAmount) {
