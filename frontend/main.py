@@ -370,69 +370,8 @@ def test_deployment_status():
         "timestamp": datetime.utcnow().isoformat()
     }
 
-# ========== TEMPORARY ADMIN CREATION (REMOVE AFTER RESET) ==========
-
-@app.post("/emergency-database-reset")
-async def emergency_database_reset():
-    """EMERGENCY: Reset database and recreate admin (REMOVE IMMEDIATELY AFTER USE)"""
-    try:
-        logger.warning("🚨 EMERGENCY DATABASE RESET - REMEMBER TO REMOVE THIS ENDPOINT!")
-
-        # Import Base and engine
-        from database import engine, Base
-
-        # Drop all tables
-        logger.info("Dropping all tables...")
-        Base.metadata.drop_all(bind=engine)
-
-        # Create all tables
-        logger.info("Creating fresh tables...")
-        Base.metadata.create_all(bind=engine)
-
-        # Create admin user
-        from models import User
-        hashed_password = hash_password("TempAdmin2024!")
-
-        admin = User(
-            username="railway_admin",
-            email="admin@cash-revolution.com",
-            hashed_password=hashed_password,
-            full_name="Railway Administrator",
-            is_admin=True
-        )
-
-        from database import SessionLocal
-        db = SessionLocal()
-        try:
-            db.add(admin)
-            db.commit()
-            db.refresh(admin)
-
-            return {
-                "status": "success",
-                "message": "🚨 EMERGENCY RESET COMPLETED - DATABASE CLEANED",
-                "admin_created": {
-                    "id": admin.id,
-                    "username": admin.username,
-                    "password": "TempAdmin2024!"
-                },
-                "warning": "REMOVE THIS ENDPOINT IMMEDIATELY AFTER VERIFYING RESET",
-                "next_steps": "Test your app - all tables are fresh with correct schema"
-            }
-
-        except Exception as e:
-            db.rollback()
-            raise Exception(f"Failed to create admin: {str(e)}")
-        finally:
-            db.close()
-
-    except Exception as e:
-        logger.error(f"Emergency reset failed: {e}")
-        return {
-            "status": "error",
-            "message": f"Emergency reset failed: {str(e)}",
-            "suggestion": "Use Railway Query Editor with reset_prod_database.sql instead"
-        }
+# ========== EMERGENCY ENDPOINT REMOVED FOR SECURITY ==========
+# Emergency endpoint was used to reset database and is now removed
 
 # ========== DATABASE MIGRATION ENDPOINT ==========
 
