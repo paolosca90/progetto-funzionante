@@ -325,9 +325,16 @@ class OANDASignalEngine:
     
     async def health_check(self) -> bool:
         """Check if engine is ready"""
-        if not self.oanda_client:
+        try:
+            # Auto-initialize client if needed
+            if not self.oanda_client:
+                self.oanda_client = create_oanda_client(self.api_key, self.account_id, self.environment)
+                await self.oanda_client.__aenter__()
+            
+            return await self.oanda_client.health_check()
+        except Exception as e:
+            logger.error(f"Health check failed: {e}")
             return False
-        return await self.oanda_client.health_check()
     
     async def _get_market_data(self, instrument: str, granularity: Granularity = Granularity.H1, count: int = 200) -> Tuple[List[OANDACandle], OANDAPrice]:
         """Get market data for analysis"""
@@ -596,9 +603,13 @@ class OANDASignalEngine:
         try:
             logger.info(f"Generating signal for {instrument} on {timeframe}")
             
+            # Auto-initialize client if needed
+            if not self.oanda_client:
+                self.oanda_client = create_oanda_client(self.api_key, self.account_id, self.environment)
+                await self.oanda_client.__aenter__()
+            
             # Normalize instrument name
-            if self.oanda_client:
-                instrument = self.oanda_client.normalize_instrument(instrument)
+            instrument = self.oanda_client.normalize_instrument(instrument)
             
             # Get market data
             granularity = Granularity.H1  # Default to H1
@@ -705,6 +716,11 @@ class OANDASignalEngine:
     async def generate_signals_batch(self, instruments: List[str], timeframe: str = "H1") -> List[TradingSignal]:
         """Generate signals for multiple instruments"""
         signals = []
+        
+        # Auto-initialize client if needed
+        if not self.oanda_client:
+            self.oanda_client = create_oanda_client(self.api_key, self.account_id, self.environment)
+            await self.oanda_client.__aenter__()
         
         for instrument in instruments:
             try:
