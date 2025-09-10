@@ -372,52 +372,67 @@ def test_deployment_status():
 
 # ========== TEMPORARY ADMIN CREATION (REMOVE AFTER RESET) ==========
 
-@app.post("/temp-create-admin")
-async def temp_create_admin(db: Session = Depends(get_db)):
-    """TEMPORARY: Create admin user for database reset (REMOVE AFTER USE)"""
+@app.post("/emergency-database-reset")
+async def emergency_database_reset():
+    """EMERGENCY: Reset database and recreate admin (REMOVE IMMEDIATELY AFTER USE)"""
     try:
-        logger.warning("TEMPORARY ADMIN CREATION - REMEMBER TO REMOVE THIS ENDPOINT!")
+        logger.warning("🚨 EMERGENCY DATABASE RESET - REMEMBER TO REMOVE THIS ENDPOINT!")
 
-        # Hash password
-        hashed_pass = hash_password("TempAdmin2025!")
+        # Import Base and engine
+        from database import engine, Base
 
-        # Check if admin already exists
+        # Drop all tables
+        logger.info("Dropping all tables...")
+        Base.metadata.drop_all(bind=engine)
+
+        # Create all tables
+        logger.info("Creating fresh tables...")
+        Base.metadata.create_all(bind=engine)
+
+        # Create admin user
         from models import User
-        existing_admin = db.query(User).filter(User.is_admin == True).first()
-        if existing_admin:
-            return {
-                "status": "admin_exists",
-                "message": f"Admin already exists: {existing_admin.username}",
-                "id": existing_admin.id
-            }
+        hashed_password = hash_password("TempAdmin2024!")
 
-        # Create new admin
         admin = User(
-            username="temp_railway_admin",
-            email="temp_admin@railway.local",
-            hashed_password=hashed_pass,
-            full_name="Railway Admin",
+            username="railway_admin",
+            email="admin@cash-revolution.com",
+            hashed_password=hashed_password,
+            full_name="Railway Administrator",
             is_admin=True
         )
 
-        db.add(admin)
-        db.commit()
-        db.refresh(admin)
+        from database import SessionLocal
+        db = SessionLocal()
+        try:
+            db.add(admin)
+            db.commit()
+            db.refresh(admin)
 
-        print(f"TEMPORARY ADMIN CREATED: {admin.username} (ID: {admin.id})")
+            return {
+                "status": "success",
+                "message": "🚨 EMERGENCY RESET COMPLETED - DATABASE CLEANED",
+                "admin_created": {
+                    "id": admin.id,
+                    "username": admin.username,
+                    "password": "TempAdmin2024!"
+                },
+                "warning": "REMOVE THIS ENDPOINT IMMEDIATELY AFTER VERIFYING RESET",
+                "next_steps": "Test your app - all tables are fresh with correct schema"
+            }
 
-        return {
-            "status": "success",
-            "message": "Temporary admin created - REMOVE THIS ENDPOINT IMMEDIATELY",
-            "admin_id": admin.id,
-            "username": admin.username,
-            "password": "TempAdmin2025!"
-        }
+        except Exception as e:
+            db.rollback()
+            raise Exception(f"Failed to create admin: {str(e)}")
+        finally:
+            db.close()
 
     except Exception as e:
-        db.rollback()
-        logger.error(f"Failed to create temp admin: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to create admin: {str(e)}")
+        logger.error(f"Emergency reset failed: {e}")
+        return {
+            "status": "error",
+            "message": f"Emergency reset failed: {str(e)}",
+            "suggestion": "Use Railway Query Editor with reset_prod_database.sql instead"
+        }
 
 # ========== DATABASE MIGRATION ENDPOINT ==========
 
