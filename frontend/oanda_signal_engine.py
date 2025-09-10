@@ -1,73 +1,125 @@
 """
-OANDA Signal Engine
-Advanced signal generation using OANDA market data and AI analysis
+OANDA Signal Engine v2.0
+Professional signal generation using OANDA v20 API and AI analysis
+Completely rewritten following OANDA official documentation
 """
 
 import asyncio
 import logging
+import numpy as np
+import pandas as pd
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 from enum import Enum
-import numpy as np
-import pandas as pd
-from decimal import Decimal
-import json
 import os
 import google.generativeai as genai
-from oanda_api_integration import create_oanda_client, MarketData, CandleData, OANDAAPIError
+
+from oanda_api_client import (
+    OANDAClient, OANDAAPIError, OANDACandle, OANDAPrice,
+    Granularity, PriceComponent, create_oanda_client
+)
 
 # Setup logging
 logger = logging.getLogger(__name__)
 
 class SignalType(Enum):
+    """Trading signal types"""
     BUY = "BUY"
     SELL = "SELL"
     HOLD = "HOLD"
 
 class RiskLevel(Enum):
+    """Risk level classifications"""
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
 
 @dataclass
-class TechnicalIndicators:
-    """Technical analysis indicators"""
+class TechnicalAnalysis:
+    """Technical analysis indicators calculated from OANDA data"""
+    # Trend indicators
     rsi: float
+    rsi_signal: str  # "oversold", "overbought", "neutral"
+    
+    # MACD
+    macd_line: float
     macd_signal: float
     macd_histogram: float
+    macd_trend: str  # "bullish", "bearish", "neutral"
+    
+    # Bollinger Bands
     bb_upper: float
     bb_lower: float
     bb_middle: float
-    atr: float
+    bb_position: str  # "above", "below", "middle"
+    bb_squeeze: bool
+    
+    # Moving Averages
     ema_9: float
     ema_21: float
     ema_50: float
     sma_200: float
+    ma_trend: str  # "bullish", "bearish", "neutral"
+    
+    # Volatility
+    atr: float
+    volatility_level: str  # "low", "medium", "high"
+    
+    # Volume and momentum
     volume_avg: float
-    volatility: float
+    momentum: float
+    
+    # Overall technical score (0-1)
+    technical_score: float
+
+@dataclass
+class MarketContext:
+    """Market context and session information"""
+    current_price: float
+    spread: float
+    spread_quality: str  # "tight", "normal", "wide"
+    
+    market_session: str  # "Tokyo", "London", "New York", "Sydney"
+    session_overlap: bool
+    volatility_expected: str  # "low", "medium", "high"
+    
+    trend_strength: float  # 0-1
+    support_level: Optional[float]
+    resistance_level: Optional[float]
+
+@dataclass
+class RiskManagement:
+    """Risk management calculations"""
+    suggested_stop_loss: float
+    suggested_take_profit: float
+    risk_reward_ratio: float
+    position_size_pct: float  # Percentage of account
+    max_loss_amount: float
+    probability_success: float
 
 @dataclass
 class TradingSignal:
-    """Complete trading signal with analysis"""
+    """Complete trading signal with all analysis"""
+    # Basic signal info
     instrument: str
     signal_type: SignalType
+    confidence_score: float  # 0-1 scale
+    
+    # Price levels
     entry_price: float
     stop_loss: float
     take_profit: float
-    confidence_score: float
+    
+    # Risk management
     risk_level: RiskLevel
     risk_reward_ratio: float
     position_size: float
     
-    # Technical analysis
-    technical_score: float
-    indicators: TechnicalIndicators
-    
-    # Market context
-    market_session: str
-    spread: float
-    volatility: float
+    # Analysis components
+    technical_analysis: TechnicalAnalysis
+    market_context: MarketContext
+    risk_management: RiskManagement
     
     # AI analysis
     ai_analysis: str
@@ -77,63 +129,37 @@ class TradingSignal:
     timeframe: str
     timestamp: datetime
     expires_at: datetime
+    
+    # Properties for backward compatibility
+    @property
+    def technical_score(self) -> float:
+        return self.technical_analysis.technical_score
+    
+    @property
+    def indicators(self) -> TechnicalAnalysis:
+        return self.technical_analysis
+    
+    @property
+    def spread(self) -> float:
+        return self.market_context.spread
+    
+    @property
+    def volatility(self) -> float:
+        return self.technical_analysis.atr
+    
+    @property
+    def market_session(self) -> str:
+        return self.market_context.market_session
 
-class OANDASignalEngine:
-    """
-    Advanced signal generation engine using OANDA data
-    """
+class TechnicalAnalyzer:
+    """Technical analysis calculator using OANDA data"""
     
-    def __init__(self, gemini_api_key: Optional[str] = None):
-        self.gemini_api_key = gemini_api_key or os.getenv("GEMINI_API_KEY")
-        self.oanda_client = None
-        self._is_initialized = False
-        
-        # Technical analysis parameters
-        self.rsi_period = 14
-        self.macd_fast = 12
-        self.macd_slow = 26
-        self.macd_signal = 9
-        self.bb_period = 20
-        self.bb_std = 2
-        self.atr_period = 14
-        
-        # Risk management
-        self.max_risk_per_trade = 0.02  # 2% risk per trade
-        self.default_risk_reward = 2.5  # 1:2.5 risk/reward ratio
-        
-        # AI configuration
-        if self.gemini_api_key:
-            genai.configure(api_key=self.gemini_api_key)
-            self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
-            logger.info("✅ Gemini AI configured")
-        else:
-            self.gemini_model = None
-            logger.warning("⚠️ Gemini AI not available - using technical analysis only")
-    
-    async def initialize(self):
-        """Initialize the signal engine"""
-        try:
-            self.oanda_client = await create_oanda_client()
-            self._is_initialized = True
-            logger.info("🚀 OANDA Signal Engine initialized successfully")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize signal engine: {e}")
-            raise
-    
-    async def __aenter__(self):
-        if not self._is_initialized:
-            await self.initialize()
-        return self
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.oanda_client:
-            await self.oanda_client.disconnect()
-    
-    def calculate_rsi(self, prices: List[float], period: int = 14) -> float:
-        """Calculate RSI (Relative Strength Index)"""
+    @staticmethod
+    def calculate_rsi(prices: np.ndarray, period: int = 14) -> float:
+        """Calculate RSI indicator"""
         if len(prices) < period + 1:
-            return 50.0  # Neutral RSI
-        
+            return 50.0
+            
         deltas = np.diff(prices)
         gains = np.where(deltas > 0, deltas, 0)
         losses = np.where(deltas < 0, -deltas, 0)
@@ -148,500 +174,554 @@ class OANDASignalEngine:
         rsi = 100 - (100 / (1 + rs))
         return rsi
     
-    def calculate_macd(self, prices: List[float], fast: int = 12, slow: int = 26, signal_period: int = 9) -> Tuple[float, float, float]:
-        """Calculate MACD (Moving Average Convergence Divergence)"""
+    @staticmethod
+    def calculate_macd(prices: np.ndarray, fast: int = 12, slow: int = 26, signal: int = 9) -> Tuple[float, float, float]:
+        """Calculate MACD indicator"""
         if len(prices) < slow:
             return 0.0, 0.0, 0.0
         
-        prices_array = np.array(prices)
+        exp1 = pd.Series(prices).ewm(span=fast).mean()
+        exp2 = pd.Series(prices).ewm(span=slow).mean()
         
-        # Calculate EMAs
-        ema_fast = self._calculate_ema(prices_array, fast)
-        ema_slow = self._calculate_ema(prices_array, slow)
+        macd_line = exp1.iloc[-1] - exp2.iloc[-1]
         
-        # MACD line
-        macd_line = ema_fast - ema_slow
+        # Calculate signal line
+        macd_series = exp1 - exp2
+        signal_line = macd_series.ewm(span=signal).mean().iloc[-1]
         
-        # Signal line (EMA of MACD line)
-        macd_values = []
-        for i in range(slow - 1, len(prices)):
-            macd_values.append(ema_fast - ema_slow)
-        
-        if len(macd_values) >= signal_period:
-            signal_line = self._calculate_ema(np.array(macd_values), signal_period)
-            histogram = macd_line - signal_line
-        else:
-            signal_line = macd_line
-            histogram = 0.0
+        histogram = macd_line - signal_line
         
         return macd_line, signal_line, histogram
     
-    def calculate_bollinger_bands(self, prices: List[float], period: int = 20, std_dev: int = 2) -> Tuple[float, float, float]:
+    @staticmethod
+    def calculate_bollinger_bands(prices: np.ndarray, period: int = 20, std_dev: int = 2) -> Tuple[float, float, float]:
         """Calculate Bollinger Bands"""
         if len(prices) < period:
             current_price = prices[-1]
             return current_price * 1.01, current_price, current_price * 0.99
         
-        prices_array = np.array(prices[-period:])
-        middle = np.mean(prices_array)
-        std = np.std(prices_array)
+        sma = np.mean(prices[-period:])
+        std = np.std(prices[-period:])
         
-        upper = middle + (std * std_dev)
-        lower = middle - (std * std_dev)
+        upper = sma + (std * std_dev)
+        lower = sma - (std * std_dev)
         
-        return upper, middle, lower
+        return upper, sma, lower
     
-    def calculate_atr(self, candles: List[CandleData], period: int = 14) -> float:
-        """Calculate Average True Range"""
-        if len(candles) < period:
-            return 0.01  # Default ATR
-        
-        true_ranges = []
-        for i in range(1, len(candles)):
-            current = candles[i]
-            previous = candles[i-1]
-            
-            tr1 = current.high - current.low
-            tr2 = abs(current.high - previous.close)
-            tr3 = abs(current.low - previous.close)
-            
-            true_ranges.append(max(tr1, tr2, tr3))
-        
-        return np.mean(true_ranges[-period:])
-    
-    def _calculate_ema(self, prices: np.ndarray, period: int) -> float:
+    @staticmethod
+    def calculate_ema(prices: np.ndarray, period: int) -> float:
         """Calculate Exponential Moving Average"""
-        if len(prices) == 0:
-            return 0.0
-        
-        alpha = 2 / (period + 1)
-        ema = prices[0]
-        
-        for price in prices[1:]:
-            ema = alpha * price + (1 - alpha) * ema
-        
-        return ema
-    
-    def _calculate_sma(self, prices: List[float], period: int) -> float:
-        """Calculate Simple Moving Average"""
         if len(prices) < period:
             return np.mean(prices)
-        return np.mean(prices[-period:])
+        
+        return pd.Series(prices).ewm(span=period).mean().iloc[-1]
     
-    async def get_technical_indicators(self, instrument: str, timeframe: str = "H1") -> TechnicalIndicators:
-        """Calculate comprehensive technical indicators"""
-        try:
-            # Get historical data
-            candles = await self.oanda_client.get_candles(
-                instrument=instrument,
-                granularity=timeframe,
-                count=200  # Enough for all indicators
-            )
-            
-            if len(candles) < 50:
-                logger.warning(f"Insufficient data for {instrument}: {len(candles)} candles")
-                # Return neutral indicators
-                return self._get_neutral_indicators()
-            
-            # Extract prices and volumes
-            closes = [c.close for c in candles]
-            highs = [c.high for c in candles]
-            lows = [c.low for c in candles]
-            volumes = [c.volume for c in candles]
-            
-            # Calculate indicators
-            rsi = self.calculate_rsi(closes, self.rsi_period)
-            macd_line, macd_signal, macd_hist = self.calculate_macd(closes)
-            bb_upper, bb_middle, bb_lower = self.calculate_bollinger_bands(closes)
-            atr = self.calculate_atr(candles, self.atr_period)
-            
-            # Moving averages
-            ema_9 = self._calculate_ema(np.array(closes), 9)
-            ema_21 = self._calculate_ema(np.array(closes), 21)
-            ema_50 = self._calculate_ema(np.array(closes), 50)
-            sma_200 = self._calculate_sma(closes, 200)
-            
-            # Volume and volatility
-            volume_avg = np.mean(volumes[-20:]) if volumes else 1000
-            volatility = atr / closes[-1] if closes[-1] > 0 else 0.01
-            
-            return TechnicalIndicators(
-                rsi=rsi,
-                macd_signal=macd_signal,
-                macd_histogram=macd_hist,
-                bb_upper=bb_upper,
-                bb_lower=bb_lower,
-                bb_middle=bb_middle,
-                atr=atr,
-                ema_9=ema_9,
-                ema_21=ema_21,
-                ema_50=ema_50,
-                sma_200=sma_200,
-                volume_avg=volume_avg,
-                volatility=volatility
-            )
-            
-        except Exception as e:
-            logger.error(f"Error calculating technical indicators for {instrument}: {e}")
-            return self._get_neutral_indicators()
+    @staticmethod
+    def calculate_atr(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int = 14) -> float:
+        """Calculate Average True Range"""
+        if len(high) < 2:
+            return 0.01
+        
+        tr1 = high[1:] - low[1:]
+        tr2 = np.abs(high[1:] - close[:-1])
+        tr3 = np.abs(low[1:] - close[:-1])
+        
+        true_range = np.maximum(tr1, np.maximum(tr2, tr3))
+        
+        if len(true_range) < period:
+            return np.mean(true_range)
+        
+        return np.mean(true_range[-period:])
+
+class MarketSessionDetector:
+    """Detect current market session and characteristics"""
     
-    def _get_neutral_indicators(self) -> TechnicalIndicators:
-        """Return neutral technical indicators"""
-        return TechnicalIndicators(
-            rsi=50.0,
-            macd_signal=0.0,
-            macd_histogram=0.0,
-            bb_upper=1.01,
-            bb_lower=0.99,
-            bb_middle=1.00,
-            atr=0.01,
-            ema_9=1.00,
-            ema_21=1.00,
-            ema_50=1.00,
-            sma_200=1.00,
-            volume_avg=1000.0,
-            volatility=0.01
+    @staticmethod
+    def get_current_session(utc_time: datetime) -> Tuple[str, bool]:
+        """
+        Get current market session and overlap status
+        
+        Returns:
+            (session_name, is_overlap)
+        """
+        hour = utc_time.hour
+        
+        # Session times in UTC
+        sessions = {
+            "Sydney": (21, 6),    # 21:00 - 06:00 UTC
+            "Tokyo": (23, 8),     # 23:00 - 08:00 UTC  
+            "London": (7, 16),    # 07:00 - 16:00 UTC
+            "New York": (12, 21)  # 12:00 - 21:00 UTC
+        }
+        
+        active_sessions = []
+        for session, (start, end) in sessions.items():
+            if start > end:  # Crosses midnight
+                if hour >= start or hour < end:
+                    active_sessions.append(session)
+            else:
+                if start <= hour < end:
+                    active_sessions.append(session)
+        
+        if len(active_sessions) > 1:
+            # Session overlap
+            primary_session = active_sessions[0]
+            return primary_session, True
+        elif len(active_sessions) == 1:
+            return active_sessions[0], False
+        else:
+            return "Off-hours", False
+
+class OANDASignalEngine:
+    """
+    Professional signal generation engine using OANDA v20 API
+    Completely rewritten following official documentation
+    """
+    
+    def __init__(self, api_key: str, account_id: str, environment: str = "practice", gemini_api_key: Optional[str] = None):
+        """
+        Initialize signal engine
+        
+        Args:
+            api_key: OANDA API key
+            account_id: OANDA account ID
+            environment: "practice" or "live"
+            gemini_api_key: Google Gemini API key for AI analysis
+        """
+        self.api_key = api_key
+        self.account_id = account_id
+        self.environment = environment
+        self.gemini_api_key = gemini_api_key
+        
+        # Initialize OANDA client
+        self.oanda_client: Optional[OANDAClient] = None
+        
+        # AI configuration
+        if self.gemini_api_key:
+            genai.configure(api_key=self.gemini_api_key)
+            self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+            logger.info("✅ Gemini AI configured for market analysis")
+        else:
+            self.gemini_model = None
+            logger.warning("⚠️ No Gemini API key provided - AI analysis disabled")
+        
+        # Risk management settings
+        self.confidence_threshold = 0.60  # 60% minimum confidence for BUY/SELL
+        self.max_risk_per_trade = 0.02    # 2% maximum risk per trade
+        self.default_rrr = 2.5            # 1:2.5 risk/reward ratio
+        
+        logger.info(f"OANDA Signal Engine initialized for {environment} environment")
+    
+    async def __aenter__(self):
+        """Async context manager entry"""
+        self.oanda_client = create_oanda_client(self.api_key, self.account_id, self.environment)
+        await self.oanda_client.__aenter__()
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit"""
+        if self.oanda_client:
+            await self.oanda_client.__aexit__(exc_type, exc_val, exc_tb)
+    
+    async def health_check(self) -> bool:
+        """Check if engine is ready"""
+        if not self.oanda_client:
+            return False
+        return await self.oanda_client.health_check()
+    
+    async def _get_market_data(self, instrument: str, granularity: Granularity = Granularity.H1, count: int = 200) -> Tuple[List[OANDACandle], OANDAPrice]:
+        """Get market data for analysis"""
+        if not self.oanda_client:
+            raise OANDAAPIError("OANDA client not initialized")
+        
+        # Get historical candles
+        candles = await self.oanda_client.get_candles(
+            instrument=instrument,
+            granularity=granularity,
+            count=count,
+            price_component=PriceComponent.MID
+        )
+        
+        # Get current price
+        current_prices = await self.oanda_client.get_current_prices([instrument])
+        if not current_prices:
+            raise OANDAAPIError(f"No current price available for {instrument}")
+        
+        return candles, current_prices[0]
+    
+    def _calculate_technical_analysis(self, candles: List[OANDACandle]) -> TechnicalAnalysis:
+        """Calculate comprehensive technical analysis"""
+        if len(candles) < 50:
+            raise ValueError("Insufficient data for technical analysis")
+        
+        # Convert to numpy arrays
+        closes = np.array([c.close for c in candles])
+        highs = np.array([c.high for c in candles])
+        lows = np.array([c.low for c in candles])
+        volumes = np.array([c.volume for c in candles])
+        
+        # Calculate indicators
+        rsi = TechnicalAnalyzer.calculate_rsi(closes)
+        macd_line, macd_signal, macd_histogram = TechnicalAnalyzer.calculate_macd(closes)
+        bb_upper, bb_middle, bb_lower = TechnicalAnalyzer.calculate_bollinger_bands(closes)
+        
+        ema_9 = TechnicalAnalyzer.calculate_ema(closes, 9)
+        ema_21 = TechnicalAnalyzer.calculate_ema(closes, 21)
+        ema_50 = TechnicalAnalyzer.calculate_ema(closes, 50)
+        sma_200 = np.mean(closes[-200:]) if len(closes) >= 200 else np.mean(closes)
+        
+        atr = TechnicalAnalyzer.calculate_atr(highs, lows, closes)
+        
+        current_price = closes[-1]
+        
+        # Determine signals
+        rsi_signal = "overbought" if rsi > 70 else "oversold" if rsi < 30 else "neutral"
+        macd_trend = "bullish" if macd_line > macd_signal else "bearish"
+        bb_position = "above" if current_price > bb_upper else "below" if current_price < bb_lower else "middle"
+        bb_squeeze = (bb_upper - bb_lower) < np.std(closes[-20:]) * 1.5
+        
+        # MA trend
+        if ema_9 > ema_21 > ema_50:
+            ma_trend = "bullish"
+        elif ema_9 < ema_21 < ema_50:
+            ma_trend = "bearish"
+        else:
+            ma_trend = "neutral"
+        
+        # Volatility level
+        atr_percentile = np.percentile(closes[-50:] * 0.02, 70)  # Rough volatility measure
+        if atr > atr_percentile * 1.5:
+            volatility_level = "high"
+        elif atr < atr_percentile * 0.5:
+            volatility_level = "low"
+        else:
+            volatility_level = "medium"
+        
+        # Calculate overall technical score
+        score_components = []
+        
+        # RSI score
+        if 30 <= rsi <= 70:
+            score_components.append(0.7)
+        elif rsi < 30:
+            score_components.append(0.9)  # Oversold = potential buy
+        else:
+            score_components.append(0.9)  # Overbought = potential sell
+        
+        # MACD score
+        if abs(macd_histogram) > abs(macd_line) * 0.1:
+            score_components.append(0.8)
+        else:
+            score_components.append(0.5)
+        
+        # MA trend score
+        score_components.append(0.8 if ma_trend != "neutral" else 0.4)
+        
+        # Bollinger Bands score
+        if bb_position != "middle":
+            score_components.append(0.7)
+        else:
+            score_components.append(0.5)
+        
+        technical_score = np.mean(score_components)
+        
+        return TechnicalAnalysis(
+            rsi=rsi,
+            rsi_signal=rsi_signal,
+            macd_line=macd_line,
+            macd_signal=macd_signal,
+            macd_histogram=macd_histogram,
+            macd_trend=macd_trend,
+            bb_upper=bb_upper,
+            bb_lower=bb_lower,
+            bb_middle=bb_middle,
+            bb_position=bb_position,
+            bb_squeeze=bb_squeeze,
+            ema_9=ema_9,
+            ema_21=ema_21,
+            ema_50=ema_50,
+            sma_200=sma_200,
+            ma_trend=ma_trend,
+            atr=atr,
+            volatility_level=volatility_level,
+            volume_avg=np.mean(volumes[-20:]),
+            momentum=closes[-1] / closes[-5] - 1 if len(closes) >= 5 else 0,
+            technical_score=technical_score
         )
     
-    def analyze_technical_signals(self, indicators: TechnicalIndicators, current_price: float) -> Tuple[SignalType, float, str]:
-        """Analyze technical indicators and generate signal"""
-        signals = []
-        score = 0.0
-        reasoning = []
+    def _analyze_market_context(self, current_price: OANDAPrice, technical: TechnicalAnalysis) -> MarketContext:
+        """Analyze market context and session"""
+        session, overlap = MarketSessionDetector.get_current_session(datetime.utcnow())
         
-        # RSI Analysis
-        if indicators.rsi < 30:
-            signals.append("BUY")
-            score += 0.8
-            reasoning.append(f"RSI oversold ({indicators.rsi:.1f})")
-        elif indicators.rsi > 70:
-            signals.append("SELL")
-            score += 0.8
-            reasoning.append(f"RSI overbought ({indicators.rsi:.1f})")
-        elif 40 <= indicators.rsi <= 60:
-            score += 0.2
-            reasoning.append("RSI neutral")
-        
-        # MACD Analysis
-        if indicators.macd_histogram > 0:
-            signals.append("BUY")
-            score += 0.6
-            reasoning.append("MACD bullish crossover")
-        elif indicators.macd_histogram < 0:
-            signals.append("SELL")
-            score += 0.6
-            reasoning.append("MACD bearish crossover")
-        
-        # Bollinger Bands Analysis
-        bb_position = (current_price - indicators.bb_lower) / (indicators.bb_upper - indicators.bb_lower)
-        if bb_position < 0.2:
-            signals.append("BUY")
-            score += 0.5
-            reasoning.append("Price near lower Bollinger Band")
-        elif bb_position > 0.8:
-            signals.append("SELL")
-            score += 0.5
-            reasoning.append("Price near upper Bollinger Band")
-        
-        # EMA Trend Analysis
-        if current_price > indicators.ema_9 > indicators.ema_21 > indicators.ema_50:
-            signals.append("BUY")
-            score += 0.7
-            reasoning.append("Strong uptrend (EMAs aligned)")
-        elif current_price < indicators.ema_9 < indicators.ema_21 < indicators.ema_50:
-            signals.append("SELL")
-            score += 0.7
-            reasoning.append("Strong downtrend (EMAs aligned)")
-        
-        # Determine final signal
-        buy_signals = signals.count("BUY")
-        sell_signals = signals.count("SELL")
-        
-        # Calculate initial signal preference
-        if buy_signals > sell_signals:
-            preferred_signal = SignalType.BUY
-        elif sell_signals > buy_signals:
-            preferred_signal = SignalType.SELL
+        # Spread quality
+        spread_pct = (current_price.spread / current_price.mid) * 100
+        if spread_pct < 0.02:
+            spread_quality = "tight"
+        elif spread_pct < 0.05:
+            spread_quality = "normal"
         else:
-            preferred_signal = SignalType.HOLD
+            spread_quality = "wide"
         
-        # Normalize score (probability)
-        max_possible_score = 2.6  # Sum of all possible scores
-        normalized_score = min(score / max_possible_score, 1.0)
+        # Expected volatility based on session
+        volatility_map = {
+            "London": "high",
+            "New York": "high", 
+            "Tokyo": "medium",
+            "Sydney": "low",
+            "Off-hours": "low"
+        }
+        volatility_expected = volatility_map.get(session, "low")
+        if overlap:
+            volatility_expected = "high"
         
-        # IMPORTANT: If probability is less than 60%, force HOLD signal
-        if normalized_score < 0.60:
-            final_signal = SignalType.HOLD
-            reasoning.append("Probabilità insufficiente per operare (<60%)")
-        else:
-            final_signal = preferred_signal
+        # Trend strength (simplified)
+        trend_strength = min(technical.technical_score * 1.2, 1.0)
         
-        return final_signal, normalized_score, " | ".join(reasoning)
+        return MarketContext(
+            current_price=current_price.mid,
+            spread=current_price.spread,
+            spread_quality=spread_quality,
+            market_session=session,
+            session_overlap=overlap,
+            volatility_expected=volatility_expected,
+            trend_strength=trend_strength,
+            support_level=technical.bb_lower,
+            resistance_level=technical.bb_upper
+        )
     
-    def calculate_risk_levels(self, indicators: TechnicalIndicators, signal_type: SignalType, current_price: float) -> Tuple[float, float, RiskLevel]:
-        """Calculate stop loss, take profit, and risk level"""
-        atr = indicators.atr
+    def _calculate_risk_management(self, current_price: float, technical: TechnicalAnalysis, signal_type: SignalType) -> RiskManagement:
+        """Calculate risk management levels"""
+        atr = technical.atr
         
-        # Risk level based on volatility and market conditions
-        volatility_threshold_low = 0.005  # 0.5%
-        volatility_threshold_high = 0.02   # 2%
-        
-        if indicators.volatility < volatility_threshold_low:
-            risk_level = RiskLevel.LOW
-            atr_multiplier = 1.5
-        elif indicators.volatility > volatility_threshold_high:
-            risk_level = RiskLevel.HIGH
-            atr_multiplier = 3.0
-        else:
-            risk_level = RiskLevel.MEDIUM
-            atr_multiplier = 2.0
-        
-        # Calculate stop loss and take profit
         if signal_type == SignalType.BUY:
-            stop_loss = current_price - (atr * atr_multiplier)
-            take_profit = current_price + (atr * atr_multiplier * self.default_risk_reward)
+            stop_loss = current_price - (atr * 1.5)
+            take_profit = current_price + (atr * self.default_rrr * 1.5)
         elif signal_type == SignalType.SELL:
-            stop_loss = current_price + (atr * atr_multiplier)
-            take_profit = current_price - (atr * atr_multiplier * self.default_risk_reward)
-        else:
+            stop_loss = current_price + (atr * 1.5)
+            take_profit = current_price - (atr * self.default_rrr * 1.5)
+        else:  # HOLD
             stop_loss = current_price
             take_profit = current_price
         
-        return stop_loss, take_profit, risk_level
+        stop_distance = abs(current_price - stop_loss)
+        profit_distance = abs(take_profit - current_price)
+        
+        risk_reward = profit_distance / stop_distance if stop_distance > 0 else 0
+        
+        # Position size calculation (2% risk)
+        position_size_pct = self.max_risk_per_trade
+        max_loss = stop_distance * position_size_pct
+        
+        # Probability based on technical score
+        probability = min(technical.technical_score * 1.2, 0.95)
+        
+        return RiskManagement(
+            suggested_stop_loss=stop_loss,
+            suggested_take_profit=take_profit,
+            risk_reward_ratio=risk_reward,
+            position_size_pct=position_size_pct,
+            max_loss_amount=max_loss,
+            probability_success=probability
+        )
     
-    def calculate_position_size(self, account_balance: float, entry_price: float, stop_loss: float, risk_level: RiskLevel) -> float:
-        """Calculate appropriate position size based on risk management"""
-        risk_amount = account_balance * self.max_risk_per_trade
-        
-        # Adjust risk based on risk level
-        if risk_level == RiskLevel.LOW:
-            risk_amount *= 1.5  # Allow slightly larger positions for low-risk trades
-        elif risk_level == RiskLevel.HIGH:
-            risk_amount *= 0.5  # Reduce position size for high-risk trades
-        
-        price_diff = abs(entry_price - stop_loss)
-        if price_diff > 0:
-            position_size = risk_amount / price_diff
-        else:
-            position_size = 0.01  # Minimum position size
-        
-        # Ensure minimum and maximum limits
-        position_size = max(0.01, min(position_size, 10.0))
-        return round(position_size, 2)
-    
-    async def get_ai_analysis(self, instrument: str, signal_type: SignalType, indicators: TechnicalIndicators, market_context: str, confidence_score: float = 0.0) -> str:
-        """Get AI-powered market analysis using Gemini"""
+    async def _generate_ai_analysis(self, instrument: str, technical: TechnicalAnalysis, market: MarketContext, signal_type: SignalType) -> Tuple[str, str]:
+        """Generate AI analysis using Gemini"""
         if not self.gemini_model:
-            if signal_type == SignalType.HOLD:
-                return f"Non conviene operare ora su {instrument} (Probabilità: {confidence_score:.1%}). Le condizioni di mercato suggeriscono di attendere."
-            return f"Segnale {signal_type.value} per {instrument} (Probabilità: {confidence_score:.1%}) basato su analisi tecnica."
+            return "AI analysis not available", "Technical analysis only"
         
         try:
-            if signal_type == SignalType.HOLD:
-                prompt = f"""
-                As a professional forex trading analyst, explain why {instrument} should be avoided for trading now.
-                
-                Technical Indicators:
-                - RSI: {indicators.rsi:.1f}
-                - MACD Histogram: {indicators.macd_histogram:.5f}
-                - Volatility: {indicators.volatility:.3%}
-                
-                Market Context: {market_context}
-                Confidence Score: {confidence_score:.1%}
-                
-                Provide 2-3 sentences in Italian explaining why it's better to wait and not trade this asset now.
-                Start with "Non conviene operare ora su {instrument} (Probabilità: {confidence_score:.1%})" and explain why this low probability makes it unsuitable for trading.
-                """
-            else:
-                prompt = f"""
-                As a professional forex trading analyst, provide a concise analysis of {instrument} based on these indicators:
-                
-                Technical Indicators:
-                - RSI: {indicators.rsi:.1f}
-                - MACD Histogram: {indicators.macd_histogram:.5f}
-                - Price vs Bollinger Bands: Middle={indicators.bb_middle:.5f}, Upper={indicators.bb_upper:.5f}, Lower={indicators.bb_lower:.5f}
-                - ATR (volatility): {indicators.atr:.5f}
-                - EMA 9: {indicators.ema_9:.5f}, EMA 21: {indicators.ema_21:.5f}
-                - Volatility: {indicators.volatility:.3%}
-                
-                Market Context: {market_context}
-                Suggested Signal: {signal_type.value}
-                Confidence Score: {confidence_score:.1%}
-                
-                Start your analysis with "{signal_type.value} {instrument} (Probabilità: {confidence_score:.1%})" and then provide 2-3 sentences explaining:
-                1. Why this signal makes sense with this probability level
-                2. Key risk factors to consider
-                3. Market conditions impact
-                
-                Keep it professional and actionable for traders.
-                """
+            prompt = f"""
+            Analizza questa situazione di trading per {instrument}:
             
-            response = await asyncio.to_thread(self.gemini_model.generate_content, prompt)
-            return response.text.strip()
+            DATI TECNICI:
+            - RSI: {technical.rsi:.1f} ({technical.rsi_signal})
+            - MACD: {technical.macd_trend} (linea: {technical.macd_line:.5f}, segnale: {technical.macd_signal:.5f})
+            - Bollinger: prezzo {technical.bb_position} le bande
+            - Trend MA: {technical.ma_trend}
+            - Volatilità: {technical.volatility_level}
+            - Score tecnico: {technical.technical_score:.1%}
+            
+            CONTESTO MERCATO:
+            - Sessione: {market.market_session} (overlap: {market.session_overlap})
+            - Spread: {market.spread_quality}
+            - Volatilità attesa: {market.volatility_expected}
+            
+            SEGNALE GENERATO: {signal_type.value}
+            
+            Fornisci un'analisi professionale in italiano di max 200 parole che spieghi:
+            1. Perché questo segnale è stato generato
+            2. I fattori di supporto tecnici principali
+            3. I rischi da considerare
+            4. Una raccomandazione finale
+            
+            Usa un tono professionale ma comprensibile.
+            """
+            
+            response = await asyncio.to_thread(
+                self.gemini_model.generate_content, prompt
+            )
+            
+            ai_analysis = response.text.strip()
+            
+            # Generate reasoning
+            if signal_type == SignalType.HOLD:
+                reasoning = f"Confidenza insufficiente ({technical.technical_score:.1%} < 60%). " + \
+                           f"Fattori: RSI {technical.rsi:.0f}, trend {technical.ma_trend}, volatilità {technical.volatility_level}."
+            else:
+                reasoning = f"Segnale {signal_type.value} con confidenza {technical.technical_score:.1%}. " + \
+                           f"Supportato da: {technical.rsi_signal} RSI, {technical.macd_trend} MACD, trend {technical.ma_trend}."
+            
+            return ai_analysis, reasoning
             
         except Exception as e:
-            logger.error(f"AI analysis error: {e}")
-            return f"Technical analysis indicates {signal_type.value} opportunity for {instrument}. Monitor price action and market conditions."
+            logger.warning(f"AI analysis failed: {e}")
+            fallback_analysis = f"Analisi tecnica per {instrument}: score {technical.technical_score:.1%}, " + \
+                              f"RSI {technical.rsi:.0f}, trend {technical.ma_trend}. " + \
+                              f"Sessione {market.market_session} con volatilità {market.volatility_expected}."
+            
+            reasoning = f"Segnale basato su analisi tecnica: {signal_type.value}"
+            return fallback_analysis, reasoning
     
     async def generate_signal(self, instrument: str, timeframe: str = "H1") -> Optional[TradingSignal]:
-        """Generate comprehensive trading signal"""
-        if not self._is_initialized:
-            await self.initialize()
+        """
+        Generate trading signal for instrument
         
+        Args:
+            instrument: Instrument name (e.g., "EUR_USD")
+            timeframe: Timeframe (H1, H4, D1)
+            
+        Returns:
+            TradingSignal or None if generation fails
+        """
         try:
-            # Get current market data
-            prices = await self.oanda_client.get_prices([instrument])
-            if not prices:
-                logger.error(f"No price data available for {instrument}")
-                raise OANDAAPIError(f"Unable to generate signal for {instrument} - no current market data available")
+            logger.info(f"Generating signal for {instrument} on {timeframe}")
             
-            current_market = prices[0]
-            current_price = (current_market.bid + current_market.ask) / 2
+            # Normalize instrument name
+            if self.oanda_client:
+                instrument = self.oanda_client.normalize_instrument(instrument)
             
-            # Get technical indicators
-            indicators = await self.get_technical_indicators(instrument, timeframe)
+            # Get market data
+            granularity = Granularity.H1  # Default to H1
+            if timeframe == "H4":
+                granularity = Granularity.H4
+            elif timeframe == "D1":
+                granularity = Granularity.D
             
-            # Analyze signals
-            signal_type, technical_score, reasoning = self.analyze_technical_signals(indicators, current_price)
+            candles, current_price = await self._get_market_data(instrument, granularity)
             
-            # Always generate a signal - never return None
-            logger.info(f"Generated {signal_type.value} signal for {instrument}")
+            if len(candles) < 50:
+                logger.warning(f"Insufficient data for {instrument} - only {len(candles)} candles")
+                return None
             
-            # Calculate risk levels
-            stop_loss, take_profit, risk_level = self.calculate_risk_levels(indicators, signal_type, current_price)
+            # Perform technical analysis
+            technical = self._calculate_technical_analysis(candles)
             
-            # Calculate position size (assuming $10,000 account)
-            position_size = self.calculate_position_size(10000, current_price, stop_loss, risk_level)
+            # Analyze market context
+            market = self._analyze_market_context(current_price, technical)
             
-            # Risk/reward ratio
-            risk = abs(current_price - stop_loss)
-            reward = abs(take_profit - current_price)
-            risk_reward_ratio = reward / risk if risk > 0 else 0
+            # Determine signal type based on confidence threshold
+            if technical.technical_score >= self.confidence_threshold:
+                # Determine direction based on technical factors
+                bullish_factors = 0
+                bearish_factors = 0
+                
+                # RSI
+                if technical.rsi < 30:
+                    bullish_factors += 1
+                elif technical.rsi > 70:
+                    bearish_factors += 1
+                
+                # MACD
+                if technical.macd_trend == "bullish":
+                    bullish_factors += 1
+                elif technical.macd_trend == "bearish":
+                    bearish_factors += 1
+                
+                # MA trend
+                if technical.ma_trend == "bullish":
+                    bullish_factors += 1
+                elif technical.ma_trend == "bearish":
+                    bearish_factors += 1
+                
+                # Bollinger position
+                if technical.bb_position == "below":
+                    bullish_factors += 1
+                elif technical.bb_position == "above":
+                    bearish_factors += 1
+                
+                if bullish_factors > bearish_factors:
+                    signal_type = SignalType.BUY
+                elif bearish_factors > bullish_factors:
+                    signal_type = SignalType.SELL
+                else:
+                    signal_type = SignalType.HOLD
+            else:
+                signal_type = SignalType.HOLD
             
-            # Market context
-            from oanda_api_integration import get_market_hours_info
-            market_info = await get_market_hours_info()
+            # Calculate risk management
+            risk_mgmt = self._calculate_risk_management(current_price.mid, technical, signal_type)
             
-            active_sessions = [name for name, info in market_info["sessions"].items() if info["active"]]
-            market_session = ", ".join(active_sessions) if active_sessions else "Off-hours"
+            # Generate AI analysis
+            ai_analysis, reasoning = await self._generate_ai_analysis(instrument, technical, market, signal_type)
             
-            market_context = f"Session: {market_session}, Volatility: {indicators.volatility:.3%}, Spread: {current_market.spread:.5f}"
-            
-            # Calculate confidence score
-            confidence_score = technical_score
-            
-            # Adjust confidence based on market conditions
-            if market_info["high_volatility"]:
-                confidence_score *= 1.1  # Boost during high volatility periods
-            
-            if current_market.spread > indicators.atr * 0.5:
-                confidence_score *= 0.8  # Reduce confidence for wide spreads
-            
-            confidence_score = min(confidence_score, 1.0)
-            
-            # Get AI analysis
-            ai_analysis = await self.get_ai_analysis(instrument, signal_type, indicators, market_context, confidence_score)
+            # Determine risk level
+            if technical.volatility_level == "high" or market.spread_quality == "wide":
+                risk_level = RiskLevel.HIGH
+            elif technical.volatility_level == "low" and market.spread_quality == "tight":
+                risk_level = RiskLevel.LOW
+            else:
+                risk_level = RiskLevel.MEDIUM
             
             # Create signal
             signal = TradingSignal(
                 instrument=instrument,
                 signal_type=signal_type,
-                entry_price=current_price,
-                stop_loss=stop_loss,
-                take_profit=take_profit,
-                confidence_score=confidence_score,
+                confidence_score=technical.technical_score,
+                entry_price=current_price.mid,
+                stop_loss=risk_mgmt.suggested_stop_loss,
+                take_profit=risk_mgmt.suggested_take_profit,
                 risk_level=risk_level,
-                risk_reward_ratio=risk_reward_ratio,
-                position_size=position_size,
-                technical_score=technical_score,
-                indicators=indicators,
-                market_session=market_session,
-                spread=current_market.spread,
-                volatility=indicators.volatility,
+                risk_reward_ratio=risk_mgmt.risk_reward_ratio,
+                position_size=risk_mgmt.position_size_pct,
+                technical_analysis=technical,
+                market_context=market,
+                risk_management=risk_mgmt,
                 ai_analysis=ai_analysis,
                 reasoning=reasoning,
                 timeframe=timeframe,
                 timestamp=datetime.utcnow(),
-                expires_at=datetime.utcnow() + timedelta(hours=4)  # Signals expire in 4 hours
+                expires_at=datetime.utcnow() + timedelta(hours=4)
             )
             
-            logger.info(f"✅ Generated {signal_type.value} signal for {instrument} (confidence: {confidence_score:.1%})")
+            confidence_pct = technical.technical_score * 100
+            logger.info(f"✅ Generated {signal_type.value} signal for {instrument} (confidence: {confidence_pct:.1f}%)")
+            
             return signal
             
         except Exception as e:
-            logger.error(f"Error generating signal for {instrument}: {e}")
-            raise OANDAAPIError(f"Unable to generate signal for {instrument} - {str(e)}")
-    
+            logger.error(f"Signal generation failed for {instrument}: {e}")
+            return None
     
     async def generate_signals_batch(self, instruments: List[str], timeframe: str = "H1") -> List[TradingSignal]:
         """Generate signals for multiple instruments"""
         signals = []
         
-        # Process instruments concurrently (with some rate limiting)
-        semaphore = asyncio.Semaphore(3)  # Limit concurrent requests
-        
-        async def generate_single_signal(instrument: str):
-            async with semaphore:
+        for instrument in instruments:
+            try:
                 signal = await self.generate_signal(instrument, timeframe)
-                if signal:  # Always return signals (BUY/SELL/HOLD)
+                if signal:
                     signals.append(signal)
+                    
+                # Small delay to respect rate limits
+                await asyncio.sleep(0.1)
+                
+            except Exception as e:
+                logger.error(f"Failed to generate signal for {instrument}: {e}")
+                continue
         
-        # Run all signal generation concurrently
-        tasks = [generate_single_signal(instrument) for instrument in instruments]
-        await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Sort by confidence score
-        signals.sort(key=lambda s: s.confidence_score, reverse=True)
-        
-        logger.info(f"Generated {len(signals)} high-confidence signals from {len(instruments)} instruments")
         return signals
 
-
-# Convenience functions
-async def get_major_pairs_signals(timeframe: str = "H1") -> List[TradingSignal]:
-    """Get signals for major currency pairs"""
-    major_pairs = [
-        "EUR_USD", "GBP_USD", "USD_JPY", "USD_CHF",
-        "AUD_USD", "USD_CAD", "NZD_USD", "EUR_GBP",
-        "GBP_JPY", "EUR_JPY", "AUD_JPY", "GBP_CHF"
-    ]
-    
-    async with OANDASignalEngine() as engine:
-        return await engine.generate_signals_batch(major_pairs, timeframe)
-
-
-if __name__ == "__main__":
-    # Test the signal engine
-    async def test_signal_engine():
-        try:
-            print("Testing OANDA Signal Engine...")
-            
-            async with OANDASignalEngine() as engine:
-                print("✅ Engine initialized")
-                
-                # Test single signal generation
-                signal = await engine.generate_signal("EUR_USD")
-                if signal:
-                    print(f"✅ Signal: {signal.signal_type.value} {signal.instrument}")
-                    print(f"   Entry: {signal.entry_price:.5f}")
-                    print(f"   SL: {signal.stop_loss:.5f}, TP: {signal.take_profit:.5f}")
-                    print(f"   Confidence: {signal.confidence_score:.1%}")
-                    print(f"   AI Analysis: {signal.ai_analysis[:100]}...")
-                else:
-                    print("No signal generated")
-                
-                # Test batch generation
-                print("\nTesting batch signal generation...")
-                signals = await get_major_pairs_signals()
-                print(f"✅ Generated {len(signals)} signals")
-                
-                for signal in signals[:3]:  # Show top 3
-                    print(f"   {signal.signal_type.value} {signal.instrument} - {signal.confidence_score:.1%}")
-        
-        except Exception as e:
-            print(f"❌ Test failed: {e}")
-            import traceback
-            traceback.print_exc()
-    
-    # Run test
-    asyncio.run(test_signal_engine())
+# Factory function
+async def create_signal_engine(api_key: str, account_id: str, environment: str = "practice", gemini_api_key: Optional[str] = None) -> OANDASignalEngine:
+    """Create and initialize signal engine"""
+    return OANDASignalEngine(api_key, account_id, environment, gemini_api_key)

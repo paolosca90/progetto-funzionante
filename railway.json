@@ -12,12 +12,6 @@
       "variables": {
         "SECRET_KEY": "$SECRET_KEY",
         "DATABASE_URL": "$DATABASE_URL",
-        "MT5_SECRET_KEY": "$MT5_SECRET_KEY",
-        "VPS_API_KEY": "$VPS_API_KEY",
-        "BRIDGE_API_KEY": "$BRIDGE_API_KEY",
-        "RESEND_API_KEY": "$RESEND_API_KEY",
-        "FXCM_ACCESS_TOKEN": "$FXCM_ACCESS_TOKEN",
-        "FXCM_REST_URL": "https://api.fxcm.com",
         "PORT": "$PORT",
         "OANDA_API_KEY": "$OANDA_API_KEY",
         "OANDA_ACCOUNT_ID": "$OANDA_ACCOUNT_ID",
