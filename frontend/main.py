@@ -381,9 +381,30 @@ async def final_database_reset(current_user: User = Depends(get_current_active_u
     try:
         logger.warning("🚨 FINAL DATABASE RESET - CLEARING EVERYTHING")
 
-        # Clear ALL existing tables
-        Base.metadata.drop_all(bind=engine)
-        logger.info("✅ All existing tables dropped")
+        # Clear ALL existing tables with CASCADE to handle dependencies
+        try:
+            # First, drop all tables with CASCADE
+            with engine.connect() as conn:
+                # Enable CASCADE for foreign key constraints
+                conn.execute(text("SET CONSTRAINTS ALL DEFERRED"))
+
+                # Drop all tables individually with CASCADE
+                for table_name in Base.metadata.tables.keys():
+                    try:
+                        conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
+                        logger.info(f"✅ Dropped table {table_name}")
+                    except Exception as table_error:
+                        logger.warning(f"Warning dropping {table_name}: {table_error}")
+
+                conn.commit()
+
+            logger.info("✅ All existing tables dropped with CASCADE")
+
+        except Exception as drop_error:
+            logger.error(f"Table drop failed, trying metadata drop: {drop_error}")
+            # Fallback: drop with metadata
+            Base.metadata.drop_all(bind=engine)
+            logger.info("✅ All existing tables dropped (fallback)")
 
         # Recreate ALL tables with perfect schema
         Base.metadata.create_all(bind=engine)
