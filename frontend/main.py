@@ -2304,6 +2304,27 @@ async def calculate_position_size(
             detail=f"Error calculating position size: {str(e)}"
         )
 
+# Legacy VPS endpoints for external services that may still be calling
+@app.post("/api/vps/heartbeat")
+async def vps_heartbeat_legacy():
+    """Legacy VPS heartbeat endpoint - returns deprecation notice"""
+    return {
+        "status": "deprecated",
+        "message": "VPS services have been replaced with OANDA cloud integration",
+        "timestamp": datetime.utcnow().isoformat(),
+        "recommendation": "Please update your integration to use OANDA endpoints"
+    }
+
+@app.get("/api/vps/status")
+async def vps_status_legacy():
+    """Legacy VPS status endpoint - returns deprecation notice"""
+    return {
+        "status": "deprecated",
+        "message": "VPS services have been replaced with OANDA cloud integration", 
+        "available": False,
+        "replacement": "Use /health endpoint for system status"
+    }
+
 
 if __name__ == "__main__":
     import uvicorn
