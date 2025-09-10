@@ -219,38 +219,94 @@ except Exception as e:
 @app.get("/login.html", response_class=HTMLResponse)
 async def serve_login_page():
     """Serve the login page"""
-    return FileResponse("login.html")
+    return serve_html_file("login.html", "Login - AI Cash-Revolution")
 
 @app.get("/register.html", response_class=HTMLResponse)
 async def serve_register_page():
     """Serve the registration page"""
-    return FileResponse("register.html")
+    return serve_html_file("register.html", "Register - AI Cash-Revolution")
 
 @app.get("/test-integration.html", response_class=HTMLResponse)
 async def serve_test_page():
     """Serve the integration test page"""
-    return FileResponse("test-integration.html")
+    return serve_html_file("test-integration.html", "Test Integration - AI Cash-Revolution")
 
 # Frontend HTML pages
 @app.get("/dashboard.html", response_class=HTMLResponse)
 async def serve_dashboard():
     """Serve the dashboard page"""
-    return FileResponse("dashboard.html")
+    return serve_html_file("dashboard.html", "Dashboard - AI Cash-Revolution")
 
 @app.get("/signals.html", response_class=HTMLResponse)
 async def serve_signals():
     """Serve the signals page"""
-    return FileResponse("signals.html")
+    return serve_html_file("signals.html", "Signals - AI Cash-Revolution")
 
 @app.get("/profile.html", response_class=HTMLResponse)
 async def serve_profile():
     """Serve the profile page"""
-    return FileResponse("profile.html")
+    return serve_html_file("profile.html", "Profile - AI Cash-Revolution")
 
 @app.get("/fxcm-dashboard.html", response_class=HTMLResponse)
 async def serve_fxcm_dashboard():
     """Serve the FXCM dashboard page with real-time trading data"""
     return FileResponse("templates/fxcm-dashboard.html")
+
+# Favicon endpoint to avoid 405 errors
+@app.get("/favicon.ico")
+def favicon():
+    """Serve favicon.ico file or return 404 if not found"""
+    try:
+        # Try to serve favicon from static directory
+        if os.path.exists("static/images/favicon.ico"):
+            return FileResponse("static/images/favicon.ico")
+        elif os.path.exists("frontend/static/images/favicon.ico"):
+            return FileResponse("frontend/static/images/favicon.ico")
+        elif os.path.exists("favicon.ico"):
+            return FileResponse("favicon.ico")
+        else:
+            # Return a minimal 1x1 pixel ICO file as bytes to avoid 404
+            from fastapi.responses import Response
+            # Simple 1x1 transparent favicon (ICO format header + 1x1 bitmap)
+            ico_content = b'\x00\x00\x01\x00\x01\x00\x01\x01\x00\x00\x01\x00\x18\x00\x30\x00\x00\x00\x16\x00\x00\x00\x28\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x01\x00\x18\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            return Response(content=ico_content, media_type="image/x-icon")
+    except Exception as e:
+        logger.error(f"Error serving favicon: {e}")
+        from fastapi.responses import Response
+        return Response(status_code=204)
+
+# Helper function for robust file serving
+def serve_html_file(filename: str, title: str = "Trading Signals API"):
+    """Serve HTML file with robust path detection"""
+    try:
+        # Prima prova nella directory corrente
+        if os.path.exists(filename):
+            return FileResponse(filename)
+
+        # Poi prova nell'altra possibile directory
+        elif os.path.exists(f"frontend/{filename}"):
+            return FileResponse(f"frontend/{filename}")
+
+        else:
+            # Fallback semplice se i file HTML non esistono
+            return HTMLResponse(f"""
+                <!DOCTYPE html>
+                <html>
+                <head><title>{title}</title></head>
+                <body>
+                    <h1>AI Cash-Revolution Trading Signals</h1>
+                    <h2>File: {filename}</h2>
+                    <p>API Status: <span style="color:green;">Running</span></p>
+                    <p>Documentation: <a href="/docs">/docs</a></p>
+                    <p>Health Check: <a href="/health">/health</a></p>
+                    <p>Login: <a href="/login.html">Login</a></p>
+                    <p>Dashboard: <a href="/dashboard.html">Dashboard</a></p>
+                </body>
+                </html>
+            """)
+    except Exception as e:
+        logger.error(f"Error serving HTML file {filename}: {e}")
+        return HTMLResponse(f"<h1>Error loading {filename}: {str(e)}</h1>", status_code=500)
 
 # API root endpoint
 @app.get("/api")
