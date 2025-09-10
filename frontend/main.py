@@ -474,6 +474,23 @@ async def reset_database_complete(current_user: User = Depends(get_current_activ
             detail=f"Database reset failed: {str(e)}. Check Railway logs."
         )
 
+@app.get("/admin/reset-database-confirm")
+def reset_database_confirmation(current_user: User = Depends(get_current_active_user)):
+    """GET endpoint to confirm database reset (safe - no action, just information)"""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    return {
+        "message": "Database Reset Confirmation",
+        "warning": "This will DELETE ALL DATA permanently",
+        "endpoint": "POST /admin/reset-database",
+        "admin": current_user.is_admin,
+        "confirmed": False
+    }
+
 @app.get("/debug/database-schema")
 async def check_database_schema(db: Session = Depends(get_db)):
     """Debug endpoint to check current database schema"""
