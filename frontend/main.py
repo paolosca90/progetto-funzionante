@@ -370,6 +370,55 @@ def test_deployment_status():
         "timestamp": datetime.utcnow().isoformat()
     }
 
+# ========== FINAL DATABASE RESET ENDPOINT ==========
+
+@app.post("/final-database-reset")
+async def final_database_reset(current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    """FINAL RESET: Clear and recreate ALL tables with perfect schema"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        logger.warning("🚨 FINAL DATABASE RESET - CLEARING EVERYTHING")
+
+        # Clear ALL existing tables
+        Base.metadata.drop_all(bind=engine)
+        logger.info("✅ All existing tables dropped")
+
+        # Recreate ALL tables with perfect schema
+        Base.metadata.create_all(bind=engine)
+        logger.info("✅ All tables recreated with correct schema")
+
+        # Create fresh admin
+        hashed_password = hash_password("Admin2025!")
+        fresh_admin = User(
+            username="admin_final",
+            email="admin@final-test.com",
+            hashed_password=hashed_password,
+            full_name="Final Test Admin",
+            is_admin=True
+        )
+
+        db.add(fresh_admin)
+        db.commit()
+        db.refresh(fresh_admin)
+
+        return {
+            "status": "FINAL RESET COMPLETE",
+            "message": "Database perfectly recreated",
+            "new_admin": {
+                "username": "admin_final",
+                "password": "Admin2025!",
+                "email": "admin@final-test.com"
+            },
+            "ready_for": ["user_registration", "signal_creation", "full_app_functionality"]
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Final reset failed: {e}")
+        return {"status": "ERROR", "message": f"Reset failed: {str(e)}"}
+
 # ========== EMERGENCY ENDPOINT REMOVED FOR SECURITY ==========
 # Emergency endpoint was used to reset database and is now removed
 
