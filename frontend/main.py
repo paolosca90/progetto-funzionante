@@ -1862,7 +1862,7 @@ async def generate_oanda_signal(
         # Validate symbol
         valid_symbols = [
             'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD',
-            'EURGBP', 'EURJPY', 'GBPJPY', 'XAUUSD', 'XAGUSD', 'EUR_USD', 'GBP_USD', 
+            'EURGBP', 'EURJPY', 'GBPJPY', 'XAUUSD', '', 'EUR_USD', 'GBP_USD', 
             'USD_JPY', 'AUD_USD', 'USD_CAD', 'USD_CHF', 'NZD_USD', 'EUR_GBP', 
             'EUR_JPY', 'GBP_JPY', 'XAU_USD', 'XAG_USD'
         ]
@@ -2187,6 +2187,7 @@ async def get_oanda_market_data(symbol: str):
         # Create OANDA client for market data
         client = create_oanda_client(
             api_key=OANDA_API_KEY,
+            account_id=OANDA_ACCOUNT_ID,
             environment=OANDA_ENVIRONMENT
         )
         

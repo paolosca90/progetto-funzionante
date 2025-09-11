@@ -439,7 +439,6 @@ class OANDAClient:
             "GOLD": "XAU_USD",       # Gold
             "XAUUSD": "XAU_USD",     # Gold alternative
             "SILVER": "XAG_USD",     # Silver  
-            "XAGUSD": "XAG_USD",     # Silver alternative
             "PLATINUM": "XPT_USD",   # Platinum
             "XPTUSD": "XPT_USD",     # Platinum alternative
             "PALLADIUM": "XPD_USD",  # Palladium
