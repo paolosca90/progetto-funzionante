@@ -59,8 +59,7 @@
             <div class="asset-selection">
                 <div class="asset-categories">
                     <button class="category-btn active" data-category="forex">Forex</button>
-                    <button class="category-btn" data-category="metals">Metals</button>
-                    <button class="category-btn" data-category="indices">Indices</button>
+                    <!-- Metals and Indices categories removed (not available in OANDA demo) -->
                 </div>
                 
                 <div class="asset-grid" id="assetGrid">
@@ -231,22 +230,8 @@
                 { symbol: 'EURJPY', name: 'EUR/JPY', flag: '🇪🇺🇯🇵' },
                 { symbol: 'GBPJPY', name: 'GBP/JPY', flag: '🇬🇧🇯🇵' }
             ],
-            metals: [
-                { symbol: 'XAUUSD', name: 'Gold', flag: '🥇' },
-                { symbol: 'XAGUSD', name: 'Silver', flag: '🥈' }
-            ],
-            indices: [
-                { symbol: 'US30', name: 'Dow Jones', flag: '📊' },
-                { symbol: 'NAS100', name: 'NASDAQ', flag: '💻' },
-                { symbol: 'US500', name: 'S&P 500', flag: '📈' },
-                { symbol: 'UK100', name: 'FTSE 100', flag: '🇬🇧' },
-                { symbol: 'GER30', name: 'DAX', flag: '🇩🇪' },
-                { symbol: 'FR40', name: 'CAC 40', flag: '🇫🇷' },
-                { symbol: 'JPN225', name: 'Nikkei', flag: '🇯🇵' },
-                { symbol: 'HK33', name: 'Hang Seng', flag: '🇭🇰' },
-                { symbol: 'AUS200', name: 'ASX 200', flag: '🇦🇺' },
-                { symbol: 'CHINA50', name: 'China 50', flag: '🇨🇳' }
-            ]
+            // Note: Metals removed (not available in OANDA demo account)
+            // Note: Indices removed (not available in OANDA demo account)
         };
 
         let currentSignal = null;
@@ -604,46 +589,13 @@
                 'AUD_JPY': 'AUDJPY',
                 'USD_CHF': 'USDCHF',
                 
-                // Metals (use CFD versions for correct pricing)
-                'XAU_USD': 'GOLD',
-                'XAG_USD': 'SILVER',
-                
-                // Indices CFDs (use TradingView CFD symbols)
-                'US30_USD': 'US30',
-                'US30': 'US30',
-                'NAS100_USD': 'NAS100', 
-                'NAS100': 'NAS100',
-                'SPX500_USD': 'SPX500',
-                'US500': 'SPX500',
-                'UK100_GBP': 'UKX',
-                'UK100': 'UKX', 
-                'DE30_EUR': 'DAX',
-                'GER30': 'DAX',
-                'FR40_EUR': 'CAC',
-                'FR40': 'CAC',
-                'JP225_USD': 'NKY',
-                'JPN225': 'NKY',
-                'HK33_HKD': 'HSI',
-                'HK33': 'HSI',
-                'AU200_AUD': 'XJO',
-                'AUS200': 'XJO',
-                'CN50_USD': 'CHINA50',
-                'CHINA50': 'CHINA50'
+                // Note: Metal and index symbol mappings removed (not available in OANDA demo)
             };
             
             tvSymbol = symbolMap[oandaSymbol] || oandaSymbol.replace('_', '');
             
-            // Set correct exchange for different instrument types
-            const indexSymbols = ['US30', 'NAS100', 'US500', 'SPX500', 'UK100', 'GER30', 'DE30', 'FR40', 'JPN225', 'JP225', 'HK33', 'AUS200', 'AU200', 'CHINA50', 'CN50'];
-            const metalSymbols = ['XAU', 'XAG', 'GOLD', 'SILVER'];
-            
-            if (indexSymbols.some(idx => oandaSymbol.includes(idx))) {
-                exchange = 'OANDA';  // Use OANDA exchange for CFDs
-            } else if (metalSymbols.some(metal => oandaSymbol.includes(metal))) {
-                exchange = 'OANDA';  // Use OANDA exchange for metals CFDs
-            } else {
-                exchange = 'FX';     // Standard forex
-            }
+            // Set exchange type - all instruments are forex in demo account
+            exchange = 'FX';  // All available instruments are forex pairs
             
             console.log(`Mapping ${oandaSymbol} -> ${exchange}:${tvSymbol}`);
             

@@ -1172,11 +1172,7 @@ async def generate_signals_manually(
             # Cross pairs and exotics
             "EUR_AUD", "EUR_CHF", "GBP_JPY", "AUD_JPY", "EUR_JPY", "GBP_AUD", 
             "USD_CHF", "CHF_JPY", "AUD_CAD", "CAD_JPY", "EUR_CAD", "GBP_CAD",
-            # Precious metals
-            "XAU_USD", "XAG_USD",
-            # Major indices CFDs
-            "US30_USD", "NAS100_USD", "SPX500_USD", "UK100_GBP", "DE30_EUR", 
-            "FR40_EUR", "JP225_USD", "HK33_HKD"
+            # Note: Precious metals and indices removed (not available in OANDA demo account)
         ]
         signals = await oanda_signal_engine.generate_signals_batch(instruments)
         
@@ -1196,12 +1192,7 @@ async def generate_signals_manually(
                 'GBP_AUD': 'GBPAUD',
                 
                 # Metals - keep as is
-                'XAU_USD': 'XAUUSD', 'XAG_USD': 'XAGUSD',
-                
-                # Indices - map to frontend symbols
-                'US30_USD': 'US30', 'NAS100_USD': 'NAS100', 'SPX500_USD': 'US500',
-                'UK100_GBP': 'UK100', 'DE30_EUR': 'GER30', 'FR40_EUR': 'FR40',
-                'JP225_USD': 'JPN225', 'HK33_HKD': 'HK33'
+                # Note: Metals and indices mappings removed (not available in OANDA demo)
             }
             
             frontend_symbol = symbol_mapping.get(signal.instrument, signal.instrument.replace("_", ""))
@@ -1265,7 +1256,7 @@ async def generate_signals_if_needed(db: Session = Depends(get_db)):
                 await initialize_oanda_engine()
             
             if oanda_signal_engine:
-                priority_instruments = ["EUR_USD", "US30_USD", "NAS100_USD", "XAU_USD", "XAG_USD", "SPX500_USD"]
+                priority_instruments = ["EUR_USD", "GBP_USD", "USD_JPY", "AUD_USD", "USD_CAD", "NZD_USD"]
                 signals = await oanda_signal_engine.generate_signals_batch(priority_instruments)
                 
                 # Add top 3 signals to database
@@ -1274,9 +1265,7 @@ async def generate_signals_if_needed(db: Session = Depends(get_db)):
                     symbol_mapping = {
                         'EUR_USD': 'EURUSD', 'GBP_USD': 'GBPUSD', 'USD_JPY': 'USDJPY',
                         'AUD_USD': 'AUDUSD', 'USD_CAD': 'USDCAD', 'NZD_USD': 'NZDUSD',
-                        'XAU_USD': 'XAUUSD', 'XAG_USD': 'XAGUSD',
-                        'US30_USD': 'US30', 'NAS100_USD': 'NAS100', 'SPX500_USD': 'US500',
-                        'UK100_GBP': 'UK100', 'DE30_EUR': 'GER30', 'JP225_USD': 'JPN225'
+                        # Note: Metals and indices mappings removed (not available in OANDA demo)
                     }
                     frontend_symbol = symbol_mapping.get(signal.instrument, signal.instrument.replace("_", ""))
                     
