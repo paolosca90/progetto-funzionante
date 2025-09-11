@@ -798,8 +798,25 @@ async def generate_custom_signal(
                     news_api_key=GEMINI_API_KEY  # Use Gemini key for news analysis
                 )
                 
+                # Convert frontend symbol to OANDA format
+                frontend_to_oanda_mapping = {
+                    # Forex (frontend already matches OANDA without underscore)
+                    'EURUSD': 'EUR_USD', 'GBPUSD': 'GBP_USD', 'USDJPY': 'USD_JPY',
+                    'AUDUSD': 'AUD_USD', 'USDCAD': 'USD_CAD', 'NZDUSD': 'NZD_USD',
+                    'EURGBP': 'EUR_GBP', 'EURJPY': 'EUR_JPY', 'GBPJPY': 'GBP_JPY',
+                    'USDCHF': 'USD_CHF', 'EURAUD': 'EUR_AUD', 'EURCHF': 'EUR_CHF',
+                    'GBPAUD': 'GBP_AUD', 'CHFJPY': 'CHF_JPY', 'AUDJPY': 'AUD_JPY',
+                    'AUDCAD': 'AUD_CAD', 'CADJPY': 'CAD_JPY', 'EURCAD': 'EUR_CAD', 
+                    'GBPCAD': 'GBP_CAD',
+                    # Metals
+                    'GOLD': 'XAU_USD', 'SILVER': 'XAG_USD',
+                    # Indices  
+                    'US30': 'US30_USD', 'NAS100': 'NAS100_USD', 'SPX500': 'SPX500_USD', 'DE30': 'DE30_EUR'
+                }
+                oanda_symbol = frontend_to_oanda_mapping.get(symbol.upper(), symbol.upper())
+                
                 # Perform comprehensive analysis
-                advanced_analysis = await analyzer.analyze_symbol(symbol.upper(), TimeFrame.H1)
+                advanced_analysis = await analyzer.analyze_symbol(oanda_symbol, TimeFrame.H1)
                 
                 if advanced_analysis and advanced_analysis.signal_direction != "HOLD":
                     # Convert advanced analysis to database signal
