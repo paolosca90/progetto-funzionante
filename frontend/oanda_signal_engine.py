@@ -350,11 +350,29 @@ class OANDASignalEngine:
         )
         
         # Get current price
-        current_prices = await self.oanda_client.get_current_prices([instrument])
-        if not current_prices:
-            raise OANDAAPIError(f"No current price available for {instrument}")
-        
-        return candles, current_prices[0]
+        try:
+            current_prices = await self.oanda_client.get_current_prices([instrument])
+            if not current_prices:
+                raise OANDAAPIError(f"No current price available for {instrument}")
+            
+            # Debug: Log the pricing data
+            current_price = current_prices[0]
+            logger.info(f"🔍 OANDA Price Data for {instrument}: bid={current_price.bid}, ask={current_price.ask}, mid={current_price.mid}, spread={current_price.spread}")
+            
+            # Validate pricing data
+            if current_price.bid == 0.0 or current_price.ask == 0.0 or current_price.mid == 1.0:
+                logger.error(f"❌ Invalid price data received for {instrument}: bid={current_price.bid}, ask={current_price.ask}, mid={current_price.mid}")
+                raise OANDAAPIError(f"Invalid price data for {instrument} - possible API authentication issue")
+            
+            return candles, current_price
+            
+        except OANDAAPIError as e:
+            if "Invalid API key" in str(e) or "unauthorized access" in str(e):
+                logger.error(f"❌ OANDA API Authentication Failed: {e}")
+                logger.error(f"❌ Please check OANDA_API_KEY and OANDA_ACCOUNT_ID environment variables")
+                logger.error(f"❌ Current API Key (first 10 chars): {self.api_key[:10]}...")
+                logger.error(f"❌ Current Account ID: {self.account_id}")
+            raise
     
     def _calculate_technical_analysis(self, candles: List[OANDACandle]) -> TechnicalAnalysis:
         """Calculate comprehensive technical analysis"""

@@ -93,9 +93,9 @@ async def startup_event():
     logger.info("Application startup complete")
 
 # === OANDA CONFIGURATION ===
-OANDA_API_KEY = os.getenv("OANDA_API_KEY", "4618cdf696d08a4151d17a77fdb4b2d3-9252ffc76f12c40ffed367fecbe381ff")
-OANDA_ACCOUNT_ID = os.getenv("OANDA_ACCOUNT_ID", "101-001-37019635-001")
-OANDA_ENVIRONMENT = os.getenv("OANDA_ENVIRONMENT", "demo")
+OANDA_API_KEY = os.getenv("OANDA_API_KEY", "9b4d0a5b4275f2403fc93f087ceac88d-00a9307bfd9f8932874a36cb6f0c3286")
+OANDA_ACCOUNT_ID = os.getenv("OANDA_ACCOUNT_ID", "101-004-37029911-001")
+OANDA_ENVIRONMENT = os.getenv("OANDA_ENVIRONMENT", "practice")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Global OANDA Signal Engine
@@ -1172,7 +1172,11 @@ async def generate_signals_manually(
             # Cross pairs and exotics
             "EUR_AUD", "EUR_CHF", "GBP_JPY", "AUD_JPY", "EUR_JPY", "GBP_AUD", 
             "USD_CHF", "CHF_JPY", "AUD_CAD", "CAD_JPY", "EUR_CAD", "GBP_CAD",
-            # Note: Precious metals and indices removed (not available in OANDA demo account)
+            # OANDA UK Precious Metals
+            "XAU_USD", "XAG_USD", "XPT_USD", "XPD_USD",
+            # OANDA UK Major Indices
+            "US30_USD", "NAS100_USD", "SPX500_USD", "UK100_GBP", "DE30_EUR", "FR40_EUR",
+            "JP225_USD", "AU200_AUD", "HK33_HKD", "CN50_USD"
         ]
         signals = await oanda_signal_engine.generate_signals_batch(instruments)
         
@@ -1191,8 +1195,14 @@ async def generate_signals_manually(
                 'EUR_CAD': 'EURCAD', 'GBP_CAD': 'GBPCAD', 'EUR_JPY': 'EURJPY',
                 'GBP_AUD': 'GBPAUD',
                 
-                # Metals - keep as is
-                # Note: Metals and indices mappings removed (not available in OANDA demo)
+                # OANDA UK Metals
+                'XAU_USD': 'GOLD', 'XAG_USD': 'SILVER', 'XPT_USD': 'PLATINUM', 'XPD_USD': 'PALLADIUM',
+                
+                # OANDA UK Indices
+                'US30_USD': 'US30', 'NAS100_USD': 'NAS100', 'SPX500_USD': 'SPX500',
+                'UK100_GBP': 'UK100', 'DE30_EUR': 'DE30', 'FR40_EUR': 'FR40',
+                'JP225_USD': 'JP225', 'AU200_AUD': 'AUS200', 'HK33_HKD': 'HK33', 
+                'CN50_USD': 'CN50'
             }
             
             frontend_symbol = symbol_mapping.get(signal.instrument, signal.instrument.replace("_", ""))
@@ -1265,7 +1275,13 @@ async def generate_signals_if_needed(db: Session = Depends(get_db)):
                     symbol_mapping = {
                         'EUR_USD': 'EURUSD', 'GBP_USD': 'GBPUSD', 'USD_JPY': 'USDJPY',
                         'AUD_USD': 'AUDUSD', 'USD_CAD': 'USDCAD', 'NZD_USD': 'NZDUSD',
-                        # Note: Metals and indices mappings removed (not available in OANDA demo)
+                        # OANDA UK Metals
+                        'XAU_USD': 'GOLD', 'XAG_USD': 'SILVER', 'XPT_USD': 'PLATINUM', 'XPD_USD': 'PALLADIUM',
+                        # OANDA UK Indices  
+                        'US30_USD': 'US30', 'NAS100_USD': 'NAS100', 'SPX500_USD': 'SPX500',
+                        'UK100_GBP': 'UK100', 'DE30_EUR': 'DE30', 'FR40_EUR': 'FR40',
+                        'JP225_USD': 'JP225', 'AU200_AUD': 'AUS200', 'HK33_HKD': 'HK33', 
+                        'CN50_USD': 'CN50'
                     }
                     frontend_symbol = symbol_mapping.get(signal.instrument, signal.instrument.replace("_", ""))
                     

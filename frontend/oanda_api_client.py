@@ -415,7 +415,44 @@ class OANDAClient:
         if "_" in symbol:
             return symbol
         
-        # Note: Index and metal symbol mappings removed (not available in OANDA demo account)
+        # OANDA UK Index mappings
+        index_mappings = {
+            "US30": "US30_USD",      # Dow Jones
+            "NAS100": "NAS100_USD",  # NASDAQ 100
+            "SPX500": "SPX500_USD",  # S&P 500
+            "UK100": "UK100_GBP",    # FTSE 100
+            "DE30": "DE30_EUR",      # DAX
+            "FR40": "FR40_EUR",      # CAC 40
+            "JP225": "JP225_USD",    # Nikkei 225
+            "AUS200": "AU200_AUD",   # ASX 200
+            "HK33": "HK33_HKD",      # Hang Seng
+            "CN50": "CN50_USD",      # China A50
+            "IN50": "IN50_USD",      # India 50
+            "TWIX": "TWIX_USD",      # Taiwan Index
+            "NL25": "NL25_EUR",      # AEX
+            "CH20": "CH20_CHF",      # SMI
+            "SG30": "SG30_SGD"       # Singapore 30
+        }
+        
+        # OANDA UK Metals mappings
+        metals_mappings = {
+            "GOLD": "XAU_USD",       # Gold
+            "XAUUSD": "XAU_USD",     # Gold alternative
+            "SILVER": "XAG_USD",     # Silver  
+            "XAGUSD": "XAG_USD",     # Silver alternative
+            "PLATINUM": "XPT_USD",   # Platinum
+            "XPTUSD": "XPT_USD",     # Platinum alternative
+            "PALLADIUM": "XPD_USD",  # Palladium
+            "XPDUSD": "XPD_USD"      # Palladium alternative
+        }
+        
+        # Check index mappings first
+        if symbol in index_mappings:
+            return index_mappings[symbol]
+        
+        # Check metals mappings
+        if symbol in metals_mappings:
+            return metals_mappings[symbol]
         
         # Convert 6-character forex format to OANDA format
         if len(symbol) == 6 and symbol.isalpha():
