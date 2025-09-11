@@ -15,6 +15,13 @@ from enum import Enum
 import os
 import google.generativeai as genai
 
+# Quantistes integration for enhanced index predictions
+try:
+    from quantistes_integration import QuantistesEnhancer
+    QUANTISTES_AVAILABLE = True
+except ImportError:
+    QUANTISTES_AVAILABLE = False
+
 from oanda_api_client import (
     OANDAClient, OANDAAPIError, OANDACandle, OANDAPrice,
     Granularity, PriceComponent, create_oanda_client
