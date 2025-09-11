@@ -74,16 +74,10 @@ class QuantistesEnhancer:
             if vix_yahoo:
                 return vix_yahoo
                 
-            # Fallback: Simulation for demo
-            hour = datetime.now().hour
-            base_vix = 18.5
-            if 9 <= hour <= 16:  # Market hours
-                vix_simulation = base_vix + math.sin(hour) * 3
-            else:
-                vix_simulation = base_vix + 2
-            return max(10, min(50, vix_simulation))
+            # NO SIMULATION - Return None if no real data available
+            return None
         except Exception:
-            return 18.5  # Default VIX level
+            return None  # No fallback to simulation
     
     async def _get_cboe_vix(self) -> Optional[float]:
         """Get VIX from CBOE official API (free, 15min delayed)"""
@@ -170,8 +164,8 @@ class QuantistesEnhancer:
             
         except Exception as e:
             print(f"Error calculating real gamma levels: {e}")
-            # Fallback to simulated levels
-            return self.calculate_gamma_levels_simulated(current_price, "SPX500_USD")
+            # NO SIMULATION - Return None if options data unavailable
+            return None
     
     def calculate_gamma_levels_simulated(self, current_price: float, symbol: str) -> GammaExposureLevels:
         """Calculate gamma exposure levels for index"""
@@ -380,8 +374,15 @@ class QuantistesEnhancer:
         # Get VIX data
         vix_level = await self.get_vix_data()
         
-        # Calculate components - prioritize real data if available
-        gamma_levels = self.calculate_gamma_levels_simulated(current_price, symbol)
+        # Get real options data first
+        options_data = await self.get_options_data_yahoo(symbol)
+        
+        if options_data:
+            gamma_levels = self.calculate_real_gamma_levels(options_data, current_price)
+        else:
+            # NO OPTIONS DATA AVAILABLE - Skip Quantistes analysis
+            print(f"⚠️ No real options data available for {symbol} - Quantistes analysis disabled")
+            return None
         volatility_regime = await self.detect_volatility_regime(vix_level)
         probability_scenarios = self.calculate_probability_scenarios(
             current_price, gamma_levels, volatility_regime, atr
