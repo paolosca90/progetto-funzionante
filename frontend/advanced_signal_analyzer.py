@@ -857,92 +857,171 @@ class AdvancedSignalAnalyzer:
             # In this case, we should return HOLD instead of using wrong price
             direction = "HOLD"
         
-        # Calculate entry, SL, TP based on analysis
+        # Calculate entry, SL, TP based on technical analysis
+        entry_price = current_price
+        
+        # Get ATR for volatility-based levels (from M30 timeframe for stability)
+        atr = 0.001  # Default fallback
+        if TimeFrame.M30 in mtf_analysis.timeframes:
+            atr_data = mtf_analysis.timeframes[TimeFrame.M30].get("volatility", 0.001)
+            if atr_data and atr_data > 0:
+                atr = atr_data
+        
+        # Calculate ATR multipliers based on market conditions
+        # More volatile markets need wider stops
+        if atr / current_price > 0.015:  # High volatility (>1.5%)
+            atr_multiplier_sl = 1.5
+            atr_multiplier_tp = 3.0
+        elif atr / current_price > 0.008:  # Medium volatility (0.8-1.5%)
+            atr_multiplier_sl = 2.0
+            atr_multiplier_tp = 4.0
+        else:  # Low volatility (<0.8%)
+            atr_multiplier_sl = 2.5
+            atr_multiplier_tp = 5.0
+        
+        # Set initial ATR-based levels
         if direction == "BUY":
-            entry_price = current_price
-            # Use support level for SL, resistance for TP
-            stop_loss = entry_price * 0.985  # 1.5% SL default
-            take_profit = entry_price * 1.030  # 3% TP default
+            stop_loss = current_price - (atr * atr_multiplier_sl)
+            take_profit = current_price + (atr * atr_multiplier_tp)
         elif direction == "SELL":
-            entry_price = current_price
-            stop_loss = entry_price * 1.015  # 1.5% SL default
-            take_profit = entry_price * 0.970  # 3% TP default
+            stop_loss = current_price + (atr * atr_multiplier_sl)
+            take_profit = current_price - (atr * atr_multiplier_tp)
         else:
-            entry_price = current_price
             stop_loss = current_price
             take_profit = current_price
         
-        # Adjust levels based on key levels from analysis (with minimum distance validation)
+        # Refine levels using key support/resistance levels
         key_levels = mtf_analysis.key_levels
-        if key_levels:
-            # Minimum distance thresholds to avoid too tight levels
-            min_sl_distance_pct = 0.010  # 1.0% minimum stop loss distance 
-            min_tp_distance_pct = 0.015  # 1.5% minimum take profit distance
+        if key_levels and direction != "HOLD":
+            # Get swing highs and lows for better level placement
+            swing_highs = []
+            swing_lows = []
+            
+            # Collect swing points from all timeframes
+            for tf_data in mtf_analysis.timeframes.values():
+                if "swing_highs" in tf_data:
+                    swing_highs.extend([point[1] for point in tf_data["swing_highs"]])
+                if "swing_lows" in tf_data:
+                    swing_lows.extend([point[1] for point in tf_data["swing_lows"]])
             
             if direction == "BUY":
-                # Find nearest support below current price
-                supports = [level.price for level in key_levels 
-                          if level.level_type == "support" and level.price < current_price]
-                if supports:
-                    candidate_sl = max(supports)
-                    # Only use if it's far enough from entry
-                    sl_distance_pct = abs(current_price - candidate_sl) / current_price
-                    if sl_distance_pct >= min_sl_distance_pct:
-                        stop_loss = candidate_sl
+                # For BUY: Look for support levels below price for SL
+                # Consider both key levels and recent swing lows
+                potential_sl_levels = []
+                
+                # Add key support levels
+                for level in key_levels:
+                    if level.level_type == "support" and level.price < current_price:
+                        distance = current_price - level.price
+                        # Prefer levels with higher strength and reasonable distance
+                        if distance >= atr * 1.0 and distance <= atr * 4.0:
+                            potential_sl_levels.append((level.price, level.strength))
+                
+                # Add swing lows
+                for swing_low in swing_lows:
+                    if swing_low < current_price:
+                        distance = current_price - swing_low
+                        if distance >= atr * 1.0 and distance <= atr * 4.0:
+                            potential_sl_levels.append((swing_low, 50.0))  # Default strength
+                
+                # Choose best SL level (closest but not too close)
+                if potential_sl_levels:
+                    # Sort by distance from current price, prefer closer but valid levels
+                    potential_sl_levels.sort(key=lambda x: abs(current_price - x[0]))
+                    best_sl = potential_sl_levels[0][0]
                     
-                # Find nearest resistance above current price  
-                resistances = [level.price for level in key_levels
-                             if level.level_type == "resistance" and level.price > current_price]
-                if resistances:
-                    candidate_tp = min(resistances)
-                    # Only use if it's far enough from entry
-                    tp_distance_pct = abs(candidate_tp - current_price) / current_price
-                    if tp_distance_pct >= min_tp_distance_pct:
-                        take_profit = candidate_tp
+                    # Validate the level isn't too close
+                    if abs(current_price - best_sl) >= atr * 1.2:
+                        stop_loss = best_sl
+                
+                # For TP: Look for resistance levels above price
+                potential_tp_levels = []
+                
+                # Add key resistance levels
+                for level in key_levels:
+                    if level.level_type == "resistance" and level.price > current_price:
+                        distance = level.price - current_price
+                        if distance >= atr * 2.0 and distance <= atr * 8.0:
+                            potential_tp_levels.append((level.price, level.strength))
+                
+                # Add swing highs
+                for swing_high in swing_highs:
+                    if swing_high > current_price:
+                        distance = swing_high - current_price
+                        if distance >= atr * 2.0 and distance <= atr * 8.0:
+                            potential_tp_levels.append((swing_high, 50.0))
+                
+                # Choose best TP level
+                if potential_tp_levels:
+                    # Sort by strength, prefer stronger levels
+                    potential_tp_levels.sort(key=lambda x: x[1], reverse=True)
+                    best_tp = potential_tp_levels[0][0]
+                    take_profit = best_tp
                     
             elif direction == "SELL":
-                # Find nearest resistance above current price
-                resistances = [level.price for level in key_levels
-                             if level.level_type == "resistance" and level.price > current_price]
-                if resistances:
-                    candidate_sl = min(resistances)
-                    # Only use if it's far enough from entry
-                    sl_distance_pct = abs(candidate_sl - current_price) / current_price
-                    if sl_distance_pct >= min_sl_distance_pct:
-                        stop_loss = candidate_sl
-                    
-                # Find nearest support below current price
-                supports = [level.price for level in key_levels 
-                          if level.level_type == "support" and level.price < current_price]
-                if supports:
-                    candidate_tp = max(supports)
-                    # Only use if it's far enough from entry
-                    tp_distance_pct = abs(current_price - candidate_tp) / current_price
-                    if tp_distance_pct >= min_tp_distance_pct:
-                        take_profit = candidate_tp
+                # For SELL: Look for resistance levels above price for SL
+                potential_sl_levels = []
+                
+                for level in key_levels:
+                    if level.level_type == "resistance" and level.price > current_price:
+                        distance = level.price - current_price
+                        if distance >= atr * 1.0 and distance <= atr * 4.0:
+                            potential_sl_levels.append((level.price, level.strength))
+                
+                for swing_high in swing_highs:
+                    if swing_high > current_price:
+                        distance = swing_high - current_price
+                        if distance >= atr * 1.0 and distance <= atr * 4.0:
+                            potential_sl_levels.append((swing_high, 50.0))
+                
+                if potential_sl_levels:
+                    potential_sl_levels.sort(key=lambda x: abs(current_price - x[0]))
+                    best_sl = potential_sl_levels[0][0]
+                    if abs(current_price - best_sl) >= atr * 1.2:
+                        stop_loss = best_sl
+                
+                # For TP: Look for support levels below price
+                potential_tp_levels = []
+                
+                for level in key_levels:
+                    if level.level_type == "support" and level.price < current_price:
+                        distance = current_price - level.price
+                        if distance >= atr * 2.0 and distance <= atr * 8.0:
+                            potential_tp_levels.append((level.price, level.strength))
+                
+                for swing_low in swing_lows:
+                    if swing_low < current_price:
+                        distance = current_price - swing_low
+                        if distance >= atr * 2.0 and distance <= atr * 8.0:
+                            potential_tp_levels.append((swing_low, 50.0))
+                
+                if potential_tp_levels:
+                    potential_tp_levels.sort(key=lambda x: x[1], reverse=True)
+                    best_tp = potential_tp_levels[0][0]
+                    take_profit = best_tp
         
-        # Calculate risk/reward ratio and validate
+        # Calculate final risk/reward ratio
         risk_distance = abs(entry_price - stop_loss)
         reward_distance = abs(take_profit - entry_price)
-        risk_reward = reward_distance / risk_distance if risk_distance > 0 else 3.0
+        risk_reward = reward_distance / risk_distance if risk_distance > 0 else 2.0
         
-        # Final validation: ensure reasonable risk/reward ratio and minimum distances
-        # If R/R is too low or distances too small, fall back to default percentage-based levels
+        # Log the analysis for transparency
         risk_pct = (risk_distance / entry_price) * 100
         reward_pct = (reward_distance / entry_price) * 100
+        atr_pct = (atr / entry_price) * 100
         
-        if risk_reward < 1.0 or risk_pct < 0.8 or reward_pct < 1.2:  # Require at least 1:1 R/R and minimum distances
-            logger.warning(f"Levels too tight: R/R={risk_reward:.2f}, Risk={risk_pct:.2f}%, Reward={reward_pct:.2f}% - using default levels")
+        logger.info(f"Level analysis for {symbol}: ATR={atr_pct:.3f}%, Risk={risk_pct:.2f}%, Reward={reward_pct:.2f}%, R/R={risk_reward:.2f}")
+        
+        # Ensure minimum viable levels (only if completely unreasonable)
+        if risk_distance < atr * 0.5:  # Stop loss too tight relative to volatility
+            logger.warning(f"Stop loss too tight relative to ATR, adjusting")
             if direction == "BUY":
-                stop_loss = entry_price * 0.985  # 1.5% SL
-                take_profit = entry_price * 1.030  # 3% TP
+                stop_loss = current_price - (atr * 1.5)
             elif direction == "SELL":
-                stop_loss = entry_price * 1.015  # 1.5% SL
-                take_profit = entry_price * 0.970  # 3% TP
+                stop_loss = current_price + (atr * 1.5)
             
-            # Recalculate R/R
+            # Recalculate
             risk_distance = abs(entry_price - stop_loss)
-            reward_distance = abs(take_profit - entry_price)
             risk_reward = reward_distance / risk_distance if risk_distance > 0 else 2.0
         
         # Position size based on 2% account risk
