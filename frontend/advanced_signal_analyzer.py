@@ -872,40 +872,78 @@ class AdvancedSignalAnalyzer:
             stop_loss = current_price
             take_profit = current_price
         
-        # Adjust levels based on key levels from analysis
+        # Adjust levels based on key levels from analysis (with minimum distance validation)
         key_levels = mtf_analysis.key_levels
         if key_levels:
-            # Use nearest support/resistance for better SL/TP placement
+            # Minimum distance thresholds to avoid too tight levels
+            min_sl_distance_pct = 0.010  # 1.0% minimum stop loss distance 
+            min_tp_distance_pct = 0.015  # 1.5% minimum take profit distance
+            
             if direction == "BUY":
                 # Find nearest support below current price
                 supports = [level.price for level in key_levels 
                           if level.level_type == "support" and level.price < current_price]
                 if supports:
-                    stop_loss = max(supports)
+                    candidate_sl = max(supports)
+                    # Only use if it's far enough from entry
+                    sl_distance_pct = abs(current_price - candidate_sl) / current_price
+                    if sl_distance_pct >= min_sl_distance_pct:
+                        stop_loss = candidate_sl
                     
                 # Find nearest resistance above current price  
                 resistances = [level.price for level in key_levels
                              if level.level_type == "resistance" and level.price > current_price]
                 if resistances:
-                    take_profit = min(resistances)
+                    candidate_tp = min(resistances)
+                    # Only use if it's far enough from entry
+                    tp_distance_pct = abs(candidate_tp - current_price) / current_price
+                    if tp_distance_pct >= min_tp_distance_pct:
+                        take_profit = candidate_tp
                     
             elif direction == "SELL":
                 # Find nearest resistance above current price
                 resistances = [level.price for level in key_levels
                              if level.level_type == "resistance" and level.price > current_price]
                 if resistances:
-                    stop_loss = min(resistances)
+                    candidate_sl = min(resistances)
+                    # Only use if it's far enough from entry
+                    sl_distance_pct = abs(candidate_sl - current_price) / current_price
+                    if sl_distance_pct >= min_sl_distance_pct:
+                        stop_loss = candidate_sl
                     
                 # Find nearest support below current price
                 supports = [level.price for level in key_levels 
                           if level.level_type == "support" and level.price < current_price]
                 if supports:
-                    take_profit = max(supports)
+                    candidate_tp = max(supports)
+                    # Only use if it's far enough from entry
+                    tp_distance_pct = abs(current_price - candidate_tp) / current_price
+                    if tp_distance_pct >= min_tp_distance_pct:
+                        take_profit = candidate_tp
         
-        # Calculate risk/reward ratio
+        # Calculate risk/reward ratio and validate
         risk_distance = abs(entry_price - stop_loss)
         reward_distance = abs(take_profit - entry_price)
         risk_reward = reward_distance / risk_distance if risk_distance > 0 else 3.0
+        
+        # Final validation: ensure reasonable risk/reward ratio and minimum distances
+        # If R/R is too low or distances too small, fall back to default percentage-based levels
+        risk_pct = (risk_distance / entry_price) * 100
+        reward_pct = (reward_distance / entry_price) * 100
+        
+        if risk_reward < 1.0 or risk_pct < 0.8 or reward_pct < 1.2:  # Require at least 1:1 R/R and minimum distances
+            logger.warning(f"Levels too tight: R/R={risk_reward:.2f}, Risk={risk_pct:.2f}%, Reward={reward_pct:.2f}% - using default levels")
+            if direction == "BUY":
+                stop_loss = entry_price * 0.985  # 1.5% SL
+                take_profit = entry_price * 1.030  # 3% TP
+            elif direction == "SELL":
+                stop_loss = entry_price * 1.015  # 1.5% SL
+                take_profit = entry_price * 0.970  # 3% TP
+            
+            # Recalculate R/R
+            risk_distance = abs(entry_price - stop_loss)
+            reward_distance = abs(take_profit - entry_price)
+            risk_reward = reward_distance / risk_distance if risk_distance > 0 else 2.0
         
         # Position size based on 2% account risk
         position_size = 0.01  # Default lot size
