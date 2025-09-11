@@ -1172,11 +1172,10 @@ async def generate_signals_manually(
             # Cross pairs and exotics
             "EUR_AUD", "EUR_CHF", "GBP_JPY", "AUD_JPY", "EUR_JPY", "GBP_AUD", 
             "USD_CHF", "CHF_JPY", "AUD_CAD", "CAD_JPY", "EUR_CAD", "GBP_CAD",
-            # OANDA UK Precious Metals
-            "XAU_USD", "XAG_USD", "XPT_USD", "XPD_USD",
-            # OANDA UK Major Indices
-            "US30_USD", "NAS100_USD", "SPX500_USD", "UK100_GBP", "DE30_EUR", "FR40_EUR",
-            "JP225_USD", "AU200_AUD", "HK33_HKD", "CN50_USD"
+            # OANDA UK Precious Metals (only Gold and Silver)
+            "XAU_USD", "XAG_USD",
+            # OANDA UK Major Indices (US indices and DAX only)
+            "US30_USD", "NAS100_USD", "SPX500_USD", "DE30_EUR"
         ]
         signals = await oanda_signal_engine.generate_signals_batch(instruments)
         
