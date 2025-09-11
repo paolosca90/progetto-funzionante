@@ -20,6 +20,60 @@ import os
 # Setup logging
 logger = logging.getLogger(__name__)
 
+# Unified Symbol Mapping Functions
+def create_unified_symbol_mappings():
+    """Create consistent symbol mappings between OANDA and frontend formats"""
+    
+    # OANDA format to Frontend format
+    oanda_to_frontend = {
+        # Major Forex Pairs
+        'EUR_USD': 'EURUSD', 'GBP_USD': 'GBPUSD', 'USD_JPY': 'USDJPY',
+        'AUD_USD': 'AUDUSD', 'USD_CAD': 'USDCAD', 'NZD_USD': 'NZDUSD',
+        'EUR_GBP': 'EURGBP',
+        
+        # Cross Pairs
+        'EUR_AUD': 'EURAUD', 'EUR_CHF': 'EURCHF', 'GBP_JPY': 'GBPJPY',
+        'AUD_JPY': 'AUDJPY', 'EUR_JPY': 'EURJPY', 'GBP_AUD': 'GBPAUD',
+        'USD_CHF': 'USDCHF', 'CHF_JPY': 'CHFJPY', 'AUD_CAD': 'AUDCAD',
+        'CAD_JPY': 'CADJPY', 'EUR_CAD': 'EURCAD', 'GBP_CAD': 'GBPCAD',
+        
+        # Precious Metals
+        'XAU_USD': 'GOLD', 'XAG_USD': 'SILVER',
+        
+        # Major Indices
+        'US30_USD': 'US30', 'NAS100_USD': 'NAS100', 
+        'SPX500_USD': 'SPX500', 'DE30_EUR': 'DE30'
+    }
+    
+    # Frontend format to OANDA format (reverse mapping)
+    frontend_to_oanda = {v: k for k, v in oanda_to_frontend.items()}
+    
+    return oanda_to_frontend, frontend_to_oanda
+
+def get_frontend_symbol(oanda_symbol):
+    """Convert OANDA symbol to frontend format"""
+    oanda_to_frontend, _ = create_unified_symbol_mappings()
+    return oanda_to_frontend.get(oanda_symbol, oanda_symbol.replace("_", ""))
+
+def get_oanda_symbol(frontend_symbol):
+    """Convert frontend symbol to OANDA format"""
+    _, frontend_to_oanda = create_unified_symbol_mappings()
+    
+    # First try direct mapping
+    mapped = frontend_to_oanda.get(frontend_symbol.upper())
+    if mapped:
+        return mapped
+    
+    # Fallback: Try to convert to OANDA format by adding underscore
+    # Only for forex pairs (6 characters without underscore)
+    upper_symbol = frontend_symbol.upper()
+    if len(upper_symbol) == 6 and upper_symbol.isalpha():
+        # Insert underscore after first 3 characters (EUR USD -> EUR_USD)
+        return f"{upper_symbol[:3]}_{upper_symbol[3:]}"
+    
+    # For other cases, return as-is
+    return upper_symbol
+
 # Import our modules
 from database import SessionLocal, engine, check_database_health
 from models import (
@@ -799,29 +853,18 @@ async def generate_custom_signal(
                 )
                 
                 # Convert frontend symbol to OANDA format
-                frontend_to_oanda_mapping = {
-                    # Forex (frontend already matches OANDA without underscore)
-                    'EURUSD': 'EUR_USD', 'GBPUSD': 'GBP_USD', 'USDJPY': 'USD_JPY',
-                    'AUDUSD': 'AUD_USD', 'USDCAD': 'USD_CAD', 'NZDUSD': 'NZD_USD',
-                    'EURGBP': 'EUR_GBP', 'EURJPY': 'EUR_JPY', 'GBPJPY': 'GBP_JPY',
-                    'USDCHF': 'USD_CHF', 'EURAUD': 'EUR_AUD', 'EURCHF': 'EUR_CHF',
-                    'GBPAUD': 'GBP_AUD', 'CHFJPY': 'CHF_JPY', 'AUDJPY': 'AUD_JPY',
-                    'AUDCAD': 'AUD_CAD', 'CADJPY': 'CAD_JPY', 'EURCAD': 'EUR_CAD', 
-                    'GBPCAD': 'GBP_CAD',
-                    # Metals
-                    'GOLD': 'XAU_USD', 'SILVER': 'XAG_USD',
-                    # Indices  
-                    'US30': 'US30_USD', 'NAS100': 'NAS100_USD', 'SPX500': 'SPX500_USD', 'DE30': 'DE30_EUR'
-                }
-                oanda_symbol = frontend_to_oanda_mapping.get(symbol.upper(), symbol.upper())
+                # Use unified mapping
+                oanda_symbol = get_oanda_symbol(symbol)
                 
                 # Perform comprehensive analysis
                 advanced_analysis = await analyzer.analyze_symbol(oanda_symbol, TimeFrame.H1)
                 
                 if advanced_analysis and advanced_analysis.signal_direction != "HOLD":
-                    # Convert advanced analysis to database signal
+                    # Convert advanced analysis to database signal  
+                    # Use frontend format for database storage
+                    frontend_symbol = get_frontend_symbol(oanda_symbol)
                     db_signal = Signal(
-                        symbol=advanced_analysis.symbol,
+                        symbol=frontend_symbol,
                         signal_type=SignalTypeEnum.BUY if advanced_analysis.signal_direction == "BUY" else SignalTypeEnum.SELL,
                         entry_price=advanced_analysis.entry_price,
                         stop_loss=advanced_analysis.stop_loss,
@@ -1199,29 +1242,8 @@ async def generate_signals_manually(
         generated_count = 0
         for signal in signals:
             # Convert OANDA signal to database signal
-            # Convert OANDA symbols to frontend-compatible symbols
-            frontend_symbol = signal.instrument
-            symbol_mapping = {
-                # Forex - remove underscore
-                'EUR_USD': 'EURUSD', 'GBP_USD': 'GBPUSD', 'USD_JPY': 'USDJPY',
-                'AUD_USD': 'AUDUSD', 'USD_CAD': 'USDCAD', 'NZD_USD': 'NZDUSD',
-                'EUR_GBP': 'EURGBP', 'EUR_CHF': 'EURCHF', 'GBP_JPY': 'GBPJPY',
-                'AUD_JPY': 'AUDJPY', 'USD_CHF': 'USDCHF', 'EUR_AUD': 'EURAUD',
-                'CHF_JPY': 'CHFJPY', 'AUD_CAD': 'AUDCAD', 'CAD_JPY': 'CADJPY',
-                'EUR_CAD': 'EURCAD', 'GBP_CAD': 'GBPCAD', 'EUR_JPY': 'EURJPY',
-                'GBP_AUD': 'GBPAUD',
-                
-                # OANDA UK Metals
-                'XAU_USD': 'GOLD', 'XAG_USD': 'SILVER', 'XPT_USD': 'PLATINUM', 'XPD_USD': 'PALLADIUM',
-                
-                # OANDA UK Indices
-                'US30_USD': 'US30', 'NAS100_USD': 'NAS100', 'SPX500_USD': 'SPX500',
-                'UK100_GBP': 'UK100', 'DE30_EUR': 'DE30', 'FR40_EUR': 'FR40',
-                'JP225_USD': 'JP225', 'AU200_AUD': 'AUS200', 'HK33_HKD': 'HK33', 
-                'CN50_USD': 'CN50'
-            }
-            
-            frontend_symbol = symbol_mapping.get(signal.instrument, signal.instrument.replace("_", ""))
+            # Use unified mapping function
+            frontend_symbol = get_frontend_symbol(signal.instrument)
             
             db_signal = Signal(
                 symbol=frontend_symbol,
@@ -1287,19 +1309,8 @@ async def generate_signals_if_needed(db: Session = Depends(get_db)):
                 
                 # Add top 3 signals to database
                 for signal in signals[:3]:
-                    # Use same symbol mapping as admin endpoint
-                    symbol_mapping = {
-                        'EUR_USD': 'EURUSD', 'GBP_USD': 'GBPUSD', 'USD_JPY': 'USDJPY',
-                        'AUD_USD': 'AUDUSD', 'USD_CAD': 'USDCAD', 'NZD_USD': 'NZDUSD',
-                        # OANDA UK Metals
-                        'XAU_USD': 'GOLD', 'XAG_USD': 'SILVER', 'XPT_USD': 'PLATINUM', 'XPD_USD': 'PALLADIUM',
-                        # OANDA UK Indices  
-                        'US30_USD': 'US30', 'NAS100_USD': 'NAS100', 'SPX500_USD': 'SPX500',
-                        'UK100_GBP': 'UK100', 'DE30_EUR': 'DE30', 'FR40_EUR': 'FR40',
-                        'JP225_USD': 'JP225', 'AU200_AUD': 'AUS200', 'HK33_HKD': 'HK33', 
-                        'CN50_USD': 'CN50'
-                    }
-                    frontend_symbol = symbol_mapping.get(signal.instrument, signal.instrument.replace("_", ""))
+                    # Use unified mapping function
+                    frontend_symbol = get_frontend_symbol(signal.instrument)
                     
                     db_signal = Signal(
                         symbol=frontend_symbol,
