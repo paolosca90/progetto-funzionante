@@ -842,10 +842,20 @@ class AdvancedSignalAnalyzer:
         # Adjust confidence based on confluence score
         confidence = min(95, max(55, mtf_analysis.confluence_score + bias_score) / 2)
         
-        # Get current price from H1 timeframe if available
-        current_price = 1.0000  # Default
-        if TimeFrame.H1 in mtf_analysis.timeframes:
-            current_price = mtf_analysis.timeframes[TimeFrame.H1].get("current_price", 1.0000)
+        # Get current price from any available timeframe (prefer longer timeframes)
+        current_price = 1.0000  # Default fallback
+        
+        # Try to get current price from available timeframes (prefer longer ones first)
+        for timeframe in [TimeFrame.M30, TimeFrame.M15, TimeFrame.M5, TimeFrame.M1]:
+            if timeframe in mtf_analysis.timeframes and "current_price" in mtf_analysis.timeframes[timeframe]:
+                current_price = mtf_analysis.timeframes[timeframe]["current_price"]
+                logger.info(f"Using current price {current_price} from {timeframe}")
+                break
+        
+        if current_price == 1.0000:
+            logger.warning(f"Could not get current price for {symbol}, using fallback")
+            # In this case, we should return HOLD instead of using wrong price
+            direction = "HOLD"
         
         # Calculate entry, SL, TP based on analysis
         if direction == "BUY":
