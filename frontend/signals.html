@@ -156,16 +156,19 @@
                         <div class="level-info">
                             <div class="level-item entry">
                                 <span class="level-label">📍 Entry:</span>
-                                <span class="level-value" id="entryLevel">-</span>
+                                <span class="level-value entry-line" id="entryLevel">-</span>
                             </div>
                             <div class="level-item stop-loss">
                                 <span class="level-label">🛑 Stop Loss:</span>
-                                <span class="level-value" id="stopLossLevel">-</span>
+                                <span class="level-value stop-loss-line" id="stopLossLevel">-</span>
                             </div>
                             <div class="level-item take-profit">
                                 <span class="level-label">🎯 Take Profit:</span>
-                                <span class="level-value" id="takeProfitLevel">-</span>
+                                <span class="level-value take-profit-line" id="takeProfitLevel">-</span>
                             </div>
+                        </div>
+                        <div class="chart-legend">
+                            <small>📊 Livelli visualizzati come linee orizzontali sul grafico</small>
                         </div>
                     </div>
                 </div>
@@ -233,12 +236,16 @@
                 { symbol: 'XAGUSD', name: 'Silver', flag: '🥈' }
             ],
             indices: [
-                { symbol: 'US500', name: 'S&P 500', flag: '📈' },
                 { symbol: 'US30', name: 'Dow Jones', flag: '📊' },
                 { symbol: 'NAS100', name: 'NASDAQ', flag: '💻' },
-                { symbol: 'GER30', name: 'DAX', flag: '🇩🇪' },
+                { symbol: 'US500', name: 'S&P 500', flag: '📈' },
                 { symbol: 'UK100', name: 'FTSE 100', flag: '🇬🇧' },
-                { symbol: 'JPN225', name: 'Nikkei', flag: '🇯🇵' }
+                { symbol: 'GER30', name: 'DAX', flag: '🇩🇪' },
+                { symbol: 'FR40', name: 'CAC 40', flag: '🇫🇷' },
+                { symbol: 'JPN225', name: 'Nikkei', flag: '🇯🇵' },
+                { symbol: 'HK33', name: 'Hang Seng', flag: '🇭🇰' },
+                { symbol: 'AUS200', name: 'ASX 200', flag: '🇦🇺' },
+                { symbol: 'CHINA50', name: 'China 50', flag: '🇨🇳' }
             ]
         };
 
@@ -391,12 +398,34 @@
                 // Update status
                 document.getElementById('signalStatus').textContent = 'Signal Ready';
                 document.getElementById('signalStatus').className = 'signal-status ready';
+                
+                // Update TradingView chart if it's already visible
+                if (chartVisible && tradingViewWidget) {
+                    console.log('Updating TradingView chart for new signal');
+                    initTradingViewChart();
+                }
 
                 // Update direction and confidence
                 const direction = signal.signal_type.toUpperCase();
-                const directionClass = direction === 'BUY' ? 'buy' : 'sell';
+                let directionClass, directionText, directionMessage;
+                
+                if (direction === 'BUY') {
+                    directionClass = 'buy';
+                    directionText = '📈 BUY';
+                    directionMessage = 'Segnale di acquisto';
+                } else if (direction === 'SELL') {
+                    directionClass = 'sell';
+                    directionText = '📉 SELL';
+                    directionMessage = 'Segnale di vendita';
+                } else {
+                    directionClass = 'hold';
+                    directionText = '⏸️ HOLD';
+                    directionMessage = 'Aspetta - Mercato incerto';
+                }
+                
                 document.getElementById('signalDirection').innerHTML = `
-                    <span class="direction-text ${directionClass}">${direction}</span>
+                    <span class="direction-text ${directionClass}">${directionText}</span>
+                    <div class="direction-message">${directionMessage}</div>
                 `;
                 document.getElementById('signalConfidence').innerHTML = `
                     <span class="confidence-badge">${Math.round(signal.reliability)}% Confidence</span>
@@ -417,6 +446,11 @@
 
                 // Enable execute button
                 document.getElementById('executeBtn').disabled = false;
+
+                // Update chart levels if chart is visible
+                if (chartVisible) {
+                    updateChartLevels();
+                }
 
             } else {
                 showError(signalData.message || 'Failed to generate signal');
@@ -576,23 +610,36 @@
                 
                 // Indices CFDs (use TradingView CFD symbols)
                 'US30_USD': 'US30',
-                'NAS100_USD': 'NAS100',
-                'SPX500_USD': 'US500',
+                'US30': 'US30',
+                'NAS100_USD': 'NAS100', 
+                'NAS100': 'NAS100',
+                'SPX500_USD': 'SPX500',
+                'US500': 'SPX500',
                 'UK100_GBP': 'UKX',
+                'UK100': 'UKX', 
                 'DE30_EUR': 'DAX',
+                'GER30': 'DAX',
                 'FR40_EUR': 'CAC',
+                'FR40': 'CAC',
                 'JP225_USD': 'NKY',
-                'HK33_HKD': 'HSI'
+                'JPN225': 'NKY',
+                'HK33_HKD': 'HSI',
+                'HK33': 'HSI',
+                'AU200_AUD': 'XJO',
+                'AUS200': 'XJO',
+                'CN50_USD': 'CHINA50',
+                'CHINA50': 'CHINA50'
             };
             
             tvSymbol = symbolMap[oandaSymbol] || oandaSymbol.replace('_', '');
             
             // Set correct exchange for different instrument types
-            if (oandaSymbol.includes('US30') || oandaSymbol.includes('NAS100') || oandaSymbol.includes('SPX500') || 
-                oandaSymbol.includes('UK100') || oandaSymbol.includes('DE30') || oandaSymbol.includes('FR40') ||
-                oandaSymbol.includes('JP225') || oandaSymbol.includes('HK33')) {
+            const indexSymbols = ['US30', 'NAS100', 'US500', 'SPX500', 'UK100', 'GER30', 'DE30', 'FR40', 'JPN225', 'JP225', 'HK33', 'AUS200', 'AU200', 'CHINA50', 'CN50'];
+            const metalSymbols = ['XAU', 'XAG', 'GOLD', 'SILVER'];
+            
+            if (indexSymbols.some(idx => oandaSymbol.includes(idx))) {
                 exchange = 'OANDA';  // Use OANDA exchange for CFDs
-            } else if (oandaSymbol.includes('XAU') || oandaSymbol.includes('XAG')) {
+            } else if (metalSymbols.some(metal => oandaSymbol.includes(metal))) {
                 exchange = 'OANDA';  // Use OANDA exchange for metals CFDs
             } else {
                 exchange = 'FX';     // Standard forex
@@ -632,8 +679,85 @@
                     "mainSeriesProperties.candleStyle.borderDownColor": "#ff0040",
                     "mainSeriesProperties.candleStyle.wickUpColor": "#00ff00",
                     "mainSeriesProperties.candleStyle.wickDownColor": "#ff0040"
+                },
+                "drawings_access": {
+                    "type": "black",
+                    "tools": [
+                        { "name": "Horizontal Line" }
+                    ]
                 }
             });
+
+            // Add signal levels as horizontal lines when widget is ready
+            tradingViewWidget.onChartReady(function() {
+                if (currentSignal) {
+                    addSignalLinesToChart();
+                }
+            });
+        }
+
+        let signalLineIds = []; // Store line IDs for removal
+
+        function clearSignalLines() {
+            if (!tradingViewWidget || !tradingViewWidget.chart) return;
+            
+            try {
+                // Remove previously added lines
+                signalLineIds.forEach(lineId => {
+                    try {
+                        tradingViewWidget.chart().removeEntity(lineId);
+                    } catch (e) {
+                        console.log('Could not remove line:', lineId);
+                    }
+                });
+                signalLineIds = [];
+            } catch (error) {
+                console.error('Error clearing signal lines:', error);
+            }
+        }
+
+        function addSignalLinesToChart() {
+            if (!tradingViewWidget || !currentSignal) return;
+            
+            try {
+                // Clear previous lines first
+                clearSignalLines();
+                
+                // Add Entry Price line (white)
+                const entryLineId = tradingViewWidget.chart().createStudy('Horizontal Line', false, false, [currentSignal.entry_price], null, {
+                    'hline.color': '#ffffff',
+                    'hline.style': 0,
+                    'hline.width': 2,
+                    'hline.extend.left': true,
+                    'hline.extend.right': true
+                });
+                if (entryLineId) signalLineIds.push(entryLineId);
+                
+                // Add Stop Loss line (red)
+                const stopLossLineId = tradingViewWidget.chart().createStudy('Horizontal Line', false, false, [currentSignal.stop_loss], null, {
+                    'hline.color': '#ff4757',
+                    'hline.style': 0,
+                    'hline.width': 2,
+                    'hline.extend.left': true,
+                    'hline.extend.right': true
+                });
+                if (stopLossLineId) signalLineIds.push(stopLossLineId);
+                
+                // Add Take Profit line (green)
+                const takeProfitLineId = tradingViewWidget.chart().createStudy('Horizontal Line', false, false, [currentSignal.take_profit], null, {
+                    'hline.color': '#00ff41',
+                    'hline.style': 0,
+                    'hline.width': 2,
+                    'hline.extend.left': true,
+                    'hline.extend.right': true
+                });
+                if (takeProfitLineId) signalLineIds.push(takeProfitLineId);
+                
+                console.log('Signal lines added to chart:', signalLineIds);
+            } catch (error) {
+                console.error('Error adding signal lines to chart:', error);
+                // Fallback: just update text levels
+            }
         }
 
         function updateChartLevels() {
@@ -643,6 +767,11 @@
             document.getElementById('entryLevel').textContent = currentSignal.entry_price.toFixed(5);
             document.getElementById('stopLossLevel').textContent = currentSignal.stop_loss.toFixed(5);
             document.getElementById('takeProfitLevel').textContent = currentSignal.take_profit.toFixed(5);
+            
+            // Add lines to chart if widget is ready
+            if (tradingViewWidget && tradingViewWidget.chart) {
+                addSignalLinesToChart();
+            }
         }
 
         function addToTradingHistory(signal, riskAmount) {
@@ -658,7 +787,7 @@
             historyItem.innerHTML = `
                 <div class="history-header">
                     <div class="history-pair">${currentAsset.flag} ${currentAsset.name}</div>
-                    <div class="history-direction ${signal.signal_type.toLowerCase()}">${signal.signal_type.toUpperCase()}</div>
+                    <div class="history-direction ${signal.signal_type.toLowerCase()}">${signal.signal_type.toUpperCase() === 'HOLD' ? '⏸️ HOLD' : signal.signal_type.toUpperCase()}</div>
                     <div class="history-time">Just now</div>
                 </div>
                 <div class="history-details">
@@ -906,6 +1035,24 @@
             color: #ff4757;
         }
         
+        .direction-text.hold {
+            color: #ffa502;
+            animation: pulse 2s infinite;
+        }
+        
+        .direction-message {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 4px;
+            font-weight: 400;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        
         .confidence-badge {
             background: rgba(0, 255, 65, 0.2);
             color: #00ff41;
@@ -1134,6 +1281,11 @@
             color: #ff4757;
         }
         
+        .history-direction.hold {
+            background: rgba(255, 165, 2, 0.2);
+            color: #ffa502;
+        }
+        
         .history-time {
             color: #888;
             font-size: 0.8rem;
@@ -1249,6 +1401,71 @@
             .asset-grid {
                 grid-template-columns: 1fr;
             }
+        }
+
+        /* Chart levels styling */
+        .chart-levels {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .level-info {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .level-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .level-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .level-value {
+            font-family: 'Source Code Pro', monospace;
+            font-weight: 700;
+            font-size: 1rem;
+            padding: 5px 10px;
+            border-radius: 5px;
+            border-left: 3px solid;
+        }
+
+        .entry-line {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.1);
+            border-left-color: #ffffff;
+        }
+
+        .stop-loss-line {
+            color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+            border-left-color: #ff4757;
+        }
+
+        .take-profit-line {
+            color: #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+            border-left-color: #00ff41;
+        }
+
+        .chart-legend {
+            text-align: center;
+            margin-top: 10px;
+            color: #888;
+        }
+
+        .chart-legend small {
+            font-style: italic;
         }
     </style>
 </body>

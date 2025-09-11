@@ -497,34 +497,54 @@ class OANDASignalEngine:
         )
     
     def _calculate_risk_management(self, current_price: float, technical: TechnicalAnalysis, signal_type: SignalType) -> RiskManagement:
-        """Calculate risk management levels"""
+        """Calculate risk management levels with improved precision"""
         atr = technical.atr
         
-        if signal_type == SignalType.BUY:
-            stop_loss = current_price - (atr * 1.5)
-            take_profit = current_price + (atr * self.default_rrr * 1.5)
-        elif signal_type == SignalType.SELL:
-            stop_loss = current_price + (atr * 1.5)
-            take_profit = current_price - (atr * self.default_rrr * 1.5)
-        else:  # HOLD
-            stop_loss = current_price
-            take_profit = current_price
+        # Ensure ATR is meaningful (minimum 0.0001 for forex, proportional for other instruments)
+        min_atr = max(current_price * 0.0001, 0.0001)  # 0.01% of price or 0.0001 minimum
+        atr = max(atr, min_atr)
         
+        if signal_type == SignalType.BUY:
+            # More conservative stop loss and better risk/reward calculation
+            stop_distance = atr * 1.2  # Slightly tighter stop loss
+            stop_loss = current_price - stop_distance
+            take_profit = current_price + (stop_distance * self.default_rrr)
+            
+        elif signal_type == SignalType.SELL:
+            # More conservative stop loss and better risk/reward calculation  
+            stop_distance = atr * 1.2  # Slightly tighter stop loss
+            stop_loss = current_price + stop_distance
+            take_profit = current_price - (stop_distance * self.default_rrr)
+            
+        else:  # HOLD
+            # For HOLD signals, provide reasonable levels for reference
+            stop_distance = atr * 1.0
+            stop_loss = current_price - stop_distance if technical.ma_trend != "bearish" else current_price + stop_distance
+            take_profit = current_price + stop_distance if technical.ma_trend != "bearish" else current_price - stop_distance
+        
+        # Ensure stop loss is meaningful
         stop_distance = abs(current_price - stop_loss)
         profit_distance = abs(take_profit - current_price)
         
-        risk_reward = profit_distance / stop_distance if stop_distance > 0 else 0
+        # Calculate risk/reward ratio
+        if stop_distance > 0:
+            risk_reward = round(profit_distance / stop_distance, 2)
+        else:
+            risk_reward = 0
         
         # Position size calculation (2% risk)
         position_size_pct = self.max_risk_per_trade
         max_loss = stop_distance * position_size_pct
         
-        # Probability based on technical score
-        probability = min(technical.technical_score * 1.2, 0.95)
+        # Probability based on technical score and signal type
+        if signal_type == SignalType.HOLD:
+            probability = min(technical.technical_score * 0.8, 0.60)  # Lower probability for HOLD
+        else:
+            probability = min(technical.technical_score * 1.1, 0.95)
         
         return RiskManagement(
-            suggested_stop_loss=stop_loss,
-            suggested_take_profit=take_profit,
+            suggested_stop_loss=round(stop_loss, 5),  # Round to 5 decimal places for precision
+            suggested_take_profit=round(take_profit, 5),
             risk_reward_ratio=risk_reward,
             position_size_pct=position_size_pct,
             max_loss_amount=max_loss,

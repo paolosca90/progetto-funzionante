@@ -406,6 +406,8 @@ class OANDAClient:
             EURUSD -> EUR_USD
             EUR_USD -> EUR_USD (unchanged)
             eurusd -> EUR_USD
+            US30 -> US30_USD
+            NAS100 -> NAS100_USD
         """
         symbol = symbol.upper().strip()
         
@@ -413,8 +415,39 @@ class OANDAClient:
         if "_" in symbol:
             return symbol
         
-        # Convert 6-character format to OANDA format
-        if len(symbol) == 6:
+        # Handle index symbols that need _USD suffix
+        index_symbols = {
+            'US30': 'US30_USD',
+            'NAS100': 'NAS100_USD', 
+            'US500': 'SPX500_USD',
+            'SPX500': 'SPX500_USD',
+            'UK100': 'UK100_GBP',
+            'GER30': 'DE30_EUR',
+            'DE30': 'DE30_EUR',
+            'FR40': 'FR40_EUR',
+            'JPN225': 'JP225_USD',
+            'JP225': 'JP225_USD',
+            'HK33': 'HK33_HKD',
+            'AUS200': 'AU200_AUD',
+            'CHINA50': 'CN50_USD'
+        }
+        
+        if symbol in index_symbols:
+            return index_symbols[symbol]
+        
+        # Handle metal symbols
+        metal_symbols = {
+            'XAUUSD': 'XAU_USD',
+            'XAGUSD': 'XAG_USD',
+            'GOLD': 'XAU_USD',
+            'SILVER': 'XAG_USD'
+        }
+        
+        if symbol in metal_symbols:
+            return metal_symbols[symbol]
+        
+        # Convert 6-character forex format to OANDA format
+        if len(symbol) == 6 and symbol.isalpha():
             return f"{symbol[:3]}_{symbol[3:]}"
         
         # If other format, return as-is and let OANDA handle validation
