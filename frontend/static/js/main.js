@@ -471,10 +471,28 @@ async function handleRegister(e) {
 }
 
 // Add logout function for dashboard
-function logout() {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('token_type');
-    window.location.href = 'index.html';
+async function logout() {
+    try {
+        // Call backend logout endpoint
+        const token = localStorage.getItem('access_token');
+        if (token) {
+            await fetch('/logout', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+        }
+    } catch (error) {
+        console.log('Logout endpoint not available, proceeding with client-side logout');
+    } finally {
+        // Always clear client-side data
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('token_type');
+        window.location.href = 'index.html';
+    }
 }
 
 // ===== Message Display Functions (Global Scope) =====

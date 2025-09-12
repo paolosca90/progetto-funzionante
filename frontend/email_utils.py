@@ -106,3 +106,93 @@ Account creato il {now}
     except Exception as e:
         print(f"❌ Errore invio Resend: {e}")
         return False
+
+
+def send_password_reset_email(to_email, username, reset_token):
+    """
+    Invia l'email per il reset della password tramite la REST API di Resend.
+    """
+    resend_api_key = os.getenv('RESEND_API_KEY', 're_7Zrgq4ei_5iC1z17Z9aE1sWyWbTATc7AJ')
+    from_email = os.getenv('FROM_EMAIL', 'support@cash-revolution.com')
+    reset_url = f"https://www.cash-revolution.com/reset-password.html?token={reset_token}"
+    now = datetime.now().strftime('%d/%m/%Y alle %H:%M')
+
+    html_body = f"""
+    <div style="font-family: Arial, sans-serif; background-color: #0a0a0a; color: #e0e0e0; padding: 20px;">
+      <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg,#1a1a1a,#2d2d2d); border:2px solid #ff6b35; border-radius:15px; padding:30px;">
+        <h1 style="color:#ff6b35; text-align:center; font-size:24px; margin-bottom:20px;">
+          Reset Password - AI Cash-Revolution
+        </h1>
+        <p style="font-size:16px;">Ciao <strong style="color:#ff6b35;">{username}</strong>,<br>
+        hai richiesto il reset della tua password.<br>
+        Clicca il link qui sotto per impostare una nuova password:</p>
+        
+        <div style="text-align:center;margin:32px 0;">
+          <a href="{reset_url}" style="display:inline-block; background:linear-gradient(90deg,#ff6b35,#e55a2b); color:#fff; text-decoration:none; padding:15px 37px; border-radius:25px; font-weight:bold; font-size:17px;">
+             Reset Password
+          </a>
+        </div>
+        
+        <div style="background: #2a2a2a; border-radius: 8px; padding: 13px 15px; margin: 18px 0;">
+          <h4 style="color:#ff6b35; margin-top:0;">⚠️ Importante:</h4>
+          <ul style="padding-left: 22px; line-height: 1.7;">
+            <li>Questo link è valido per <strong>1 ora</strong> dalla richiesta</li>
+            <li>Se non hai richiesto questo reset, ignora questa email</li>
+            <li>Per sicurezza, effettua il reset solo da dispositivi fidati</li>
+          </ul>
+        </div>
+        
+        <p style="font-size:13px; background: #1a1a1a; padding:10px; border-radius:8px; margin-bottom:18px;">
+          <strong style="color:#ff6b35;">📞 Supporto:</strong> Per assistenza tecnica, scrivi a <a href="mailto:{from_email}" style="color:#ff6b35;">{from_email}</a>
+        </p>
+        
+        <hr style="border:none; border-top:1px solid #333; margin:20px 0;">
+        <p style="text-align:center; font-size:12px; color:#888;">
+          AI Cash-Revolution – Trading Automatizzato<br>
+          Reset richiesto il {now}<br>
+          Se non hai effettuato questa richiesta, contatta il supporto.
+        </p>
+      </div>
+    </div>
+    """
+    
+    # Plain text fallback
+    text_body = f"""
+Ciao {username},
+
+Hai richiesto il reset della password per AI Cash-Revolution.
+
+Reset Link: {reset_url}
+
+IMPORTANTE:
+- Questo link è valido per 1 ora dalla richiesta
+- Se non hai richiesto questo reset, ignora questa email
+- Per sicurezza, effettua il reset solo da dispositivi fidati
+
+Per assistenza: {from_email}
+
+AI Cash-Revolution - Trading Automatizzato
+Reset richiesto il {now}
+"""
+
+    data = {
+        "from": from_email,
+        "to": [to_email],
+        "subject": "🔑 Reset Password - AI Cash-Revolution",
+        "html": html_body,
+        "text": text_body,
+    }
+
+    headers = {
+        "Authorization": f"Bearer {resend_api_key}",
+        "Content-Type": "application/json"
+    }
+
+    try:
+        resp = requests.post("https://api.resend.com/emails", json=data, headers=headers, timeout=15)
+        resp.raise_for_status()
+        print(f"- Email reset password inviata con Resend a {to_email}")
+        return True
+    except Exception as e:
+        print(f"❌ Errore invio email reset: {e}")
+        return False

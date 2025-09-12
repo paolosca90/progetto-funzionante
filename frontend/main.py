@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, Request, Response
+from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, Request, Response, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
@@ -6,6 +6,8 @@ from fastapi.responses import HTMLResponse, FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta
+import secrets
+import uuid
 from typing import List, Optional
 import httpx
 import asyncio
@@ -102,7 +104,7 @@ except ImportError as e:
     print(f"⚠️  Warning: OANDA integration not available: {e}")
     OANDA_AVAILABLE = False
 # IMPORT AGGIUNTO PER EMAIL
-from email_utils import send_registration_email
+from email_utils import send_registration_email, send_password_reset_email
 # OANDA Signal Engine - Available on Railway
 
 
@@ -266,6 +268,16 @@ async def serve_login_page():
 async def serve_register_page():
     """Serve the registration page"""
     return serve_html_file("register.html", "Register - AI Cash-Revolution")
+
+@app.get("/forgot-password.html", response_class=HTMLResponse)
+async def serve_forgot_password_page():
+    """Serve the forgot password page"""
+    return serve_html_file("forgot-password.html", "Recupera Password - AI Cash-Revolution")
+
+@app.get("/reset-password.html", response_class=HTMLResponse)
+async def serve_reset_password_page():
+    """Serve the reset password page"""
+    return serve_html_file("reset-password.html", "Reset Password - AI Cash-Revolution")
 
 @app.get("/test-integration.html", response_class=HTMLResponse)
 async def serve_test_page():
@@ -701,6 +713,57 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
         "token_type": "bearer",
         "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60
     }
+
+@app.post("/logout")
+def logout_user():
+    """Logout endpoint - token invalidation handled client-side"""
+    return {"message": "Logout successful"}
+
+@app.post("/forgot-password")
+def request_password_reset(email: str = Form(...), db: Session = Depends(get_db)):
+    """Request password reset - send reset email"""
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        # Don't reveal if email exists or not for security
+        return {"message": "Se l'email esiste, riceverai un link per il reset della password"}
+    
+    # Generate reset token
+    reset_token = secrets.token_urlsafe(32)
+    user.reset_token = reset_token
+    user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)  # 1 hour expiry
+    db.commit()
+    
+    # Send reset email
+    try:
+        send_password_reset_email(user.email, user.full_name or user.username, reset_token)
+    except Exception as e:
+        print(f"Failed to send password reset email: {e}")
+        # Still return success message for security
+    
+    return {"message": "Se l'email esiste, riceverai un link per il reset della password"}
+
+@app.post("/reset-password")
+def reset_password(token: str = Form(...), new_password: str = Form(...), db: Session = Depends(get_db)):
+    """Reset password using token"""
+    user = db.query(User).filter(
+        User.reset_token == token,
+        User.reset_token_expires > datetime.utcnow()
+    ).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token non valido o scaduto"
+        )
+    
+    # Hash new password
+    from jwt_auth import get_password_hash
+    user.hashed_password = get_password_hash(new_password)
+    user.reset_token = None
+    user.reset_token_expires = None
+    db.commit()
+    
+    return {"message": "Password aggiornata con successo"}
 
 @app.get("/api/landing/stats")
 def get_landing_page_stats(db: Session = Depends(get_db)):

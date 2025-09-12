@@ -30,6 +30,11 @@ class User(Base):
     created_at = Column(DateTime, default=func.now())
     trial_end = Column(DateTime)
     subscription_active = Column(Boolean, default=True)
+    last_login = Column(DateTime)
+    
+    # Password reset functionality
+    reset_token = Column(String(100))
+    reset_token_expires = Column(DateTime)
     
     # Relationships
     signals = relationship("Signal", back_populates="creator")
