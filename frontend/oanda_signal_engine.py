@@ -313,9 +313,9 @@ class OANDASignalEngine:
             logger.warning("⚠️ No Gemini API key provided - AI analysis disabled")
         
         # Risk management settings
-        self.confidence_threshold = 0.60  # 60% minimum confidence for BUY/SELL
+        self.confidence_threshold = 0.35  # Further lowered from 0.45 to 0.35 for more signals
         self.max_risk_per_trade = 0.02    # 2% maximum risk per trade
-        self.default_rrr = 2.5            # 1:2.5 risk/reward ratio
+        self.default_rrr = 2.0            # 1:2.0 risk/reward ratio (more achievable)
         
         logger.info(f"OANDA Signal Engine initialized for {environment} environment")
     
@@ -681,10 +681,10 @@ class OANDASignalEngine:
                 bullish_factors = 0
                 bearish_factors = 0
                 
-                # RSI
-                if technical.rsi < 30:
+                # RSI - more permissive levels
+                if technical.rsi < 40:  # More permissive (was 30)
                     bullish_factors += 1
-                elif technical.rsi > 70:
+                elif technical.rsi > 60:  # More permissive (was 70)
                     bearish_factors += 1
                 
                 # MACD

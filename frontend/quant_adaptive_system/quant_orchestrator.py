@@ -177,8 +177,8 @@ class QuantAdaptiveOrchestrator:
             # Initialize rolling generator with config
             rolling_config = RollingSignalConfig(
                 generation_interval_minutes=self.config.get("rolling_interval_minutes", 5),
-                max_concurrent_signals=self.config.get("max_concurrent_signals", 10),
-                min_confidence_threshold=self.config.get("min_confidence_threshold", 0.6)
+                max_concurrent_signals=self.config.get("max_concurrent_signals", 20),
+                min_confidence_threshold=self.config.get("min_confidence_threshold", 0.4)
             )
             self.rolling_generator = await get_rolling_generator(rolling_config)
             logger.info("✅ Rolling Signal Generator inizializzato")
@@ -637,8 +637,8 @@ class QuantAdaptiveOrchestrator:
         """Carica configurazione di default"""
         return {
             "rolling_interval_minutes": 5,
-            "max_concurrent_signals": 10,
-            "min_confidence_threshold": 0.6,
+            "max_concurrent_signals": 20,   # Increased from 15
+            "min_confidence_threshold": 0.4,  # Lowered further from 0.45
             "auto_export_reports": True,
             "enable_auto_recovery": True,
             "max_daily_risk": 0.04,

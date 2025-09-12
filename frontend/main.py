@@ -868,21 +868,33 @@ def login_user(response: Response, form_data: OAuth2PasswordRequestForm = Depend
     }
 
 @app.post("/logout")
-def logout_user():
+def logout_user(response: Response):
     """Logout endpoint - token invalidation handled client-side"""
-    return {"message": "Logout successful"}
+    # Add consistent CORS headers for logout
+    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+    response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return {"message": "Logout successful", "timestamp": datetime.utcnow().isoformat()}
 
 @app.get("/logout")
-def logout_user_get():
+def logout_user_get(response: Response):
     """Logout endpoint GET - fallback for direct access"""
-    return {"message": "Logout successful"}
+    # Add consistent CORS headers for logout
+    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+    response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return {"message": "Logout successful", "timestamp": datetime.utcnow().isoformat()}
 
 @app.options("/logout")
 def logout_options(response: Response):
     """Handle CORS preflight for logout"""
-    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
     response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
+    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
     return {"message": "OK"}
 
 @app.post("/forgot-password")

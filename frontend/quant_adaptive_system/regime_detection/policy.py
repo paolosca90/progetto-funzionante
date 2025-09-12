@@ -55,8 +55,8 @@ class PolicyParameters:
     max_daily_trades: int = 20
     
     # Entry Criteria
-    min_confidence: float = 0.6
-    confluence_required: int = 2
+    min_confidence: float = 0.4  # Lowered from 0.6 to 0.4 for more signals
+    confluence_required: int = 1  # Reduced from 2 to 1 for more signals
     volume_confirmation: bool = True
     
     # Stop Loss / Take Profit
@@ -342,14 +342,14 @@ class PolicyManager:
         
         # Adapt based on regime
         if regime.regime_type == RegimeType.HIGH_VOLATILITY:
-            adapted_params.max_position_size *= 0.7
-            adapted_params.atr_stop_multiplier *= 1.5
-            adapted_params.min_confidence += 0.1
+            adapted_params.max_position_size *= 0.8  # Less conservative (was 0.7)
+            adapted_params.atr_stop_multiplier *= 1.3  # Less conservative (was 1.5)
+            adapted_params.min_confidence += 0.05  # Much smaller increase (was 0.1)
             
         elif regime.regime_type == RegimeType.GAMMA_SQUEEZE:
-            adapted_params.max_position_size *= 0.5
-            adapted_params.max_concurrent_trades = max(2, adapted_params.max_concurrent_trades // 2)
-            adapted_params.min_confidence += 0.15
+            adapted_params.max_position_size *= 0.6  # Less conservative (was 0.5)
+            adapted_params.max_concurrent_trades = max(3, adapted_params.max_concurrent_trades // 2)  # Allow more (was 2)
+            adapted_params.min_confidence += 0.08  # Much smaller increase (was 0.15)
             
         elif regime.regime_type == RegimeType.PINNING:
             adapted_params.confluence_required = max(3, adapted_params.confluence_required)
@@ -403,10 +403,10 @@ class PolicyManager:
                 if result and result[0] is not None:
                     avg_perf, avg_win_rate, avg_r_mult = result
                     
-                    # Adaptive adjustments
-                    if avg_perf < 0.3:  # Poor performance
-                        self.current_policy.parameters.min_confidence += 0.05
-                        self.current_policy.parameters.max_position_size *= 0.9
+                    # Adaptive adjustments - more forgiving
+                    if avg_perf < 0.2:  # Only adjust on very poor performance (was 0.3)
+                        self.current_policy.parameters.min_confidence += 0.02  # Smaller increase (was 0.05)
+                        self.current_policy.parameters.max_position_size *= 0.95  # Less penalty (was 0.9)
                         
                     elif avg_perf > 0.7:  # Good performance
                         self.current_policy.parameters.max_position_size *= 1.05
@@ -430,7 +430,7 @@ class PolicyManager:
                 max_position_size=0.025,
                 risk_reward_min=2.0,
                 max_concurrent_trades=6,
-                min_confidence=0.65,
+                min_confidence=0.45,  # Lowered from 0.65
                 confluence_required=2,
                 atr_stop_multiplier=1.5,
                 atr_target_multiplier=4.0,
@@ -442,7 +442,7 @@ class PolicyManager:
                 max_position_size=0.02,
                 risk_reward_min=2.0,
                 max_concurrent_trades=4,
-                min_confidence=0.7,
+                min_confidence=0.5,  # Lowered from 0.7
                 confluence_required=3,
                 atr_stop_multiplier=2.0,
                 atr_target_multiplier=4.0,
@@ -453,7 +453,7 @@ class PolicyManager:
                 max_position_size=0.015,
                 risk_reward_min=1.5,
                 max_concurrent_trades=3,
-                min_confidence=0.75,
+                min_confidence=0.55,  # Lowered from 0.75
                 confluence_required=3,
                 atr_stop_multiplier=1.5,
                 atr_target_multiplier=2.0,
@@ -464,9 +464,9 @@ class PolicyManager:
             PolicyType.GAMMA_SQUEEZE: PolicyParameters(
                 max_position_size=0.01,
                 risk_reward_min=3.0,
-                max_concurrent_trades=2,
-                max_daily_trades=10,
-                min_confidence=0.8,
+                max_concurrent_trades=3,  # Increased from 2
+                max_daily_trades=15,      # Increased from 10
+                min_confidence=0.6,       # Lowered from 0.8
                 confluence_required=4,
                 atr_stop_multiplier=3.0,
                 atr_target_multiplier=6.0,
@@ -476,8 +476,8 @@ class PolicyManager:
             PolicyType.PINNING_AWARE: PolicyParameters(
                 max_position_size=0.015,
                 risk_reward_min=1.0,
-                max_concurrent_trades=3,
-                min_confidence=0.6,
+                max_concurrent_trades=4,  # Increased from 3
+                min_confidence=0.45,      # Lowered from 0.6
                 confluence_required=2,
                 atr_stop_multiplier=1.0,
                 atr_target_multiplier=2.0,
@@ -487,8 +487,8 @@ class PolicyManager:
             PolicyType.VOLATILITY_EXPANSION: PolicyParameters(
                 max_position_size=0.01,
                 risk_reward_min=2.5,
-                max_concurrent_trades=4,
-                min_confidence=0.7,
+                max_concurrent_trades=5,  # Increased from 4
+                min_confidence=0.5,       # Lowered from 0.7
                 atr_stop_multiplier=2.5,
                 atr_target_multiplier=5.0,
                 trailing_stop=True
@@ -497,9 +497,9 @@ class PolicyManager:
             PolicyType.DEFENSIVE: PolicyParameters(
                 max_position_size=0.005,
                 risk_reward_min=3.0,
-                max_concurrent_trades=1,
-                max_daily_trades=5,
-                min_confidence=0.85,
+                max_concurrent_trades=2,  # Increased from 1
+                max_daily_trades=10,      # Increased from 5
+                min_confidence=0.65,      # Lowered from 0.85
                 confluence_required=4,
                 atr_stop_multiplier=2.0,
                 atr_target_multiplier=6.0,

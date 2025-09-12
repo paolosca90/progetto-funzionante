@@ -472,26 +472,56 @@ async function handleRegister(e) {
 
 // Add logout function for dashboard
 async function logout() {
+    const showLogoutError = (message) => {
+        console.error('Logout error:', message);
+        // Show error message using existing function
+        if (typeof showErrorMessage === 'function') {
+            showErrorMessage('Errore durante il logout: ' + message);
+        }
+    };
+
     try {
-        // Call backend logout endpoint
+        // Call backend logout endpoint with proper URL and error handling
         const token = localStorage.getItem('access_token');
         if (token) {
-            await fetch('/logout', {
+            console.log('Attempting server-side logout...');
+            
+            const response = await fetch(CONFIG.API_BASE_URL + '/logout', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
             });
+            
+            if (!response.ok) {
+                // Log the specific error but don't block logout
+                console.warn(`Logout endpoint returned ${response.status}: ${response.statusText}`);
+            } else {
+                console.log('Server-side logout successful');
+            }
         }
     } catch (error) {
-        console.log('Logout endpoint not available, proceeding with client-side logout');
+        console.warn('Logout endpoint error (proceeding with client-side cleanup):', error.message);
     } finally {
-        // Always clear client-side data
+        // Always clear client-side data regardless of server response
+        console.log('Clearing local storage and redirecting...');
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('token_type');
-        window.location.href = 'index.html';
+        
+        // Show success message before redirect
+        if (typeof showSuccessMessage === 'function') {
+            showSuccessMessage('Logout effettuato con successo!');
+            // Delay redirect to show message
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1500);
+        } else {
+            // Immediate redirect if no message function
+            window.location.href = 'index.html';
+        }
     }
 }
 
