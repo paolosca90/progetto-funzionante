@@ -894,6 +894,93 @@ def get_recent_signals_preview(db: Session = Depends(get_db)):
         # Return empty data on error in production
         return {"signals": []}
 
+@app.post("/admin/database-migrate")
+def migrate_database(response: Response, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    """Run database migration to add missing columns - Admin only"""
+    try:
+        # Import required modules
+        import psycopg2
+        from urllib.parse import urlparse
+        import os
+
+        print("[MIGRATION] Starting database migration...")
+
+        # Check if user is admin
+        if not current_user.is_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo amministratori possono eseguire questa operazione"
+            )
+
+        # Get DATABASE_URL from environment
+        database_url = os.getenv('DATABASE_URL')
+        if not database_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="DATABASE_URL non configurato"
+            )
+
+        # Parse database URL
+        url = urlparse(database_url)
+        conn = psycopg2.connect(
+            host=url.hostname,
+            port=url.port,
+            user=url.username,
+            password=url.password,
+            database=url.path[1:]
+        )
+        cursor = conn.cursor()
+
+        print("[MIGRATION] Connected to database")
+
+        # Check existing columns
+        cursor.execute("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'users' AND table_schema = 'public'
+        """)
+        existing_columns = {row[0] for row in cursor.fetchall()}
+        print(f"[MIGRATION] Existing columns: {existing_columns}")
+
+        # Columns to add
+        required_columns = {
+            'last_login': 'TIMESTAMP',
+            'reset_token': 'VARCHAR(100)',
+            'reset_token_expires': 'TIMESTAMP'
+        }
+
+        added_columns = []
+        for column, column_type in required_columns.items():
+            if column not in existing_columns:
+                print(f"[MIGRATION] Adding missing column: {column}")
+                cursor.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {column} {column_type}")
+                added_columns.append(column)
+
+        if added_columns:
+            conn.commit()
+            result = f"✅ Migrazione completata! Colonne aggiunte: {', '.join(added_columns)}"
+        else:
+            result = "ℹ️ Nessuna colonna mancante - database già aggiornato"
+
+        cursor.close()
+        conn.close()
+        print("[MIGRATION] Migration completed successfully")
+
+        return {"message": result, "added_columns": added_columns}
+
+    except psycopg2.Error as e:
+        print(f"[MIGRATION] Database error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Errore database: {str(e)}"
+        )
+    except Exception as e:
+        print(f"[MIGRATION] Unexpected error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Errore migrazione: {str(e)}"
+        )
+
 @app.get("/me", response_model=UserStatsOut)
 def get_current_user_info(response: Response, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     """Get current user information with statistics"""
