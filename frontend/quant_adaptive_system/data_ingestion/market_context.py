@@ -546,3 +546,14 @@ async def get_regime() -> str:
     """Get current market regime - quick check"""
     context = await get_market_context()
     return context.regime if context else 'UNKNOWN'
+
+# Factory function per istanza globale
+_cboe_provider_instance = None
+
+async def get_cboe_provider() -> CBOEDataProvider:
+    """Restituisce istanza singleton del CBOE provider"""
+    global _cboe_provider_instance
+    if _cboe_provider_instance is None:
+        _cboe_provider_instance = CBOEDataProvider()
+        await _cboe_provider_instance.initialize()
+    return _cboe_provider_instance

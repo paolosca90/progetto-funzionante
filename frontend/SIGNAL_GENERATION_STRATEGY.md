@@ -4,6 +4,20 @@
 
 Il sistema di generazione segnali implementa un approccio multi-layered che combina analisi tecnica avanzata, intelligenza artificiale e gestione del rischio professionale per generare segnali di trading di alta qualità.
 
+### 🚀 **AGGIORNAMENTO DICEMBRE 2024: Sistema Quant Adaptive**
+
+È stato implementato un **sistema quantitativo adattivo avanzato** che rappresenta un'evoluzione significativa della piattaforma, progettato per competere con sistemi istituzionali di hedge fund.
+
+**Sistema Quant Adaptive - Caratteristiche chiave**:
+- 🧠 **Machine Learning**: Apprendimento automatico dagli outcome dei segnali
+- 📊 **Data Integration**: CBOE options (0DTE, PCR, gamma) + CME/Eurex futures volume profile  
+- 🔄 **Regime Detection**: 7 regimi di mercato con policy switching automatico
+- ⚖️ **Kelly Criterion**: Position sizing ottimale con risk management adattivo
+- 📈 **Rolling Signals**: Generazione automatica ogni 5 minuti con auto-validazione
+- 📊 **Professional Metrics**: Sharpe, Sortino, Calmar, VaR con reporting automatico
+
+**File del Quant System**: `frontend/quant_adaptive_system/`
+
 ## 🏗️ Architettura del Sistema
 
 ### 📁 File Principali e Responsabilità

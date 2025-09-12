@@ -668,3 +668,14 @@ async def is_inside_value_area(cfd_symbol: str, current_price: float) -> Optiona
     val = levels.get('val', 0)
     
     return val <= current_price <= vah
+
+# Factory function per istanza globale
+_futures_mapper_instance = None
+
+async def get_futures_mapper() -> FuturesVolumeMapper:
+    """Restituisce istanza singleton del futures mapper"""
+    global _futures_mapper_instance
+    if _futures_mapper_instance is None:
+        _futures_mapper_instance = FuturesVolumeMapper()
+        await _futures_mapper_instance.initialize()
+    return _futures_mapper_instance

@@ -15,6 +15,7 @@ import logging
 import os
 import json
 from decimal import Decimal
+import math
 import os
 
 # Setup logging
@@ -1902,31 +1903,48 @@ async def generate_oanda_signal(
         elif signal.signal_type == OANDASignalType.SELL:
             db_signal_type = SignalTypeEnum.SELL
         else:
-            db_signal_type = SignalTypeEnum.HOLD if hasattr(SignalTypeEnum, 'HOLD') else SignalTypeEnum.BUY
+            # Skip HOLD signals as they're not supported by the frontend
+            raise HTTPException(
+                status_code=status.HTTP_200_OK,
+                detail="No actionable signal generated - market conditions not suitable for entry"
+            )
         
-        # Save signal to database
+        # Helper function to sanitize float values
+        def safe_float(value, default=0.0):
+            """Convert value to float, handling NaN and None"""
+            try:
+                if value is None:
+                    return default
+                float_val = float(value)
+                if math.isnan(float_val) or math.isinf(float_val):
+                    return default
+                return float_val
+            except (ValueError, TypeError):
+                return default
+        
+        # Save signal to database with sanitized values
         db_signal = Signal(
             symbol=signal.instrument,
             signal_type=db_signal_type,
-            entry_price=signal.entry_price,
-            stop_loss=signal.stop_loss,
-            take_profit=signal.take_profit,
-            reliability=signal.confidence_score * 100,  # Convert confidence to reliability percentage
-            confidence_score=signal.confidence_score,
+            entry_price=safe_float(signal.entry_price),
+            stop_loss=safe_float(signal.stop_loss),
+            take_profit=safe_float(signal.take_profit),
+            reliability=safe_float(signal.confidence_score * 100),  # Convert confidence to reliability percentage
+            confidence_score=safe_float(signal.confidence_score),
             risk_level=signal.risk_level.value,
             ai_analysis=signal.ai_analysis,
-            technical_score=signal.technical_score,
-            risk_reward_ratio=signal.risk_reward_ratio,
-            position_size_suggestion=signal.position_size,
-            spread=signal.spread,
-            volatility=signal.volatility,
+            technical_score=safe_float(signal.technical_score),
+            risk_reward_ratio=safe_float(signal.risk_reward_ratio),
+            position_size_suggestion=safe_float(signal.position_size),
+            spread=safe_float(signal.spread),
+            volatility=safe_float(signal.volatility),
             is_public=False,  # User-generated signals are private
             is_active=True,
             creator_id=current_user.id,
             source="OANDA_AI",
             oanda_instrument=signal.instrument,
             timeframe=signal.timeframe,
-            rsi=signal.technical_indicators.rsi,
+            rsi=safe_float(signal.technical_indicators.rsi),
             macd_signal=signal.technical_indicators.macd_signal,
             market_session=signal.market_context.market_session,
             expires_at=signal.expires_at.replace(tzinfo=None)  # Remove timezone for SQLite
@@ -1946,29 +1964,29 @@ async def generate_oanda_signal(
                     "id": db_signal.id,
                     "symbol": db_signal.symbol,
                     "signal_type": db_signal.signal_type.value,
-                    "entry_price": db_signal.entry_price,
-                    "stop_loss": db_signal.stop_loss,
-                    "take_profit": db_signal.take_profit,
-                    "reliability": db_signal.reliability,
-                    "confidence": db_signal.confidence_score,
+                    "entry_price": safe_float(db_signal.entry_price),
+                    "stop_loss": safe_float(db_signal.stop_loss),
+                    "take_profit": safe_float(db_signal.take_profit),
+                    "reliability": safe_float(db_signal.reliability),
+                    "confidence": safe_float(db_signal.confidence_score),
                     "risk_level": db_signal.risk_level,
-                    "position_size_suggestion": db_signal.position_size_suggestion,
-                    "risk_reward_ratio": db_signal.risk_reward_ratio,
+                    "position_size_suggestion": safe_float(db_signal.position_size_suggestion),
+                    "risk_reward_ratio": safe_float(db_signal.risk_reward_ratio),
                     "ai_analysis": db_signal.ai_analysis,
                     "gemini_explanation": signal.gemini_explanation,
                     "timeframe": db_signal.timeframe,
                     "market_session": db_signal.market_session,
                     "technical_indicators": {
-                        "rsi": signal.technical_indicators.rsi,
-                        "macd_line": signal.technical_indicators.macd_line,
-                        "sma_20": signal.technical_indicators.sma_20,
-                        "bollinger_position": "upper" if signal.entry_price > signal.technical_indicators.bollinger_upper else "lower" if signal.entry_price < signal.technical_indicators.bollinger_lower else "middle"
+                        "rsi": safe_float(signal.technical_indicators.rsi),
+                        "macd_line": safe_float(signal.technical_indicators.macd_line),
+                        "sma_20": safe_float(signal.technical_indicators.sma_20),
+                        "bollinger_position": "upper" if safe_float(signal.entry_price) > safe_float(signal.technical_indicators.bollinger_upper) else "lower" if safe_float(signal.entry_price) < safe_float(signal.technical_indicators.bollinger_lower) else "middle"
                     },
                     "market_context": {
-                        "current_price": signal.market_context.current_price,
-                        "spread": signal.market_context.spread,
-                        "volatility": signal.market_context.volatility,
-                        "24h_change": signal.market_context.price_change_pct_24h
+                        "current_price": safe_float(signal.market_context.current_price),
+                        "spread": safe_float(signal.market_context.spread),
+                        "volatility": safe_float(signal.market_context.volatility),
+                        "24h_change": safe_float(signal.market_context.price_change_pct_24h)
                     },
                     "created_at": db_signal.created_at.isoformat(),
                     "expires_at": db_signal.expires_at.isoformat(),
