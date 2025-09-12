@@ -896,6 +896,20 @@ async def generate_custom_signal(
                 advanced_analysis = await analyzer.analyze_symbol(oanda_symbol, TimeFrame.H1)
                 
                 if advanced_analysis and advanced_analysis.signal_direction != "HOLD":
+                    # CRITICAL DEBUG: Log signal direction and AI reasoning content
+                    logger.info(f"🔥 SIGNAL DEBUG - Symbol: {symbol}")
+                    logger.info(f"🔥 SIGNAL DEBUG - Direction: {advanced_analysis.signal_direction}")
+                    logger.info(f"🔥 SIGNAL DEBUG - AI Reasoning (first 200 chars): {advanced_analysis.ai_reasoning[:200]}...")
+                    
+                    # Check for critical content in AI reasoning
+                    has_0dte = "0DTE" in advanced_analysis.ai_reasoning
+                    has_sentiment = "SENTIMENT" in advanced_analysis.ai_reasoning
+                    has_correct_direction = advanced_analysis.signal_direction in advanced_analysis.ai_reasoning
+                    
+                    logger.info(f"🔥 SIGNAL DEBUG - Has 0DTE: {has_0dte}")
+                    logger.info(f"🔥 SIGNAL DEBUG - Has sentiment: {has_sentiment}")
+                    logger.info(f"🔥 SIGNAL DEBUG - Has correct direction: {has_correct_direction}")
+                    
                     # Convert advanced analysis to database signal  
                     # Use frontend format for database storage
                     frontend_symbol = get_frontend_symbol(oanda_symbol)
@@ -923,6 +937,11 @@ async def generate_custom_signal(
                     db.commit()
                     db.refresh(db_signal)
                     
+                    # CRITICAL FIX: Ensure consistent signal direction in response
+                    actual_signal_direction = advanced_analysis.signal_direction
+                    logger.info(f"🔥 RESPONSE DEBUG - Returning signal_type: {db_signal.signal_type.value}")
+                    logger.info(f"🔥 RESPONSE DEBUG - Original direction: {actual_signal_direction}")
+                    
                     return {
                         "status": "success",
                         "message": "Advanced signal generated successfully",
@@ -930,6 +949,7 @@ async def generate_custom_signal(
                             "id": db_signal.id,
                             "symbol": db_signal.symbol,
                             "signal_type": db_signal.signal_type.value,
+                            "signal_direction": actual_signal_direction,  # Add explicit direction
                             "entry_price": db_signal.entry_price,
                             "stop_loss": db_signal.stop_loss,
                             "take_profit": db_signal.take_profit,
