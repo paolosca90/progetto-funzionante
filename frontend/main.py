@@ -138,7 +138,7 @@ app.add_middleware(
 # Additional CORS headers for OPTIONS requests
 @app.middleware("http")
 async def add_cors_headers(request, call_next):
-    origin = request.headers.get("origin")
+    origin = request.headers.get("origin") or request.headers.get("Origin")
     allowed_origins = [
         "https://www.cash-revolution.com",
         "https://cash-revolution.com", 
@@ -721,18 +721,35 @@ def register_user(user: UserCreate, background_tasks: BackgroundTasks, db: Sessi
             detail="Errore interno del server"
         )
 
+@app.options("/token")
+async def options_token(response: Response):
+    """Handle CORS preflight requests for token endpoint"""
+    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-Requested-With, Origin"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    return {}
+
 @app.post("/token", response_model=Token)
-def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login_user(response: Response, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Login user and return JWT tokens - SUPPORTA USERNAME E EMAIL"""
     print(f"Tentativo login da frontend per: {form_data.username}")
     
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
         print(f"Login FALLITO per: {form_data.username}")
+        # Add CORS headers to error responses
+        response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Username o password incorretti",
-            headers={"WWW-Authenticate": "Bearer"},
+            headers={
+                "WWW-Authenticate": "Bearer",
+                "Access-Control-Allow-Origin": "https://www.cash-revolution.com",
+                "Access-Control-Allow-Credentials": "true"
+            },
         )
 
     # Update last login
@@ -746,6 +763,12 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     refresh_token = create_refresh_token(data={"sub": user.username})
+    
+    # Add explicit CORS headers for the token endpoint
+    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-Requested-With, Origin"
     
     return {
         "access_token": access_token,
@@ -807,8 +830,7 @@ def reset_password(token: str = Form(...), new_password: str = Form(...), db: Se
         )
     
     # Hash new password
-    from jwt_auth import get_password_hash
-    user.hashed_password = get_password_hash(new_password)
+    user.hashed_password = hash_password(new_password)
     user.reset_token = None
     user.reset_token_expires = None
     db.commit()
