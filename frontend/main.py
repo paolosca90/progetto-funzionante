@@ -992,11 +992,11 @@ def emergency_reset_database(token: str = Form(...)):
     try:
         print("[EMERGENCY RESET] Starting complete database reset - ALL DATA WILL BE LOST...")
         
-        # Import the reset functions
-        from reset_database_complete import reset_complete_database
+        # Import the simple reset function
+        from simple_reset import simple_reset
         
-        # Run complete database reset
-        reset_success = reset_complete_database()
+        # Run simple database reset
+        reset_success = simple_reset()
         
         if reset_success:
             print("[EMERGENCY RESET] Database reset completed successfully!")
