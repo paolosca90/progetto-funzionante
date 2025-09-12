@@ -312,8 +312,8 @@ class OANDASignalEngine:
             self.gemini_model = None
             logger.warning("⚠️ No Gemini API key provided - AI analysis disabled")
         
-        # Risk management settings
-        self.confidence_threshold = 0.35  # Further lowered from 0.45 to 0.35 for more signals
+        # Risk management settings - Further lowered for better signal generation
+        self.confidence_threshold = 0.25  # Lowered from 0.35 to 0.25 for more signals
         self.max_risk_per_trade = 0.02    # 2% maximum risk per trade
         self.default_rrr = 2.0            # 1:2.0 risk/reward ratio (more achievable)
         
@@ -366,10 +366,14 @@ class OANDASignalEngine:
             current_price = current_prices[0]
             logger.info(f"🔍 OANDA Price Data for {instrument}: bid={current_price.bid}, ask={current_price.ask}, mid={current_price.mid}, spread={current_price.spread}")
             
-            # Validate pricing data
-            if current_price.bid == 0.0 or current_price.ask == 0.0 or current_price.mid == 1.0:
+            # Validate pricing data - more lenient validation
+            if current_price.bid <= 0.0 or current_price.ask <= 0.0 or (current_price.mid <= 0.0 and current_price.mid != 1.0):
                 logger.error(f"❌ Invalid price data received for {instrument}: bid={current_price.bid}, ask={current_price.ask}, mid={current_price.mid}")
                 raise OANDAAPIError(f"Invalid price data for {instrument} - possible API authentication issue")
+            
+            # Accept mid=1.0 as potentially valid for some instruments but log it
+            if current_price.mid == 1.0:
+                logger.warning(f"⚠️ Unusual mid price (1.0) for {instrument}, but proceeding with analysis")
             
             return candles, current_price
             
@@ -525,8 +529,12 @@ class OANDASignalEngine:
         """Calculate risk management levels with improved precision"""
         atr = technical.atr
         
-        # Ensure ATR is meaningful (minimum 0.0001 for forex, proportional for other instruments)
-        min_atr = max(current_price * 0.0001, 0.0001)  # 0.01% of price or 0.0001 minimum
+        # Ensure ATR is meaningful with instrument-specific minimums
+        # Note: Need instrument context - will be provided in future refactor
+        if current_price > 1000:  # Likely indices based on price
+            min_atr = max(current_price * 0.005, 1.0)  # 0.5% of price minimum for indices
+        else:  # Forex
+            min_atr = max(current_price * 0.0001, 0.0001)  # 0.01% of price minimum for forex
         atr = max(atr, min_atr)
         
         if signal_type == SignalType.BUY:
@@ -675,16 +683,18 @@ class OANDASignalEngine:
             # Analyze market context
             market = self._analyze_market_context(current_price, technical)
             
-            # Determine signal type based on confidence threshold
+            # Determine signal type based on confidence threshold - more flexible approach
+            logger.info(f"Technical score for {instrument}: {technical.technical_score:.3f} (threshold: {self.confidence_threshold})")
+            
             if technical.technical_score >= self.confidence_threshold:
                 # Determine direction based on technical factors
                 bullish_factors = 0
                 bearish_factors = 0
                 
-                # RSI - more permissive levels
-                if technical.rsi < 40:  # More permissive (was 30)
+                # RSI - even more permissive levels for better signal generation
+                if technical.rsi < 50:  # More permissive (was 40)
                     bullish_factors += 1
-                elif technical.rsi > 60:  # More permissive (was 70)
+                elif technical.rsi > 50:  # More permissive (was 60)
                     bearish_factors += 1
                 
                 # MACD

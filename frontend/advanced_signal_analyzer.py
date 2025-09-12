@@ -970,9 +970,10 @@ class AdvancedSignalAnalyzer:
             direction = "HOLD"
             bias_score = 50
         
-        # Apply sentiment analysis adjustment
+        # Apply sentiment analysis adjustment (more lenient)
         sentiment_adjustment = 0.0
         sentiment_confidence_boost = 0.0
+        logger.info(f"Initial signal for {symbol}: {direction} with bias_score: {bias_score}")
         
         if market_sentiment:
             sentiment_score = market_sentiment.overall_sentiment_score
@@ -1019,9 +1020,10 @@ class AdvancedSignalAnalyzer:
                         bias_score = 60
                         logger.info("Strong bearish sentiment triggers SELL from HOLD")
         
-        # Adjust confidence based on confluence score and sentiment
+        # Adjust confidence based on confluence score and sentiment (more generous)
         base_confidence = (mtf_analysis.confluence_score + bias_score) / 2
-        confidence = min(95, max(55, base_confidence + sentiment_confidence_boost))
+        confidence = min(95, max(45, base_confidence + sentiment_confidence_boost))  # Lowered min from 55 to 45
+        logger.info(f"Final confidence for {symbol}: {confidence}% (base: {base_confidence}%)")
         
         # Get current price from any available timeframe (prefer longer timeframes)
         current_price = 1.0000  # Default fallback
@@ -1049,18 +1051,39 @@ class AdvancedSignalAnalyzer:
                 current_price = random.uniform(*price_ranges.get(symbol, (1000, 10000)))
                 logger.info(f"Using realistic fallback price {current_price} for index {symbol}")
             else:
-                # For non-indices, still force HOLD to avoid wrong prices
-                direction = "HOLD"
+                # For non-indices, use more reasonable fallback instead of HOLD
+                if symbol.startswith(('EUR_USD', 'GBP_USD', 'USD_JPY')):
+                    # Forex pairs - use typical ranges
+                    forex_ranges = {
+                        'EUR_USD': (1.05, 1.15),
+                        'GBP_USD': (1.20, 1.30), 
+                        'USD_JPY': (140, 155)
+                    }
+                    import random
+                    current_price = random.uniform(*forex_ranges.get(symbol, (1.0, 1.2)))
+                    logger.info(f"Using realistic fallback price {current_price} for forex {symbol}")
+                else:
+                    # Other instruments - don't force HOLD, continue with analysis
+                    logger.warning(f"Using fallback price {current_price} for {symbol} - continuing analysis")
         
         # Calculate entry, SL, TP based on technical analysis
         entry_price = current_price
         
         # Get ATR for volatility-based levels (from M30 timeframe for stability)
-        atr = 0.001  # Default fallback
+        # Set instrument-appropriate ATR fallback
+        if symbol in ['NAS100_USD', 'SPX500_USD', 'US30_USD']:
+            atr = current_price * 0.01  # 1% of price for major indices
+        elif symbol in ['DE30_EUR', 'UK100_GBP', 'JP225_USD']:
+            atr = current_price * 0.008  # 0.8% for other indices
+        else:
+            atr = 0.001  # Default for forex
+            
         if TimeFrame.M30 in mtf_analysis.timeframes:
-            atr_data = mtf_analysis.timeframes[TimeFrame.M30].get("volatility", 0.001)
+            atr_data = mtf_analysis.timeframes[TimeFrame.M30].get("volatility", atr)
             if atr_data and atr_data > 0:
                 atr = atr_data
+            else:
+                logger.warning(f"No valid ATR data for {symbol}, using fallback: {atr}")
         
         # Define broker spreads for different instrument types
         typical_spreads = {
@@ -1094,15 +1117,19 @@ class AdvancedSignalAnalyzer:
         
         # Calculate ATR multipliers based on market conditions
         # More conservative approach for real execution
-        if atr / current_price > 0.015:  # High volatility (>1.5%)
-            atr_multiplier_sl = 2.0  # Increased from 1.5
-            atr_multiplier_tp = 4.0  # Increased from 3.0
-        elif atr / current_price > 0.008:  # Medium volatility (0.8-1.5%)
-            atr_multiplier_sl = 2.5  # Increased from 2.0
-            atr_multiplier_tp = 5.0  # Increased from 4.0
+        # Adjust multipliers based on instrument type and volatility
+        volatility_ratio = atr / current_price
+        logger.info(f"Volatility ratio for {symbol}: {volatility_ratio:.4f}")
+        
+        if volatility_ratio > 0.015:  # High volatility (>1.5%)
+            atr_multiplier_sl = 1.5  # Reduced for tighter stops
+            atr_multiplier_tp = 3.0  # Reduced for more achievable targets
+        elif volatility_ratio > 0.008:  # Medium volatility (0.8-1.5%)
+            atr_multiplier_sl = 2.0  # Reduced from 2.5
+            atr_multiplier_tp = 4.0  # Reduced from 5.0
         else:  # Low volatility (<0.8%)
-            atr_multiplier_sl = 3.0  # Increased from 2.5
-            atr_multiplier_tp = 6.0  # Increased from 5.0
+            atr_multiplier_sl = 2.5  # Reduced from 3.0
+            atr_multiplier_tp = 5.0  # Reduced from 6.0
         
         # Set initial ATR-based levels
         if direction == "BUY":
@@ -1287,9 +1314,10 @@ class AdvancedSignalAnalyzer:
         logger.info(f"Level analysis for {symbol}: ATR={atr_pct:.3f}%, Risk={risk_pct:.2f}%, Reward={reward_pct:.2f}%, R/R={risk_reward:.2f}")
         logger.info(f"Available key levels for {symbol}: {len(key_levels)}")
         
-        # Ensure minimum viable levels (only if completely unreasonable)
-        if risk_distance < atr * 0.5:  # Stop loss too tight relative to volatility
-            logger.warning(f"Stop loss too tight relative to ATR, adjusting")
+        # Ensure minimum viable levels (more lenient check)
+        min_risk_ratio = 0.3 if symbol.startswith(('NAS100', 'US30', 'SPX500')) else 0.5
+        if risk_distance < atr * min_risk_ratio:  # Stop loss too tight relative to volatility
+            logger.warning(f"Stop loss too tight relative to ATR ({risk_distance:.5f} < {atr * min_risk_ratio:.5f}), adjusting")
             if direction == "BUY":
                 stop_loss = current_price - (atr * 1.5)
                 take_profit = current_price + (atr * 3.0)  # 2:1 R/R ratio

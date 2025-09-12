@@ -1327,11 +1327,19 @@ async def generate_custom_signal(
                     detail=f"Unable to analyze {symbol} - insufficient market data"
                 )
             
-            # REJECT HOLD signals - only actionable BUY/SELL
+            # REJECT HOLD signals - only actionable BUY/SELL  
+            # But provide more debugging information
+            logger.info(f"Signal analysis for {symbol}: direction={analysis.signal_direction}, confidence={analysis.confidence_score}")
+            
             if analysis.signal_direction == "HOLD":
+                # Log additional details for debugging
+                logger.warning(f"HOLD signal generated for {symbol} - confidence: {analysis.confidence_score:.1%}")
+                logger.warning(f"Multi-timeframe trend: {analysis.multi_timeframe.overall_trend}")
+                logger.warning(f"Confluence score: {analysis.multi_timeframe.confluence_score}")
+                
                 raise HTTPException(
                     status_code=422,
-                    detail=f"No actionable signal for {symbol} - market conditions require patience"
+                    detail=f"No actionable signal for {symbol} - market conditions require patience (confidence: {analysis.confidence_score:.1%})"
                 )
             
             # Create database signal from analysis
