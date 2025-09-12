@@ -119,6 +119,7 @@ app = FastAPI(
 )
 
 # CORS middleware - Allow specific domains with credentials
+# Enhanced CORS middleware for production compatibility
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -129,10 +130,26 @@ app.add_middleware(
         "https://web-production-51f67.up.railway.app"
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
+    allow_headers=["*", "Authorization", "Content-Type", "Accept", "Origin", "User-Agent", "DNT", "Cache-Control", "X-Mx-ReqToken", "Keep-Alive", "X-Requested-With", "If-Modified-Since"],
     expose_headers=["*"]
 )
+
+# Additional CORS headers for OPTIONS requests
+@app.middleware("http")
+async def add_cors_headers(request, call_next):
+    if request.method == "OPTIONS":
+        response = Response(status_code=200)
+        response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
+    
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 # Mount static files (only if directory exists)
 import os
@@ -146,6 +163,16 @@ else:
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
+    # Ensure database schema is up to date
+    try:
+        from database import engine
+        from models import Base
+        print("Checking database schema...")
+        Base.metadata.create_all(bind=engine)
+        print("Database schema verified/updated successfully")
+    except Exception as e:
+        print(f"Warning: Database schema update failed: {e}")
+    
     await initialize_oanda_engine()
     logger.info("Application startup complete")
 
@@ -722,7 +749,12 @@ def logout_user():
 @app.post("/forgot-password")
 def request_password_reset(email: str = Form(...), db: Session = Depends(get_db)):
     """Request password reset - send reset email"""
-    user = db.query(User).filter(User.email == email).first()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+    except Exception as e:
+        # Handle database schema issues gracefully
+        logger.error(f"Database error in forgot-password: {e}")
+        return {"message": "Servizio temporaneamente non disponibile"}
     if not user:
         # Don't reveal if email exists or not for security
         return {"message": "Se l'email esiste, riceverai un link per il reset della password"}
@@ -745,10 +777,15 @@ def request_password_reset(email: str = Form(...), db: Session = Depends(get_db)
 @app.post("/reset-password")
 def reset_password(token: str = Form(...), new_password: str = Form(...), db: Session = Depends(get_db)):
     """Reset password using token"""
-    user = db.query(User).filter(
-        User.reset_token == token,
-        User.reset_token_expires > datetime.utcnow()
-    ).first()
+    try:
+        user = db.query(User).filter(
+            User.reset_token == token,
+            User.reset_token_expires > datetime.utcnow()
+        ).first()
+    except Exception as e:
+        # Handle database schema issues gracefully
+        logger.error(f"Database error in reset-password: {e}")
+        return {"message": "Servizio temporaneamente non disponibile"}
     
     if not user:
         raise HTTPException(
