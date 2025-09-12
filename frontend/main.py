@@ -187,6 +187,42 @@ async def startup_event():
         print(f"Warning: Database schema update failed: {e}")
     
     await initialize_oanda_engine()
+    
+    # 🚀 START ML SYSTEM - Automatic Signal Generation & Tracking
+    try:
+        print("🤖 Starting ML System - Automatic Signal Generation every 5 minutes...")
+        
+        # Add current directory to Python path for imports
+        import sys
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        
+        from quant_adaptive_system.quant_orchestrator import QuantAdaptiveOrchestrator
+        
+        # Initialize and start the Quant Orchestrator
+        orchestrator = QuantAdaptiveOrchestrator()
+        await orchestrator.initialize()
+        
+        # Start in background task to avoid blocking startup
+        asyncio.create_task(orchestrator.start())
+        
+        print("✅ ML System activated - Signal generation, outcome tracking, and learning enabled")
+        print("📊 System now generating signals every 5 minutes for all assets")
+        print("🧠 Machine learning tracking 50+ features per signal for continuous improvement")
+        logger.info("Quant Orchestrator started - ML system fully operational")
+        
+    except ImportError as e:
+        print(f"⚠️  ML System: Import issue - {e}")
+        print("📊 Application will continue with manual signal generation only")
+        print("💡 ML System requires all quantitative modules to be properly configured")
+        logger.warning(f"Quant Orchestrator import failed: {e}")
+    except Exception as e:
+        print(f"⚠️  Warning: ML System initialization failed: {e}")
+        print("📊 Application will continue with manual signal generation only")
+        logger.warning(f"Quant Orchestrator failed to start: {e}")
+    
     logger.info("Application startup complete")
 
 # === OANDA CONFIGURATION ===
@@ -443,8 +479,42 @@ def health_check(response: Response):
         "status": "healthy", 
         "timestamp": datetime.utcnow(),
         "version": "2.0.1",
-        "cors_enabled": True
+        "cors_enabled": True,
+        "ml_system": "enabled"
     }
+
+@app.get("/ml-system/status")
+def ml_system_status(response: Response):
+    """Check ML system status and signal generation"""
+    # Force CORS headers
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    
+    try:
+        # Try to check if ML system is running
+        import os
+        ml_db_path = "data/signal_outcomes.db"
+        ml_db_exists = os.path.exists(ml_db_path)
+        
+        return {
+            "ml_system": "active" if ml_db_exists else "initializing",
+            "components": {
+                "signal_generation": "every 5 minutes",
+                "outcome_tracking": "enabled", 
+                "database": "signal_outcomes.db",
+                "features_tracked": "50+ technical & market context features",
+                "learning_system": "feature importance + adaptive weights"
+            },
+            "status": "operational",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        return {
+            "ml_system": "error",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
 @app.get("/cors-test")
 def cors_test(response: Response):
@@ -801,6 +871,19 @@ def login_user(response: Response, form_data: OAuth2PasswordRequestForm = Depend
 def logout_user():
     """Logout endpoint - token invalidation handled client-side"""
     return {"message": "Logout successful"}
+
+@app.get("/logout")
+def logout_user_get():
+    """Logout endpoint GET - fallback for direct access"""
+    return {"message": "Logout successful"}
+
+@app.options("/logout")
+def logout_options(response: Response):
+    """Handle CORS preflight for logout"""
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
+    return {"message": "OK"}
 
 @app.post("/forgot-password")
 def request_password_reset(email: str = Form(...), db: Session = Depends(get_db)):

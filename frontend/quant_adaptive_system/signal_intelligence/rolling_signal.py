@@ -35,10 +35,12 @@ from .signal_outcomes import (
 # Import sistema esistente
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent.parent))
+# Add parent directories to path for imports
+parent_dir = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(parent_dir))
 
-from oanda_api_integration import OANDAClient
-from oanda_signal_engine import OANDASignalEngine
+from oanda_api_client import OANDAClient
+from oanda_signal_engine import OANDASignalEngine 
 from advanced_signal_analyzer import AdvancedSignalAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -48,8 +50,9 @@ class RollingSignalConfig:
     """Configurazione per il rolling signal generator"""
     # Timing
     generation_interval_minutes: int = 5
-    market_open_hour: int = 8    # UTC
-    market_close_hour: int = 22  # UTC
+    # Pausa solo 21:00-23:00 UTC (23:00-01:00 CEST)
+    blackout_start_hour: int = 21  # UTC
+    blackout_end_hour: int = 23    # UTC
     
     # Instruments
     instruments: List[str] = None
@@ -436,10 +439,11 @@ class RollingSignalGenerator:
         return True
     
     def _is_market_hours(self, timestamp: datetime) -> bool:
-        """Check se siamo in orari di mercato"""
+        """Check se siamo in orari di mercato - 24h tranne blackout 21:00-23:00 UTC"""
         hour = timestamp.hour
-        # Mercato aperto 8:00-22:00 UTC (approssimativamente NY + London)
-        return self.config.market_open_hour <= hour < self.config.market_close_hour
+        # Genera segnali 24h/giorno tranne durante blackout 21:00-23:00 UTC (23:00-01:00 CEST)
+        # Evita solo il periodo di bassa liquidità tra chiusura NY e apertura Sydney
+        return not (self.config.blackout_start_hour <= hour < self.config.blackout_end_hour)
     
     def _should_reset_daily_count(self, timestamp: datetime) -> bool:
         """Check se dobbiamo resettare il contatore giornaliero"""
@@ -528,7 +532,7 @@ class RollingSignalGenerator:
     def _convert_market_context(self, market_context: MarketContext) -> MarketContextFeatures:
         """Converte MarketContext in MarketContextFeatures"""
         try:
-            # Determina session corrente
+            # Determina session corrente (24h coverage)
             hour = datetime.utcnow().hour
             if 0 <= hour < 8:
                 session = "ASIAN"
@@ -536,8 +540,12 @@ class RollingSignalGenerator:
                 session = "LONDON"
             elif 13 <= hour < 16:
                 session = "NY_OVERLAP"
-            else:
+            elif 16 <= hour < 21:
                 session = "NY_ONLY"
+            elif 21 <= hour < 23:
+                session = "BLACKOUT"  # Blackout period 21:00-23:00 UTC
+            else:  # 23:00-00:00
+                session = "ASIAN_OPEN"
             
             return MarketContextFeatures(
                 spx_0dte_share=market_context.spx_0dte_share,
