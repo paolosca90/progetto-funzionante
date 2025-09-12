@@ -731,6 +731,16 @@ async def options_token(response: Response):
     response.headers["Access-Control-Max-Age"] = "86400"
     return {}
 
+@app.options("/emergency/database-migrate")
+async def options_emergency_migrate(response: Response):
+    """Handle CORS preflight requests for emergency migration endpoint"""
+    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-Requested-With, Origin"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    return {}
+
 @app.post("/token", response_model=Token)
 def login_user(response: Response, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Login user and return JWT tokens - SUPPORTA USERNAME E EMAIL"""
@@ -915,6 +925,53 @@ def get_recent_signals_preview(db: Session = Depends(get_db)):
     except Exception as e:
         # Return empty data on error in production
         return {"signals": []}
+
+@app.post("/emergency/database-migrate")
+def emergency_migrate_database(token: str = Form(...)):
+    """Emergency database migration endpoint - no auth required"""
+    if token != "emergency_migrate_2025":
+        raise HTTPException(status_code=401, detail="Invalid emergency token")
+    
+    try:
+        print("[EMERGENCY MIGRATION] Starting database migration without authentication...")
+        
+        # Import the migration functions
+        from fix_users_table import add_missing_users_columns, verify_migration
+        
+        # Run users table migration
+        users_success = add_missing_users_columns()
+        if users_success:
+            users_verified = verify_migration()
+            if users_verified:
+                print("[EMERGENCY MIGRATION] Users table migration completed successfully!")
+                return {
+                    "success": True,
+                    "message": "Emergency database migration completed successfully",
+                    "users_migration": "SUCCESS",
+                    "timestamp": datetime.now().isoformat()
+                }
+            else:
+                print("[EMERGENCY MIGRATION] Users table migration failed verification!")
+                return {
+                    "success": False,
+                    "message": "Users table migration failed verification",
+                    "users_migration": "VERIFICATION_FAILED"
+                }
+        else:
+            print("[EMERGENCY MIGRATION] Users table migration failed!")
+            return {
+                "success": False,
+                "message": "Users table migration failed",
+                "users_migration": "FAILED"
+            }
+            
+    except Exception as e:
+        print(f"[EMERGENCY MIGRATION] Error: {e}")
+        return {
+            "success": False,
+            "message": f"Emergency migration error: {str(e)}",
+            "error": str(e)
+        }
 
 @app.post("/admin/database-migrate")
 def migrate_database(response: Response, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
@@ -1230,6 +1287,11 @@ def options_top_signals(response: Response):
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Max-Age"] = "86400"
     return {"status": "ok"}
+
+@app.get("/emergency-migrate")
+def emergency_migrate_page():
+    """Serve emergency migration page"""
+    return FileResponse("templates/emergency-migrate.html")
 
 @app.get("/signals/top", response_model=TopSignalsResponse)
 def get_top_signals(response: Response, db: Session = Depends(get_db)):
