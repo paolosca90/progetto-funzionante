@@ -126,16 +126,16 @@ class AdvancedSignalAnalyzer:
         self.news_api_key = news_api_key
         self.gemini_api_key = gemini_api_key
         
-        # Initialize sentiment analyzer if available
+        # Initialize sentiment aggregator if available
         if SENTIMENT_AVAILABLE:
             try:
-                self.sentiment_analyzer = SentimentAggregator(gemini_api_key)
+                self.sentiment_aggregator = SentimentAggregator(gemini_api_key)
                 logger.info("Sentiment analysis initialized successfully")
             except Exception as e:
-                logger.error(f"Failed to initialize sentiment analyzer: {e}")
-                self.sentiment_analyzer = None
+                logger.error(f"Failed to initialize sentiment aggregator: {e}")
+                self.sentiment_aggregator = None
         else:
-            self.sentiment_analyzer = None
+            self.sentiment_aggregator = None
         self.base_url = "https://api-fxpractice.oanda.com/v3"
         
     async def analyze_symbol(self, symbol: str, primary_timeframe: TimeFrame = TimeFrame.H1) -> AdvancedSignalAnalysis:

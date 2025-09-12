@@ -8,7 +8,7 @@ __author__ = "AI Trading System"
 
 from .news_sentiment import NewsProvider, NewsSentimentAnalyzer
 from .social_sentiment import SocialMediaAnalyzer, TwitterSentiment, RedditSentiment  
-from .options_flow import OptionsFlowAnalyzer, FlowType, FlowData
+from .options_flow import OptionsFlowAnalyzer, FlowType, OptionsFlowData
 from .sentiment_aggregator import SentimentAggregator, MarketSentiment
 
 __all__ = [
@@ -19,7 +19,7 @@ __all__ = [
     'RedditSentiment',
     'OptionsFlowAnalyzer',
     'FlowType',
-    'FlowData',
+    'OptionsFlowData',
     'SentimentAggregator',
     'MarketSentiment'
 ]
