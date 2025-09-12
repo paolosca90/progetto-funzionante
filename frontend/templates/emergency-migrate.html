@@ -148,29 +148,109 @@
             justify-content: center;
             gap: 10px;
         }
+        
+        .operation-section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            background: rgba(0, 255, 65, 0.05);
+        }
+        
+        .reset-section {
+            border-color: #ff4444;
+            background: rgba(255, 68, 68, 0.05);
+        }
+        
+        .operation-section h2 {
+            margin-top: 0;
+            color: #00ff41;
+            font-size: 1.3rem;
+        }
+        
+        .reset-section h2 {
+            color: #ff4444;
+        }
+        
+        .danger-text {
+            color: #ff4444;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        
+        .reset-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #330000, #660000);
+            border: 2px solid #ff4444;
+            color: #ff4444;
+            font-family: 'Orbitron', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+        
+        .reset-btn:hover {
+            background: linear-gradient(45deg, #440000, #880000);
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        .reset-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚨 Emergency Database Migration</h1>
+        <h1>🚨 Emergency Database Operations</h1>
         
         <div class="warning">
             <h3>⚠️ WARNING - EMERGENCY USE ONLY</h3>
-            <p>This endpoint is for emergency database migration when normal login is broken due to missing database columns.</p>
-            <p><strong>Only use this if you have the emergency migration token.</strong></p>
+            <p>These endpoints are for emergency database operations when normal login is broken.</p>
+            <p><strong>Only use if you have the appropriate tokens.</strong></p>
         </div>
         
-        <form id="migration-form">
-            <div class="form-group">
-                <label for="token">Emergency Migration Token:</label>
-                <input type="text" id="token" name="token" required placeholder="Enter emergency migration token">
-            </div>
+        <!-- Migration Section -->
+        <div class="operation-section">
+            <h2>🔧 Database Migration</h2>
+            <p>Fixes missing columns without destroying data</p>
             
-            <button type="submit" class="migrate-btn" id="migrate-btn">
-                <span class="btn-text">Run Emergency Migration</span>
-                <div class="spinner"></div>
-            </button>
-        </form>
+            <form id="migration-form">
+                <div class="form-group">
+                    <label for="migration-token">Migration Token:</label>
+                    <input type="text" id="migration-token" name="token" required placeholder="emergency_migrate_2025">
+                </div>
+                
+                <button type="submit" class="migrate-btn" id="migrate-btn">
+                    <span class="btn-text">Run Database Migration</span>
+                    <div class="spinner"></div>
+                </button>
+            </form>
+        </div>
+        
+        <!-- Reset Section -->
+        <div class="operation-section reset-section">
+            <h2>💥 Complete Database Reset</h2>
+            <p class="danger-text">⚠️ DESTROYS ALL DATA - Creates fresh database with admin user</p>
+            
+            <form id="reset-form">
+                <div class="form-group">
+                    <label for="reset-token">Reset Token:</label>
+                    <input type="text" id="reset-token" name="token" required placeholder="reset_database_2025">
+                </div>
+                
+                <button type="submit" class="reset-btn" id="reset-btn">
+                    <span class="btn-text">🗑️ RESET DATABASE (DESTROYS ALL DATA)</span>
+                    <div class="spinner"></div>
+                </button>
+            </form>
+        </div>
         
         <div id="result" class="result">
             <h3 id="result-title"></h3>
@@ -179,26 +259,41 @@
     </div>
 
     <script>
+        // Migration form handler
         document.getElementById('migration-form').addEventListener('submit', async function(e) {
             e.preventDefault();
+            await handleOperation('migrate', 'migration-token', 'migrate-btn', 'emergency/database-migrate', 'Run Database Migration');
+        });
+        
+        // Reset form handler
+        document.getElementById('reset-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-            const btn = document.getElementById('migrate-btn');
+            if (!confirm('⚠️ ARE YOU ABSOLUTELY SURE?\n\nThis will DESTROY ALL DATA in the database!\n\nThis action CANNOT be undone!')) {
+                return;
+            }
+            
+            await handleOperation('reset', 'reset-token', 'reset-btn', 'emergency/database-reset', '🗑️ RESET DATABASE (DESTROYS ALL DATA)');
+        });
+        
+        async function handleOperation(type, tokenId, btnId, endpoint, originalText) {
+            const btn = document.getElementById(btnId);
             const btnText = btn.querySelector('.btn-text');
             const spinner = btn.querySelector('.spinner');
             const result = document.getElementById('result');
             const resultTitle = document.getElementById('result-title');
             const resultContent = document.getElementById('result-content');
-            const token = document.getElementById('token').value;
+            const token = document.getElementById(tokenId).value;
             
             // Show loading state
             btn.disabled = true;
-            btnText.textContent = 'Running Migration...';
+            btnText.textContent = type === 'migrate' ? 'Running Migration...' : 'Resetting Database...';
             spinner.style.display = 'block';
             btn.classList.add('loading');
             result.style.display = 'none';
             
             try {
-                const response = await fetch('https://web-production-51f67.up.railway.app/emergency/database-migrate', {
+                const response = await fetch(`https://web-production-51f67.up.railway.app/${endpoint}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -213,11 +308,11 @@
                 
                 if (data.success) {
                     result.className = 'result success';
-                    resultTitle.textContent = '✅ Migration Successful!';
+                    resultTitle.textContent = type === 'migrate' ? '✅ Migration Successful!' : '✅ Database Reset Successful!';
                     resultContent.textContent = JSON.stringify(data, null, 2);
                 } else {
                     result.className = 'result error';
-                    resultTitle.textContent = '❌ Migration Failed';
+                    resultTitle.textContent = type === 'migrate' ? '❌ Migration Failed' : '❌ Reset Failed';
                     resultContent.textContent = JSON.stringify(data, null, 2);
                 }
                 
@@ -229,11 +324,11 @@
             } finally {
                 // Reset button state
                 btn.disabled = false;
-                btnText.textContent = 'Run Emergency Migration';
+                btnText.textContent = originalText;
                 spinner.style.display = 'none';
                 btn.classList.remove('loading');
             }
-        });
+        }
     </script>
 </body>
 </html>

@@ -741,6 +741,16 @@ async def options_emergency_migrate(response: Response):
     response.headers["Access-Control-Max-Age"] = "86400"
     return {}
 
+@app.options("/emergency/database-reset")
+async def options_emergency_reset(response: Response):
+    """Handle CORS preflight requests for emergency reset endpoint"""
+    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-Requested-With, Origin"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    return {}
+
 @app.post("/token", response_model=Token)
 def login_user(response: Response, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Login user and return JWT tokens - SUPPORTA USERNAME E EMAIL"""
@@ -970,6 +980,47 @@ def emergency_migrate_database(token: str = Form(...)):
         return {
             "success": False,
             "message": f"Emergency migration error: {str(e)}",
+            "error": str(e)
+        }
+
+@app.post("/emergency/database-reset")
+def emergency_reset_database(token: str = Form(...)):
+    """Emergency database reset endpoint - DESTROYS ALL DATA - no auth required"""
+    if token != "reset_database_2025":
+        raise HTTPException(status_code=401, detail="Invalid reset token")
+    
+    try:
+        print("[EMERGENCY RESET] Starting complete database reset - ALL DATA WILL BE LOST...")
+        
+        # Import the reset functions
+        from reset_database_complete import reset_complete_database
+        
+        # Run complete database reset
+        reset_success = reset_complete_database()
+        
+        if reset_success:
+            print("[EMERGENCY RESET] Database reset completed successfully!")
+            return {
+                "success": True,
+                "message": "Database reset completed successfully - all data destroyed and recreated",
+                "admin_username": "admin@ai-cash-revolution.com",
+                "admin_password": "admin123!",
+                "timestamp": datetime.now().isoformat(),
+                "warning": "ALL PREVIOUS DATA HAS BEEN DESTROYED"
+            }
+        else:
+            print("[EMERGENCY RESET] Database reset failed!")
+            return {
+                "success": False,
+                "message": "Database reset failed",
+                "operation": "RESET_FAILED"
+            }
+            
+    except Exception as e:
+        print(f"[EMERGENCY RESET] Error: {e}")
+        return {
+            "success": False,
+            "message": f"Emergency reset error: {str(e)}",
             "error": str(e)
         }
 
