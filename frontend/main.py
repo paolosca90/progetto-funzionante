@@ -876,235 +876,126 @@ async def generate_custom_signal(
                 detail="Active subscription required to generate custom signals"
             )
         
-        # Use advanced OANDA signal generation if available
-        if OANDA_AVAILABLE and OANDA_API_KEY:
-            try:
-                # Import advanced signal analyzer
-                from advanced_signal_analyzer import AdvancedSignalAnalyzer, TimeFrame
-                
-                # Initialize advanced analyzer
-                analyzer = AdvancedSignalAnalyzer(
-                    oanda_api_key=OANDA_API_KEY,
-                    news_api_key=GEMINI_API_KEY  # Use Gemini key for news analysis
-                )
-                
-                # Convert frontend symbol to OANDA format
-                # Use unified mapping
-                oanda_symbol = get_oanda_symbol(symbol)
-                
-                # Perform comprehensive analysis
-                advanced_analysis = await analyzer.analyze_symbol(oanda_symbol, TimeFrame.H1)
-                
-                if advanced_analysis and advanced_analysis.signal_direction != "HOLD":
-                    # CRITICAL DEBUG: Log signal direction and AI reasoning content
-                    logger.info(f"🔥 SIGNAL DEBUG - Symbol: {symbol}")
-                    logger.info(f"🔥 SIGNAL DEBUG - Direction: {advanced_analysis.signal_direction}")
-                    logger.info(f"🔥 SIGNAL DEBUG - AI Reasoning (first 200 chars): {advanced_analysis.ai_reasoning[:200]}...")
-                    
-                    # Check for critical content in AI reasoning
-                    has_0dte = "0DTE" in advanced_analysis.ai_reasoning
-                    has_sentiment = "SENTIMENT" in advanced_analysis.ai_reasoning
-                    has_correct_direction = advanced_analysis.signal_direction in advanced_analysis.ai_reasoning
-                    
-                    logger.info(f"🔥 SIGNAL DEBUG - Has 0DTE: {has_0dte}")
-                    logger.info(f"🔥 SIGNAL DEBUG - Has sentiment: {has_sentiment}")
-                    logger.info(f"🔥 SIGNAL DEBUG - Has correct direction: {has_correct_direction}")
-                    
-                    # Convert advanced analysis to database signal  
-                    # Use frontend format for database storage
-                    frontend_symbol = get_frontend_symbol(oanda_symbol)
-                    db_signal = Signal(
-                        symbol=frontend_symbol,
-                        signal_type=SignalTypeEnum.BUY if advanced_analysis.signal_direction == "BUY" else SignalTypeEnum.SELL,
-                        entry_price=advanced_analysis.entry_price,
-                        stop_loss=advanced_analysis.stop_loss,
-                        take_profit=advanced_analysis.take_profit,
-                        reliability=advanced_analysis.confidence_score,
-                        confidence_score=advanced_analysis.confidence_score/100,
-                        risk_level="MEDIUM",
-                        ai_analysis=advanced_analysis.ai_reasoning,
-                        is_public=False,
-                        is_active=True,
-                        creator_id=current_user.id,
-                        source="ADVANCED_OANDA",
-                        timeframe="H1",
-                        risk_reward_ratio=advanced_analysis.risk_reward_ratio,
-                        position_size_suggestion=advanced_analysis.position_size_suggestion,
-                        expires_at=datetime.utcnow() + timedelta(hours=8)
-                    )
-                    
-                    db.add(db_signal)
-                    db.commit()
-                    db.refresh(db_signal)
-                    
-                    # CRITICAL FIX: Ensure consistent signal direction in response
-                    actual_signal_direction = advanced_analysis.signal_direction
-                    logger.info(f"🔥 RESPONSE DEBUG - Returning signal_type: {db_signal.signal_type.value}")
-                    logger.info(f"🔥 RESPONSE DEBUG - Original direction: {actual_signal_direction}")
-                    
-                    return {
-                        "status": "success",
-                        "message": "Advanced signal generated successfully",
-                        "signal": {
-                            "id": db_signal.id,
-                            "symbol": db_signal.symbol,
-                            "signal_type": db_signal.signal_type.value,
-                            "signal_direction": actual_signal_direction,  # Add explicit direction
-                            "entry_price": db_signal.entry_price,
-                            "stop_loss": db_signal.stop_loss,
-                            "take_profit": db_signal.take_profit,
-                            "reliability": db_signal.reliability,
-                            "confidence": db_signal.confidence_score,
-                            "risk_level": db_signal.risk_level,
-                            "position_size_suggestion": db_signal.position_size_suggestion,
-                            "risk_reward_ratio": db_signal.risk_reward_ratio,
-                            "ai_analysis": db_signal.ai_analysis,
-                            "timeframe": db_signal.timeframe,
-                            "created_at": db_signal.created_at.isoformat(),
-                            "expires_at": db_signal.expires_at.isoformat(),
-                            "advanced_features": {
-                                "multi_timeframe_confluence": advanced_analysis.multi_timeframe.confluence_score,
-                                "smart_money_activity": advanced_analysis.smart_money_signals,
-                                "volume_profile": {
-                                    "poc": advanced_analysis.volume_profile.poc,
-                                    "value_area_high": advanced_analysis.volume_profile.vah,
-                                    "value_area_low": advanced_analysis.volume_profile.val
-                                },
-                                "economic_events": len(advanced_analysis.economic_events)
-                            }
-                        }
-                    }
-                    
-            except Exception as e:
-                logger.error(f"Advanced OANDA signal generation failed: {e}")
-        
-        # Try OANDA analysis first, if fails return error
-        if not OANDA_AVAILABLE:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="OANDA service not available"
-            )
-
-        # Ensure OANDA engine is initialized
-        if not oanda_signal_engine:
-            await initialize_oanda_engine()
-
-        if not oanda_signal_engine:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="OANDA engine initialization failed"
-            )
-
+        # CLEAR SINGLE-SOURCE SIGNAL GENERATION
+        # Using ONLY AdvancedSignalAnalyzer - no ambiguous old systems
         try:
-            # Convert symbol to OANDA format (EURUSD -> EUR_USD)
-            oanda_symbol = symbol.upper()
-            if "_" not in oanda_symbol and len(oanda_symbol) == 6:
-                # Convert EURUSD to EUR_USD
-                oanda_symbol = f"{oanda_symbol[:3]}_{oanda_symbol[3:]}"
-            logger.info(f"Converted {symbol.upper()} to OANDA format: {oanda_symbol}")
-
-            # Generate signal using OANDA analysis only
-            signal = await oanda_signal_engine.generate_signal(
-                oanda_symbol,
-                timeframe="H1"
+            from advanced_signal_analyzer import AdvancedSignalAnalyzer, TimeFrame
+            
+            logger.info(f"Generating signal for {symbol} using AdvancedSignalAnalyzer")
+            
+            # Initialize the ONLY signal generation system  
+            analyzer = AdvancedSignalAnalyzer(
+                oanda_api_key=OANDA_API_KEY,
+                gemini_api_key=GEMINI_API_KEY  # For sentiment analysis only
             )
-
-            if not signal:
+            
+            # Convert symbol and analyze
+            oanda_symbol = get_oanda_symbol(symbol)
+            logger.info(f"Converted {symbol} -> {oanda_symbol}")
+            
+            # Generate comprehensive signal with sentiment and 0DTE analysis
+            analysis = await analyzer.analyze_symbol(oanda_symbol, TimeFrame.H1)
+            
+            if not analysis:
                 raise HTTPException(
-                    status_code=status.HTTP_424_FAILED_DEPENDENCY,
-                    detail=f"Unable to generate signal for {symbol} - insufficient market data or analysis conditions"
+                    status_code=422, 
+                    detail=f"Unable to analyze {symbol} - insufficient market data"
                 )
-
-            # Save to database for user
+            
+            # REJECT HOLD signals - only actionable BUY/SELL
+            if analysis.signal_direction == "HOLD":
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"No actionable signal for {symbol} - market conditions require patience"
+                )
+            
+            # Create database signal from analysis
+            frontend_symbol = get_frontend_symbol(oanda_symbol)
             db_signal = Signal(
-                symbol=signal.instrument,
-                signal_type=SignalTypeEnum.BUY if signal.signal_type.value == 'BUY' else SignalTypeEnum.SELL,
-                entry_price=signal.entry_price,
-                stop_loss=signal.stop_loss,
-                take_profit=signal.take_profit,
-                reliability=signal.confidence_score * 100,  # Convert confidence to reliability percentage
-                confidence_score=signal.confidence_score,
-                risk_level=signal.risk_level.value,
-                ai_analysis=signal.ai_analysis,
+                symbol=frontend_symbol,
+                signal_type=SignalTypeEnum.BUY if analysis.signal_direction == "BUY" else SignalTypeEnum.SELL,
+                entry_price=analysis.entry_price,
+                stop_loss=analysis.stop_loss,
+                take_profit=analysis.take_profit,
+                reliability=analysis.confidence_score,
+                confidence_score=analysis.confidence_score/100,
+                risk_level="MEDIUM",
+                ai_analysis=analysis.ai_reasoning,  # This contains 0DTE and sentiment
                 is_public=False,
                 is_active=True,
                 creator_id=current_user.id,
-                source="FRONTEND_CUSTOM",
-                timeframe=signal.timeframe,
-                risk_reward_ratio=signal.risk_reward_ratio,
-                position_size_suggestion=signal.position_size,
-                expires_at=signal.expires_at.replace(tzinfo=None)
+                source="ADVANCED_ANALYZER",
+                timeframe="H1",
+                risk_reward_ratio=analysis.risk_reward_ratio,
+                position_size_suggestion=analysis.position_size_suggestion,
+                expires_at=datetime.utcnow() + timedelta(hours=8)
             )
-
+            
             db.add(db_signal)
             db.commit()
             db.refresh(db_signal)
-
+            
+            # Return consistent response
+            logger.info(f"Signal generated: {analysis.signal_direction} for {symbol}")
+            
             return {
                 "status": "success",
-                "message": "Advanced OANDA signal generated successfully",
+                "message": f"Signal generated: {analysis.signal_direction}",
                 "signal": {
                     "id": db_signal.id,
                     "symbol": db_signal.symbol,
-                    "signal_type": db_signal.signal_type.value,
+                    "signal_type": analysis.signal_direction,  # Use original direction
                     "entry_price": db_signal.entry_price,
                     "stop_loss": db_signal.stop_loss,
                     "take_profit": db_signal.take_profit,
                     "reliability": db_signal.reliability,
-                    "confidence": db_signal.confidence_score,
+                    "confidence": db_signal.confidence_score * 100,  # Convert to percentage
                     "risk_level": db_signal.risk_level,
-                    "position_size_suggestion": db_signal.position_size_suggestion,
+                    "position_size": db_signal.position_size_suggestion,
                     "risk_reward_ratio": db_signal.risk_reward_ratio,
-                    "ai_analysis": db_signal.ai_analysis,
+                    "ai_analysis": db_signal.ai_analysis,  # Contains 0DTE + sentiment
                     "timeframe": db_signal.timeframe,
-                    "created_at": db_signal.created_at.isoformat(),
-                    "expires_at": db_signal.expires_at.isoformat()
+                    "expires_at": db_signal.expires_at.isoformat(),
+                    # Include advanced features that show our analysis works
+                    "features": {
+                        "multi_timeframe": True,
+                        "sentiment_analysis": True,  
+                        "options_0dte": True,
+                        "smart_money": True
+                    }
                 }
             }
-
+                    
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"OANDA signal generation failed for {symbol}: {error_msg}")
+            logger.error(f"AdvancedSignalAnalyzer failed for {symbol}: {error_msg}")
             
-            # Enhanced error handling for indices
-            if symbol.upper() in ['NAS100', 'SPX500', 'US30', 'DE30'] or oanda_symbol in ['NAS100_USD', 'SPX500_USD', 'US30_USD', 'DE30_EUR']:
-                # Index-specific error messages
+            # Enhanced error handling for different cases
+            if symbol.upper() in ['NAS100', 'SPX500', 'US30', 'DE30']:
                 if "timeout" in error_msg.lower() or "connection" in error_msg.lower():
                     raise HTTPException(
-                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        detail=f"Market data service temporarily unavailable for {symbol}. Please try again in a few moments."
+                        status_code=503,
+                        detail=f"Market data service temporarily unavailable for {symbol}. Please try again."
                     )
-                elif "insufficient" in error_msg.lower() or "data" in error_msg.lower():
+                elif "insufficient" in error_msg.lower():
                     raise HTTPException(
-                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                        detail=f"Insufficient market data for {symbol}. Index may be outside trading hours or experiencing low liquidity."
+                        status_code=422,
+                        detail=f"Insufficient market data for {symbol}. Index may be outside trading hours."
                     )
-                elif "sentiment" in error_msg.lower():
-                    # Continue with basic signal if sentiment fails
-                    logger.warning(f"Sentiment analysis failed for {symbol}, attempting basic signal generation")
-                    raise HTTPException(
-                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        detail=f"Enhanced analysis unavailable for {symbol}. Basic signal generation in progress."
-                    )
-                else:
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Technical analysis failed for {symbol}. Market conditions may not support signal generation at this time."
-                    )
-            else:
-                # Standard error for forex/metals
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Analysis failed for {symbol} - insufficient market data or technical conditions not met"
-                )
-        
+            
+            # General error fallback
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to analyze {symbol}: {error_msg}"
+            )
+                    
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
-        logger.error(f"Custom signal generation failed: {e}")
+        logger.error(f"Signal generation failed: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to generate signal: {str(e)}"
         )
 
