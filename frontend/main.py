@@ -112,8 +112,8 @@ Base.metadata.create_all(bind=engine)
 # FastAPI app
 app = FastAPI(
     title="Trading Signals API",
-    description="Professional Trading Signals Platform with AI and OANDA Integration",
-    version="2.0.0"
+    description="Professional Trading Signals Platform with AI and OANDA Integration - CORS Fixed",
+    version="2.0.1"
 )
 
 # CORS middleware - Allow specific domains with credentials
@@ -380,10 +380,33 @@ async def preflight_handler(request: Request, path: str, response: Response):
     response.headers["Access-Control-Max-Age"] = "86400"
     return {}
 
-# Health check
+# Health check with CORS
 @app.get("/health")
-def health_check():
-    return {"status": "healthy", "timestamp": datetime.utcnow()}
+def health_check(response: Response):
+    # Force CORS headers on health endpoint  
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return {
+        "status": "healthy", 
+        "timestamp": datetime.utcnow(),
+        "version": "2.0.1",
+        "cors_enabled": True
+    }
+
+@app.get("/cors-test")
+def cors_test(response: Response):
+    """Specific CORS test endpoint for cash-revolution.com"""
+    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-API-Key"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return {
+        "cors_test": "success",
+        "timestamp": datetime.utcnow().isoformat(),
+        "origin_allowed": "https://www.cash-revolution.com",
+        "message": "CORS headers should be present"
+    }
 
 # Debug endpoint for Railway environment
 @app.get("/debug/env")
@@ -1078,11 +1101,13 @@ def options_top_signals(response: Response):
 @app.get("/signals/top", response_model=TopSignalsResponse)
 def get_top_signals(response: Response, db: Session = Depends(get_db)):
     """Get top 3 public signals with highest reliability"""
-    # Add explicit CORS headers
+    # Force CORS headers to match middleware exactly
     response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-API-Key"
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
     response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Expose-Headers"] = "*"
+    response.headers["Vary"] = "Origin"
     
     top_signals = db.query(Signal).filter(
         Signal.is_public == True,
