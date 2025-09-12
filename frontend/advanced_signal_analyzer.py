@@ -1320,7 +1320,7 @@ class AdvancedSignalAnalyzer:
         reasoning_parts.append(f"• Tipo di Attività: {activity_it}")
         reasoning_parts.append(f"• Confidenza: {smart_money_signals['confidence']:.1f}%")
         
-        # Add instrument-specific market data
+        # Add instrument-specific market data (opzioni SOLO per indici US)
         if 'SPX500' in symbol:
             reasoning_parts.append(f"\n📊 DATI OPZIONI S&P 500:")
             reasoning_parts.append(f"• Share 0DTE SPX: 42.5% (elevata)")
@@ -1378,6 +1378,21 @@ class AdvancedSignalAnalyzer:
             reasoning_parts.append(f"• Value Area: 20,720.0 - 20,980.0")
             reasoning_parts.append(f"• Volume Totale: 180K contracts")
             reasoning_parts.append(f"• Orario: RTH Europea (09:00-17:30 CET)")
+        
+        # Per asset NON-opzioni (forex, metalli), evidenzia che non usa 0DTE
+        elif any(fx in symbol for fx in ['EUR_USD', 'GBP_USD', 'USD_JPY', 'AUD_USD', 'USD_CAD', 'NZD_USD']):
+            reasoning_parts.append(f"\n💱 ANALISI FOREX:")
+            reasoning_parts.append(f"• Mercato: Forex spot (non opzioni)")
+            reasoning_parts.append(f"• Liquidità: 24/5 continua")
+            reasoning_parts.append(f"• Focus: Banche centrali, differenziali tassi")
+            reasoning_parts.append(f"• Nessuna analisi 0DTE (non applicabile)")
+            
+        elif 'XAU' in symbol or 'XAG' in symbol:
+            reasoning_parts.append(f"\n🥇 ANALISI METALLI:")
+            reasoning_parts.append(f"• Mercato: Spot metals (non opzioni)")
+            reasoning_parts.append(f"• Driver: Inflazione, USD strength, risk-off")
+            reasoning_parts.append(f"• Correlazioni: Inverse USD, positive inflazione")
+            reasoning_parts.append(f"• Nessuna analisi 0DTE (non applicabile)")
         
         # Economic events in Italian
         if economic_events:

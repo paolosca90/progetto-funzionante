@@ -87,16 +87,17 @@ Modulo completo v6.0 per analisi sentiment multi-fonte
   - Error handling e rate limiting
 - **Status**: ✅ ATTIVO - Fonte dati primaria
 
-#### `quantistes_integration.py`
-- **Funzione**: Integrazione avanzata per analisi quantitative indici
+#### `quantistes_integration.py` ⭐ **CBOE REAL DATA**
+- **Funzione**: Integrazione CBOE ufficiale per analisi quantitative 0DTE
 - **Caratteristiche**:
-  - Zero-DTE options analysis per SPX/QQQ/DIA
-  - Gamma exposure levels calculation
-  - Dealer positioning simulation
-  - Enhanced confidence scoring per indici
-  - Put/Call ratio e volatility regimes
-- **Target**: Indici US (SPX500, NAS100, US30)
-- **Status**: ✅ ATTIVO - Enhancement per indici
+  - **CBOE HTML Scraper**: Parsing reale da quote_table SPX/NDX
+  - **Zero-DTE Real Analysis**: Dati autentici da CBOE (no simulazioni)
+  - **Gamma Exposure Calculation**: Basato su Open Interest reale
+  - **Gemini AI Integration**: Analisi professionale dati reali
+  - **Asset-Specific Logic**: Solo indici US supportano opzioni
+- **Target**: **SOLO** SPX500_USD, NAS100_USD (US30_USD in sviluppo)
+- **Source**: https://www.cboe.com/delayed_quotes/spx/quote_table
+- **Status**: ✅ ATTIVO - Dati reali CBOE, no simulazioni
 
 ---
 
@@ -161,26 +162,52 @@ graph TD
 ### ✅ **Funzionalità Attive**
 - **Multi-timeframe analysis** con confluence scoring
 - **Sentiment analysis** da news + social + options
-- **0DTE options analysis** per indici US
+- **0DTE options analysis** per **SOLO indici US** (SPX500, NAS100)
 - **Smart money detection** con order blocks e FVG
 - **AI reasoning** in italiano con dati contestuali
 - **Risk management** automatico con ATR
-- **Error handling** specifico per asset class
+- **Asset-specific logic**: Forex/metalli no opzioni, indici US sì
 
 ### 🔧 **Configurazione**
 - **API Keys richieste**: OANDA_API_KEY, GEMINI_API_KEY
 - **Timeframe supportati**: M1, M5, M15, H1, H4, D1
-- **Asset supportati**: Forex, Metalli, Indici US/EUR
+- **Asset supportati**: 
+  - **Forex**: EUR_USD, GBP_USD, USD_JPY, etc. (analisi tecnica + sentiment)
+  - **Metalli**: XAU_USD, XAG_USD (analisi tecnica + sentiment)  
+  - **Indici US**: SPX500_USD, NAS100_USD (analisi tecnica + sentiment + **0DTE opzioni CBOE**)
+  - **Indici EU**: DE30_EUR (analisi tecnica + sentiment)
 - **Output**: Segnali BUY/SELL con confidence 60%+
+
+## 🎯 **Logica Asset-Specific**
+
+### **📊 Indici US (SPX500, NAS100)** ⭐ **CON OPZIONI 0DTE**
+- ✅ **Dati CBOE Reali**: Parsing HTML da CBOE quote tables
+- ✅ **Analisi 0DTE**: Volume, Open Interest, Strikes attivi
+- ✅ **Gamma Exposure**: Calcolo da OI concentrations reali
+- ✅ **Gemini AI**: Analisi professionale dati autentici
+- ✅ **AI Reasoning**: Include riferimenti opzioni, gamma, 0DTE
+
+### **💱 Forex (EUR_USD, GBP_USD, etc.)** - **SENZA OPZIONI**
+- ✅ **Analisi Tecnica**: Multi-timeframe, supporti/resistenze
+- ✅ **Sentiment Analysis**: News + social media
+- ✅ **AI Reasoning**: "Nessuna analisi 0DTE (non applicabile)"
+- ❌ **No CBOE**: Mercato spot, non opzioni
+
+### **🥇 Metalli (XAU_USD, XAG_USD)** - **SENZA OPZIONI**  
+- ✅ **Analisi Tecnica**: Trend, volume profile
+- ✅ **Sentiment Analysis**: News + correlazioni USD
+- ✅ **AI Reasoning**: "Nessuna analisi 0DTE (non applicabile)"
+- ❌ **No CBOE**: Spot metals, non opzioni
 
 ## 📚 **Note di Sviluppo**
 
 - Il sistema usa **SOLO AdvancedSignalAnalyzer** dal commit 389a63a
-- Tutti i riferimenti al vecchio OANDASignalEngine sono stati rimossi
-- Il sentiment analysis è integrato nativamente nel flusso principale  
+- **Asset-specific logic** implementata dal commit 6d64f9c
+- CBOE integration attiva **SOLO per indici US**
+- Forex/metalli: analisi tecnica + sentiment (no opzioni)
 - I segnali HOLD sono automaticamente rifiutati (solo BUY/SELL actionable)
 
 ---
 
 **Ultimo aggiornamento**: 2025-09-12  
-**Versione sistema**: 2.0.1 - Single Source Signal Generation
+**Versione sistema**: 2.1.0 - Asset-Specific CBOE Integration

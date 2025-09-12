@@ -108,10 +108,12 @@ class QuantistesEnhancer:
         """Get REAL options chain from CBOE official source
         SPX500_USD -> CBOE SPX, NAS100_USD -> CBOE NDX"""
         try:
-            # Map OANDA symbols to CBOE options symbols
+            # Map OANDA symbols to CBOE options symbols (US indices only)
             cboe_endpoints = {
                 'SPX500_USD': 'https://www.cboe.com/delayed_quotes/spx/quote_table',
                 'NAS100_USD': 'https://www.cboe.com/delayed_quotes/ndx/quote_table',
+                # Note: US30_USD uses DJX options on CBOE, but endpoint may vary
+                # For now, limit to SPX and NDX which have confirmed endpoints
             }
             
             url = cboe_endpoints.get(symbol)
@@ -554,10 +556,28 @@ class QuantistesEnhancer:
     ) -> Dict:
         """Generate comprehensive Quantistes-enhanced analysis"""
         
+        # Check if symbol supports options analysis (US indices only)
+        us_indices_with_options = ['SPX500_USD', 'NAS100_USD', 'US30_USD']
+        
+        if symbol not in us_indices_with_options:
+            print(f"ℹ️ {symbol} non supporta analisi opzioni 0DTE - Solo indici US (SPX500, NAS100, US30)")
+            return {
+                "enhanced_confidence": base_confidence,  # No enhancement for non-US indices
+                "gamma_levels": None,
+                "volatility_regime": None, 
+                "probability_scenarios": None,
+                "vix_level": None,
+                "cboe_options_data": None,
+                "gemini_0dte_analysis": None,
+                "quantistes_reasoning": f"Analisi opzioni non applicabile a {symbol} - Asset non supportato per 0DTE"
+            }
+        
+        print(f"✅ {symbol} supporta analisi opzioni 0DTE - Procedendo con CBOE...")
+        
         # Get VIX data
         vix_level = await self.get_vix_data()
         
-        # Get REAL options data from CBOE (NO SIMULATION FALLBACK)
+        # Get REAL options data from CBOE (ONLY for US indices)
         options_data = await self.get_options_data_cboe(symbol)
         
         if options_data:
