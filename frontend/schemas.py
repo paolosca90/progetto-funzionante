@@ -6,6 +6,7 @@ from enum import Enum
 class SignalTypeEnum(str, Enum):
     BUY = "BUY"
     SELL = "SELL"
+    HOLD = "HOLD"
 
 class SignalStatusEnum(str, Enum):
     ACTIVE = "ACTIVE"

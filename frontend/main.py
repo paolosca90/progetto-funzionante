@@ -138,17 +138,30 @@ app.add_middleware(
 # Additional CORS headers for OPTIONS requests
 @app.middleware("http")
 async def add_cors_headers(request, call_next):
+    origin = request.headers.get("origin")
+    allowed_origins = [
+        "https://www.cash-revolution.com",
+        "https://cash-revolution.com", 
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "https://web-production-51f67.up.railway.app"
+    ]
+    
     if request.method == "OPTIONS":
         response = Response(status_code=200)
-        response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "*"
+        if origin in allowed_origins:
+            response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept, Origin, User-Agent, DNT, Cache-Control, X-Mx-ReqToken, Keep-Alive, X-Requested-With, If-Modified-Since"
         response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Max-Age"] = "86400"
         return response
     
     response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+    if origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
     response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Vary"] = "Origin"
     return response
 
 # Mount static files (only if directory exists)
@@ -1112,25 +1125,33 @@ def options_top_signals(response: Response):
 @app.get("/signals/top", response_model=TopSignalsResponse)
 def get_top_signals(response: Response, db: Session = Depends(get_db)):
     """Get top 3 public signals with highest reliability"""
-    # Force CORS headers to match middleware exactly
-    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
-    response.headers["Access-Control-Allow-Methods"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Expose-Headers"] = "*"
-    response.headers["Vary"] = "Origin"
-    
-    top_signals = db.query(Signal).filter(
-        Signal.is_public == True,
-        Signal.is_active == True,
-        Signal.reliability >= 70.0
-    ).order_by(Signal.reliability.desc()).limit(3).all()
+    try:
+        # Force CORS headers to match middleware exactly
+        response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Expose-Headers"] = "*"
+        response.headers["Vary"] = "Origin"
+        
+        top_signals = db.query(Signal).filter(
+            Signal.is_public == True,
+            Signal.is_active == True,
+            Signal.reliability >= 70.0,
+            Signal.signal_type.in_([SignalTypeEnum.BUY, SignalTypeEnum.SELL])
+        ).order_by(Signal.reliability.desc()).limit(3).all()
 
-    return TopSignalsResponse(
-        signals=top_signals,
-        count=len(top_signals),
-        generated_at=datetime.utcnow()
-    )
+        return TopSignalsResponse(
+            signals=top_signals,
+            count=len(top_signals),
+            generated_at=datetime.utcnow()
+        )
+    except Exception as e:
+        print(f"Error in get_top_signals: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch top signals: {str(e)}"
+        )
 
 @app.get("/signals", response_model=List[SignalOut])
 def get_user_signals(
