@@ -59,6 +59,7 @@ def create_all_tables():
 
 def create_admin_user():
     """Create a default admin user"""
+    db = None
     try:
         from database import get_db
         db = next(get_db())
@@ -94,7 +95,8 @@ def create_admin_user():
         logger.error(f"Failed to create admin user: {e}")
         return False
     finally:
-        db.close()
+        if db:
+            db.close()
 
 def verify_database():
     """Verify database structure"""
