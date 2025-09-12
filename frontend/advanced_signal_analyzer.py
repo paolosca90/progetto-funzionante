@@ -1367,4 +1367,28 @@ class AdvancedSignalAnalyzer:
                 sentiment_emoji = "🟢" if market_sentiment.overall_sentiment_score > 0.2 else "🔴" if market_sentiment.overall_sentiment_score < -0.2 else "🟡"
                 reasoning_parts.append(f"\n📊 SENTIMENT: {sentiment_emoji} Score: {market_sentiment.overall_sentiment_score:.2f}")
         
-        return "\n".join(reasoning_parts)
+        # CRITICAL FIX: Ensure signal direction consistency
+        # Replace any potential inconsistent signal mentions with correct direction
+        reasoning_text = "\n".join(reasoning_parts)
+        
+        # Get the actual signal direction to ensure consistency
+        actual_direction = signal_data['direction']
+        signal_it = signal_translation.get(actual_direction, actual_direction)
+        
+        # Replace any incorrect signal mentions with the correct one
+        # This prevents inconsistency between header and AI description
+        incorrect_patterns = {
+            'Il segnale "HOLD"': f'Il segnale "{signal_it}"',
+            "Il segnale 'HOLD'": f"Il segnale '{signal_it}'",
+            'Il segnale "BUY"': f'Il segnale "{signal_it}"' if actual_direction != "BUY" else 'Il segnale "BUY"',
+            "Il segnale 'BUY'": f"Il segnale '{signal_it}'" if actual_direction != "BUY" else "Il segnale 'BUY'",
+            'Il segnale "SELL"': f'Il segnale "{signal_it}"' if actual_direction != "SELL" else 'Il segnale "SELL"',
+            "Il segnale 'SELL'": f"Il segnale '{signal_it}'" if actual_direction != "SELL" else "Il segnale 'SELL'",
+        }
+        
+        for incorrect, correct in incorrect_patterns.items():
+            if incorrect in reasoning_text and incorrect != correct:
+                reasoning_text = reasoning_text.replace(incorrect, correct)
+                logger.info(f"Fixed signal direction inconsistency: {incorrect} -> {correct}")
+        
+        return reasoning_text

@@ -819,6 +819,16 @@ def get_current_user_info(response: Response, current_user: User = Depends(get_c
 
 # ========== SIGNAL ENDPOINTS ==========
 
+@app.options("/api/signals/generate/{symbol}")
+async def options_generate_signal(symbol: str, response: Response):
+    """Handle CORS preflight requests for signal generation"""
+    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-API-Key, X-Requested-With, Origin"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    return {"status": "ok"}
+
 @app.post("/api/signals/generate/{symbol}")
 async def generate_custom_signal(
     symbol: str,
@@ -828,11 +838,13 @@ async def generate_custom_signal(
 ):
     """Generate custom trading signal for frontend signal page"""
     try:
-        # Add explicit CORS headers
+        # Add comprehensive CORS headers for both domains
         response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-API-Key, Authorization"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-API-Key, X-Requested-With, Origin"
         response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Max-Age"] = "86400"
+        response.headers["Vary"] = "Origin"
         # Check if user has active subscription
         subscription = db.query(Subscription).filter(Subscription.user_id == current_user.id).first()
         if not subscription or not subscription.is_active:
@@ -1008,11 +1020,40 @@ async def generate_custom_signal(
             }
 
         except Exception as e:
-            logger.error(f"OANDA signal generation failed for {symbol}: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Analysis failed for {symbol} - insufficient market data or technical conditions not met"
-            )
+            error_msg = str(e)
+            logger.error(f"OANDA signal generation failed for {symbol}: {error_msg}")
+            
+            # Enhanced error handling for indices
+            if symbol.upper() in ['NAS100', 'SPX500', 'US30', 'DE30'] or oanda_symbol in ['NAS100_USD', 'SPX500_USD', 'US30_USD', 'DE30_EUR']:
+                # Index-specific error messages
+                if "timeout" in error_msg.lower() or "connection" in error_msg.lower():
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail=f"Market data service temporarily unavailable for {symbol}. Please try again in a few moments."
+                    )
+                elif "insufficient" in error_msg.lower() or "data" in error_msg.lower():
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail=f"Insufficient market data for {symbol}. Index may be outside trading hours or experiencing low liquidity."
+                    )
+                elif "sentiment" in error_msg.lower():
+                    # Continue with basic signal if sentiment fails
+                    logger.warning(f"Sentiment analysis failed for {symbol}, attempting basic signal generation")
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail=f"Enhanced analysis unavailable for {symbol}. Basic signal generation in progress."
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Technical analysis failed for {symbol}. Market conditions may not support signal generation at this time."
+                    )
+            else:
+                # Standard error for forex/metals
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Analysis failed for {symbol} - insufficient market data or technical conditions not met"
+                )
         
     except HTTPException:
         raise
@@ -1023,6 +1064,16 @@ async def generate_custom_signal(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate signal: {str(e)}"
         )
+
+@app.options("/signals/top")
+def options_top_signals(response: Response):
+    """Handle CORS preflight requests for top signals"""
+    response.headers["Access-Control-Allow-Origin"] = "https://www.cash-revolution.com"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, X-API-Key, X-Requested-With, Origin"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    return {"status": "ok"}
 
 @app.get("/signals/top", response_model=TopSignalsResponse)
 def get_top_signals(response: Response, db: Session = Depends(get_db)):
