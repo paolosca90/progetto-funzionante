@@ -140,35 +140,16 @@ class AdvancedSignalAnalyzer:
         
     async def analyze_symbol(self, symbol: str, primary_timeframe: TimeFrame = TimeFrame.H1) -> AdvancedSignalAnalysis:
         """
-        Perform comprehensive analysis of a trading symbol with fallback for indices
+        Perform comprehensive analysis of a trading symbol
         """
         try:
             logger.info(f"Starting advanced analysis for {symbol}")
             
-            # Check if this is an index that might need fallback
-            is_index = symbol in ['NAS100_USD', 'SPX500_USD', 'US30_USD', 'DE30_EUR']
-            if is_index:
-                logger.info(f"Index detected: {symbol} - will use enhanced analysis with fallback")
+            # Get multi-timeframe data
+            mtf_analysis = await self._analyze_multi_timeframe(symbol)
             
-            # Get multi-timeframe data (with fallback for indices)
-            try:
-                mtf_analysis = await self._analyze_multi_timeframe(symbol)
-            except Exception as e:
-                if is_index:
-                    logger.warning(f"Primary analysis failed for {symbol}, using fallback: {e}")
-                    mtf_analysis = self._generate_fallback_analysis(symbol)
-                else:
-                    raise e
-            
-            # Perform volume analysis with fallback
-            try:
-                volume_profile = await self._analyze_volume_profile(symbol)
-            except Exception as e:
-                if is_index:
-                    logger.warning(f"Volume analysis failed for {symbol}, using fallback")
-                    volume_profile = self._generate_fallback_volume_profile(symbol)
-                else:
-                    raise e
+            # Perform volume analysis
+            volume_profile = await self._analyze_volume_profile(symbol)
             
             # Detect smart money activity
             smart_money_signals = await self._detect_smart_money_activity(symbol, mtf_analysis)
@@ -181,9 +162,9 @@ class AdvancedSignalAnalyzer:
             
             # Get comprehensive sentiment analysis
             market_sentiment = None
-            if self.sentiment_aggregator:
+            if self.sentiment_analyzer:
                 try:
-                    market_sentiment = await self.sentiment_aggregator.get_comprehensive_sentiment(symbol, hours_back=6)
+                    market_sentiment = await self.sentiment_analyzer.get_comprehensive_sentiment(symbol, hours_back=6)
                     logger.info(f"Sentiment analysis completed for {symbol}: {market_sentiment.overall_sentiment_score:.2f}")
                 except Exception as e:
                     logger.error(f"Error getting sentiment for {symbol}: {e}")
@@ -953,22 +934,8 @@ class AdvancedSignalAnalyzer:
         
         if current_price == 1.0000:
             logger.warning(f"Could not get current price for {symbol}, using fallback")
-            # For indices, use realistic fallback pricing instead of forcing HOLD
-            is_index = symbol in ['NAS100_USD', 'SPX500_USD', 'US30_USD', 'DE30_EUR']
-            if is_index:
-                # Use realistic current prices for indices
-                price_ranges = {
-                    'NAS100_USD': (18000, 20000),
-                    'SPX500_USD': (5000, 5500), 
-                    'US30_USD': (38000, 42000),
-                    'DE30_EUR': (17000, 19000)
-                }
-                import random
-                current_price = random.uniform(*price_ranges.get(symbol, (1000, 10000)))
-                logger.info(f"Using realistic fallback price {current_price} for index {symbol}")
-            else:
-                # For non-indices, still force HOLD to avoid wrong prices
-                direction = "HOLD"
+            # In this case, we should return HOLD instead of using wrong price
+            direction = "HOLD"
         
         # Calculate entry, SL, TP based on technical analysis
         entry_price = current_price
@@ -1425,138 +1392,3 @@ class AdvancedSignalAnalyzer:
                 logger.info(f"Fixed signal direction inconsistency: {incorrect} -> {correct}")
         
         return reasoning_text
-    
-    def _generate_fallback_analysis(self, symbol: str) -> 'MultiTimeframeAnalysis':
-        """Generate fallback analysis for indices when OANDA data is insufficient"""
-        logger.info(f"Generating fallback multi-timeframe analysis for {symbol}")
-        
-        # Import inside method to avoid circular imports
-        from datetime import datetime
-        import random
-        import numpy as np
-        
-        # Realistic fallback based on typical market conditions
-        current_time = datetime.utcnow().hour
-        
-        # Market session influence on trend - Force actionable signals for indices
-        if 8 <= current_time <= 16:  # European/US overlap
-            trend_bias = random.choice([TrendDirection.BULLISH, TrendDirection.BEARISH])
-            confluence_base = random.uniform(70, 85)
-        elif 13 <= current_time <= 22:  # US session
-            trend_bias = random.choice([TrendDirection.BULLISH, TrendDirection.BEARISH])
-            confluence_base = random.uniform(65, 80)
-        else:  # Asian session or off-hours - Still prefer actionable signals
-            trend_bias = random.choice([TrendDirection.BULLISH, TrendDirection.BEARISH, TrendDirection.SIDEWAYS])
-            # Weighted towards actionable signals
-            if random.random() < 0.7:  # 70% chance of actionable signal
-                trend_bias = random.choice([TrendDirection.BULLISH, TrendDirection.BEARISH])
-            confluence_base = random.uniform(60, 75)
-        
-        # Index-specific adjustments
-        if symbol == 'NAS100_USD':
-            # NASDAQ tends to be more volatile and trending
-            if trend_bias != TrendDirection.SIDEWAYS:
-                confluence_base += random.uniform(5, 15)
-        elif symbol == 'SPX500_USD':
-            # S&P 500 is more stable
-            confluence_base += random.uniform(-5, 10)
-        elif symbol == 'US30_USD':
-            # Dow Jones industrial focus
-            confluence_base += random.uniform(-10, 5)
-        
-        confluence_score = max(40, min(90, confluence_base))
-        
-        # Generate realistic key levels (simulated based on typical price ranges)
-        price_ranges = {
-            'NAS100_USD': (15000, 22000),
-            'SPX500_USD': (4000, 6000), 
-            'US30_USD': (30000, 45000),
-            'DE30_EUR': (15000, 20000)
-        }
-        
-        base_price = random.uniform(*price_ranges.get(symbol, (1000, 10000)))
-        
-        key_levels = [
-            PriceLevel(
-                price=base_price * random.uniform(0.95, 0.98),
-                level_type="support",
-                strength=random.uniform(70, 90),
-                timeframe=TimeFrame.H4
-            ),
-            PriceLevel(
-                price=base_price * random.uniform(1.02, 1.05),
-                level_type="resistance", 
-                strength=random.uniform(70, 90),
-                timeframe=TimeFrame.H4
-            )
-        ]
-        
-        return MultiTimeframeAnalysis(
-            symbol=symbol,
-            primary_timeframe=TimeFrame.H1,
-            overall_trend=trend_bias,
-            confluence_score=confluence_score,
-            smart_money_activity=random.choice([TrendDirection.BULLISH, TrendDirection.BEARISH, TrendDirection.NEUTRAL]),
-            key_levels=key_levels,
-            timeframe_data={
-                TimeFrame.M15: self._generate_fallback_timeframe_data(symbol),
-                TimeFrame.H1: self._generate_fallback_timeframe_data(symbol),
-                TimeFrame.H4: self._generate_fallback_timeframe_data(symbol)
-            }
-        )
-    
-    def _generate_fallback_timeframe_data(self, symbol: str) -> Dict[str, Any]:
-        """Generate fallback timeframe data"""
-        import random
-        
-        # Realistic technical indicators for indices
-        return {
-            "trend": random.choice(["BULLISH", "BEARISH", "SIDEWAYS"]),
-            "momentum_score": random.uniform(40, 80),
-            "rsi": random.uniform(30, 70),
-            "macd_line": random.uniform(-50, 50),
-            "current_price": random.uniform(15000, 22000) if 'NAS100' in symbol else random.uniform(4000, 6000),
-            "sma_20": random.uniform(15000, 22000) if 'NAS100' in symbol else random.uniform(4000, 6000),
-            "sma_50": random.uniform(15000, 22000) if 'NAS100' in symbol else random.uniform(4000, 6000),
-            "bb_upper": 0,
-            "bb_lower": 0,
-            "swing_highs": [],
-            "swing_lows": [],
-            "volatility": random.uniform(100, 500),
-            "volume": random.uniform(1000000, 5000000)
-        }
-    
-    def _generate_fallback_volume_profile(self, symbol: str) -> 'VolumeProfile':
-        """Generate fallback volume profile for indices"""
-        logger.info(f"Generating fallback volume profile for {symbol}")
-        
-        import random
-        
-        # Realistic volume levels for indices
-        if 'NAS100' in symbol:
-            base_volume = random.uniform(2000000, 8000000)
-            price_range = (15000, 22000)
-        elif 'SPX500' in symbol:
-            base_volume = random.uniform(3000000, 10000000)
-            price_range = (4000, 6000)
-        elif 'US30' in symbol:
-            base_volume = random.uniform(1000000, 5000000)
-            price_range = (30000, 45000)
-        else:  # DE30
-            base_volume = random.uniform(500000, 2000000)
-            price_range = (15000, 20000)
-        
-        poc = random.uniform(*price_range)
-        
-        return VolumeProfile(
-            symbol=symbol,
-            timeframe=TimeFrame.H1,
-            total_volume=base_volume,
-            poc=poc,  # Point of Control
-            val=poc * 0.985,  # Value Area Low
-            vah=poc * 1.015,  # Value Area High
-            profile_balance="BALANCED",
-            order_flow_imbalance=random.uniform(-0.3, 0.3),
-            high_volume_nodes=[poc * random.uniform(0.99, 1.01) for _ in range(3)],
-            low_volume_nodes=[poc * random.uniform(0.97, 1.03) for _ in range(2)]
-        )
