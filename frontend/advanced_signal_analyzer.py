@@ -150,14 +150,17 @@ class AdvancedSignalAnalyzer:
             if is_index:
                 logger.info(f"Index detected: {symbol} - will use enhanced analysis with fallback")
             
-            # Get multi-timeframe data (with fallback for indices)
+            # Get multi-timeframe data (with fallback only for HTTP 422 on indices)
             try:
                 mtf_analysis = await self._analyze_multi_timeframe(symbol)
             except Exception as e:
-                if is_index:
-                    logger.warning(f"Primary analysis failed for {symbol}, using fallback: {e}")
+                # Only use fallback for indices AND only for specific errors (not auth issues)
+                if is_index and self._should_use_fallback(e):
+                    logger.warning(f"Data insufficient for {symbol} (HTTP 422), using fallback: {e}")
                     mtf_analysis = self._generate_fallback_analysis(symbol)
                 else:
+                    # For auth errors (401) or non-indices, propagate the error
+                    logger.error(f"Analysis failed for {symbol}: {e}")
                     raise e
             
             # Perform volume analysis with fallback
@@ -244,6 +247,7 @@ class AdvancedSignalAnalyzer:
                     # Extract key levels from this timeframe
                     levels = self._extract_key_levels(df, tf)
                     key_levels.extend(levels)
+                    logger.info(f"Extracted {len(levels)} key levels from {tf} for {symbol}")
                     
             except Exception as e:
                 logger.warning(f"Error analyzing {tf} for {symbol}: {e}")
@@ -1203,18 +1207,46 @@ class AdvancedSignalAnalyzer:
         atr_pct = (atr / entry_price) * 100
         
         logger.info(f"Level analysis for {symbol}: ATR={atr_pct:.3f}%, Risk={risk_pct:.2f}%, Reward={reward_pct:.2f}%, R/R={risk_reward:.2f}")
+        logger.info(f"Available key levels for {symbol}: {len(key_levels)}")
         
         # Ensure minimum viable levels (only if completely unreasonable)
         if risk_distance < atr * 0.5:  # Stop loss too tight relative to volatility
             logger.warning(f"Stop loss too tight relative to ATR, adjusting")
             if direction == "BUY":
                 stop_loss = current_price - (atr * 1.5)
+                take_profit = current_price + (atr * 3.0)  # 2:1 R/R ratio
             elif direction == "SELL":
                 stop_loss = current_price + (atr * 1.5)
+                take_profit = current_price - (atr * 3.0)  # 2:1 R/R ratio
+            elif direction == "HOLD":
+                # For HOLD signals, create range-bound levels using key levels if available
+                if len(key_levels) >= 2:
+                    # Use actual support/resistance levels for HOLD signals
+                    supports = [level for level in key_levels if level.level_type == "support" and level.price < current_price]
+                    resistances = [level for level in key_levels if level.level_type == "resistance" and level.price > current_price]
+                    
+                    if supports and resistances:
+                        # Use closest strong support and resistance
+                        nearest_support = max(supports, key=lambda x: x.price)  # Closest support below
+                        nearest_resistance = min(resistances, key=lambda x: x.price)  # Closest resistance above
+                        
+                        stop_loss = nearest_support.price
+                        take_profit = nearest_resistance.price
+                    else:
+                        # Fallback to ATR-based range
+                        stop_loss = current_price - (atr * 2.0)
+                        take_profit = current_price + (atr * 2.0)
+                else:
+                    # No key levels available, use ATR-based range
+                    stop_loss = current_price - (atr * 2.0)
+                    take_profit = current_price + (atr * 2.0)
             
-            # Recalculate
+            # Recalculate distances and ratios
             risk_distance = abs(entry_price - stop_loss)
-            risk_reward = reward_distance / risk_distance if risk_distance > 0 else 2.0
+            reward_distance = abs(take_profit - entry_price)
+            risk_reward = reward_distance / risk_distance if risk_distance > 0 else 1.0
+            
+            logger.info(f"Adjusted levels: SL={stop_loss:.5f}, TP={take_profit:.5f}, R/R={risk_reward:.2f}")
         
         # Position size based on 2% account risk
         position_size = 0.01  # Default lot size
@@ -1425,6 +1457,35 @@ class AdvancedSignalAnalyzer:
                 logger.info(f"Fixed signal direction inconsistency: {incorrect} -> {correct}")
         
         return reasoning_text
+    
+    def _should_use_fallback(self, error: Exception) -> bool:
+        """
+        Determine if fallback should be used based on error type
+        Only use fallback for HTTP 422 (insufficient data), not auth errors (401)
+        """
+        error_str = str(error).lower()
+        
+        # Check for HTTP 422 Unprocessable Entity (insufficient data)
+        if "422" in error_str or "unprocessable entity" in error_str:
+            return True
+            
+        # Check for specific OANDA insufficient data messages
+        if any(phrase in error_str for phrase in [
+            "insufficient data",
+            "no data available", 
+            "empty candles",
+            "invalid instrument"
+        ]):
+            return True
+            
+        # Do NOT use fallback for authentication/authorization errors
+        if any(phrase in error_str for phrase in [
+            "401", "unauthorized", "authentication", "forbidden", "403"
+        ]):
+            return False
+            
+        # Default: do not use fallback for unknown errors
+        return False
     
     def _generate_fallback_analysis(self, symbol: str) -> 'MultiTimeframeAnalysis':
         """Generate fallback analysis for indices when OANDA data is insufficient"""
