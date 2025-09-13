@@ -771,8 +771,18 @@ class OANDASignalEngine:
             logger.error(f"Signal generation failed for {instrument}: {e}")
             return None
     
-    async def generate_signals_batch(self, instruments: List[str], timeframe: str = "H1") -> List[TradingSignal]:
-        """Generate signals for multiple instruments"""
+    async def generate_signals_batch(self, instruments: List[str], timeframe: str = "H1", min_confidence: float = 0.0) -> List[TradingSignal]:
+        """
+        Generate signals for multiple instruments
+        
+        Args:
+            instruments: List of instrument names
+            timeframe: Timeframe (H1, H4, D1)
+            min_confidence: Minimum confidence threshold (0-100 scale)
+            
+        Returns:
+            List of TradingSignal objects that meet the confidence threshold
+        """
         signals = []
         
         # Auto-initialize client if needed
@@ -780,11 +790,19 @@ class OANDASignalEngine:
             self.oanda_client = create_oanda_client(self.api_key, self.account_id, self.environment)
             await self.oanda_client.__aenter__()
         
+        # Convert min_confidence from percentage (0-100) to decimal (0-1) if needed
+        confidence_threshold = min_confidence / 100.0 if min_confidence > 1.0 else min_confidence
+        
         for instrument in instruments:
             try:
                 signal = await self.generate_signal(instrument, timeframe)
                 if signal:
-                    signals.append(signal)
+                    # Apply confidence filtering
+                    if signal.confidence_score >= confidence_threshold:
+                        signals.append(signal)
+                        logger.info(f"Signal for {instrument} passed confidence filter: {signal.confidence_score:.1%} >= {confidence_threshold:.1%}")
+                    else:
+                        logger.info(f"Signal for {instrument} filtered out: {signal.confidence_score:.1%} < {confidence_threshold:.1%}")
                     
                 # Small delay to respect rate limits
                 await asyncio.sleep(0.1)

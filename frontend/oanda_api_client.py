@@ -404,12 +404,17 @@ class OANDAClient:
         
         Examples:
             EURUSD -> EUR_USD
+            EUR/USD -> EUR_USD
             EUR_USD -> EUR_USD (unchanged)
             eurusd -> EUR_USD
             US30 -> US30_USD
             NAS100 -> NAS100_USD
         """
         symbol = symbol.upper().strip()
+        
+        # Handle slash format (EUR/USD -> EURUSD)
+        if "/" in symbol:
+            symbol = symbol.replace("/", "")
         
         # If already in OANDA format, return as-is
         if "_" in symbol:
