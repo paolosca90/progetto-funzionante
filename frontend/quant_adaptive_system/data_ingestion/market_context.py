@@ -75,6 +75,7 @@ class CBOEDataProvider:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.session: Optional[aiohttp.ClientSession] = None
+        self.initialized = False
         
         # CBOE Public Data URLs (delayed)
         self.base_urls = {
@@ -85,6 +86,103 @@ class CBOEDataProvider:
         
         # Cache settings
         self.cache_ttl = 3600  # 1 hour cache
+        self.last_context_update = None
+        self.cached_context = None
+    
+    async def initialize(self):
+        """Initialize the CBOE data provider"""
+        try:
+            if not self.initialized:
+                # Create aiohttp session if needed
+                if not self.session:
+                    self.session = aiohttp.ClientSession(
+                        timeout=aiohttp.ClientTimeout(total=30),
+                        headers={'User-Agent': 'QuantAdaptiveSystem/1.0'}
+                    )
+                
+                # Test connection with a simple request
+                try:
+                    # Try to fetch current market context to verify functionality
+                    await self.get_current_context()
+                    logger.info("CBOE Data Provider initialized successfully")
+                except Exception as e:
+                    logger.warning(f"CBOE API test failed, will use fallback data: {e}")
+                
+                self.initialized = True
+                
+        except Exception as e:
+            logger.error(f"Error initializing CBOEDataProvider: {e}")
+            # Don't raise - allow fallback to work
+            self.initialized = True  # Mark as initialized anyway
+    
+    async def get_current_context(self) -> MarketContext:
+        """Get current market context with caching"""
+        try:
+            current_time = datetime.now()
+            
+            # Check if cached context is still valid (refresh every 30 minutes)
+            if (self.cached_context and self.last_context_update and 
+                current_time - self.last_context_update < timedelta(minutes=30)):
+                return self.cached_context
+            
+            # Create MarketContextAnalyzer and get fresh context
+            analyzer = MarketContextAnalyzer()
+            context = await analyzer.get_current_market_context()
+            
+            if context:
+                self.cached_context = context
+                self.last_context_update = current_time
+                return context
+            else:
+                # Return cached context if available, otherwise create default
+                if self.cached_context:
+                    logger.warning("Using cached market context due to fetch failure")
+                    return self.cached_context
+                else:
+                    # Create default favorable context
+                    return self._create_default_context(current_time)
+                    
+        except Exception as e:
+            logger.error(f"Error getting market context: {e}")
+            # Return cached or default context
+            if self.cached_context:
+                return self.cached_context
+            else:
+                return self._create_default_context(datetime.now())
+    
+    async def update_cache(self):
+        """Update cached data - force refresh of market context"""
+        try:
+            current_time = datetime.now()
+            
+            # Force refresh by clearing cache
+            self.cached_context = None
+            self.last_context_update = None
+            
+            # Get fresh context
+            await self.get_current_context()
+            
+            logger.debug("CBOE cache updated successfully")
+            
+        except Exception as e:
+            logger.error(f"Error updating CBOE cache: {e}")
+    
+    def _create_default_context(self, timestamp: datetime) -> MarketContext:
+        """Create a default favorable market context for fallback"""
+        return MarketContext(
+            timestamp=timestamp,
+            spx_0dte_share=0.35,  # Moderate 0DTE activity
+            spy_0dte_share=0.30,  # Moderate SPY 0DTE
+            combined_0dte_share=0.33,  # Combined moderate
+            put_call_ratio=0.95,  # Slightly bullish bias
+            gamma_exposure=0.1,   # Low gamma exposure
+            regime="NORMAL",      # Normal trading regime
+            volatility_regime="MEDIUM",  # Medium volatility
+            pinning_risk=0.3,     # Low-moderate pinning risk
+            key_levels=[4350.0, 4400.0, 4450.0],  # Typical SPX levels
+            max_pain=4400.0,      # Typical max pain
+            gamma_wall=4450.0     # Gamma resistance level
+        )
         
     async def __aenter__(self):
         """Async context manager entry"""

@@ -628,6 +628,38 @@ class FuturesVolumeMapper:
             
         # Map to CFD levels
         return self.map_levels_to_cfd(futures_profile)
+    
+    async def initialize(self):
+        """Initialize the futures volume mapper"""
+        try:
+            # Initialize data providers
+            await self.cme_provider.initialize() if hasattr(self.cme_provider, 'initialize') else None
+            await self.eurex_provider.initialize() if hasattr(self.eurex_provider, 'initialize') else None
+            
+            logger.info("FuturesVolumeMapper initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"Error initializing FuturesVolumeMapper: {e}")
+            # Don't raise - allow fallback to work
+    
+    async def get_all_current_profiles(self) -> Dict[str, VolumeProfile]:
+        """Get all current volume profiles - alias for get_all_volume_profiles"""
+        try:
+            return await self.get_all_volume_profiles()
+        except Exception as e:
+            logger.error(f"Error getting current profiles: {e}")
+            return {}
+    
+    async def update_all_profiles(self):
+        """Update all cached volume profiles"""
+        try:
+            # Force refresh by fetching new profiles
+            profiles = await self.get_all_volume_profiles()
+            
+            logger.info(f"Updated {len(profiles)} volume profiles")
+            
+        except Exception as e:
+            logger.error(f"Error updating volume profiles: {e}")
 
 # Convenience functions
 async def get_volume_levels(cfd_symbol: str) -> Optional[Dict[str, float]]:

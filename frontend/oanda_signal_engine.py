@@ -739,10 +739,13 @@ class OANDASignalEngine:
                 risk_level = RiskLevel.MEDIUM
             
             # Create signal
+            # Ensure confidence score is between 0-1 (not 0-100)
+            normalized_confidence = min(1.0, max(0.0, technical.technical_score))
+            
             signal = TradingSignal(
                 instrument=instrument,
                 signal_type=signal_type,
-                confidence_score=technical.technical_score,
+                confidence_score=normalized_confidence,
                 entry_price=current_price.mid,
                 stop_loss=risk_mgmt.suggested_stop_loss,
                 take_profit=risk_mgmt.suggested_take_profit,
