@@ -188,9 +188,9 @@ async def startup_event():
     
     await initialize_oanda_engine()
     
-    # 🚀 START ML SYSTEM - Automatic Signal Generation & Tracking
+    # START ML SYSTEM - Automatic Signal Generation & Tracking
     try:
-        print("🤖 Starting ML System - Automatic Signal Generation every 5 minutes...")
+        print("Starting ML System - Automatic Signal Generation every 5 minutes...")
         
         # Add current directory to Python path for imports
         import sys
@@ -208,19 +208,19 @@ async def startup_event():
         # Start in background task to avoid blocking startup
         asyncio.create_task(orchestrator.start())
         
-        print("✅ ML System activated - Signal generation, outcome tracking, and learning enabled")
-        print("📊 System now generating signals every 5 minutes for all assets")
-        print("🧠 Machine learning tracking 50+ features per signal for continuous improvement")
+        print("ML System activated - Signal generation, outcome tracking, and learning enabled")
+        print("System now generating signals every 5 minutes for all assets")
+        print("Machine learning tracking 50+ features per signal for continuous improvement")
         logger.info("Quant Orchestrator started - ML system fully operational")
         
     except ImportError as e:
-        print(f"⚠️  ML System: Import issue - {e}")
-        print("📊 Application will continue with manual signal generation only")
-        print("💡 ML System requires all quantitative modules to be properly configured")
+        print(f"ML System: Import issue - {e}")
+        print("Application will continue with manual signal generation only")
+        print("ML System requires all quantitative modules to be properly configured")
         logger.warning(f"Quant Orchestrator import failed: {e}")
     except Exception as e:
-        print(f"⚠️  Warning: ML System initialization failed: {e}")
-        print("📊 Application will continue with manual signal generation only")
+        print(f"Warning: ML System initialization failed: {e}")
+        print("Application will continue with manual signal generation only")
         logger.warning(f"Quant Orchestrator failed to start: {e}")
     
     logger.info("Application startup complete")
