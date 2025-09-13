@@ -67,9 +67,18 @@ def get_oanda_symbol(frontend_symbol):
     if mapped:
         return mapped
     
+    # Handle slash format (EUR/USD -> EUR_USD)
+    upper_symbol = frontend_symbol.upper()
+    if "/" in upper_symbol:
+        upper_symbol = upper_symbol.replace("/", "")
+    
+    # Try mapping after removing slash
+    mapped = frontend_to_oanda.get(upper_symbol)
+    if mapped:
+        return mapped
+    
     # Fallback: Try to convert to OANDA format by adding underscore
     # Only for forex pairs (6 characters without underscore)
-    upper_symbol = frontend_symbol.upper()
     if len(upper_symbol) == 6 and upper_symbol.isalpha():
         # Insert underscore after first 3 characters (EUR USD -> EUR_USD)
         return f"{upper_symbol[:3]}_{upper_symbol[3:]}"
