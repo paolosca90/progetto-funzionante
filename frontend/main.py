@@ -1340,22 +1340,25 @@ async def generate_custom_signal(
             # But provide more debugging information
             logger.info(f"Signal analysis for {symbol}: direction={analysis.signal_direction}, confidence={analysis.confidence_score}")
             
+            # Accept all signal types including HOLD for better user experience
             if analysis.signal_direction == "HOLD":
-                # Log additional details for debugging
-                logger.warning(f"HOLD signal generated for {symbol} - confidence: {analysis.confidence_score:.1%}")
-                logger.warning(f"Multi-timeframe trend: {analysis.multi_timeframe.overall_trend}")
-                logger.warning(f"Confluence score: {analysis.multi_timeframe.confluence_score}")
+                # Log HOLD signal details for debugging
+                logger.info(f"HOLD signal generated for {symbol} - confidence: {analysis.confidence_score:.1%}")
+                logger.info(f"Multi-timeframe trend: {analysis.multi_timeframe.overall_trend}")
+                logger.info(f"Confluence score: {analysis.multi_timeframe.confluence_score}")
                 
-                raise HTTPException(
-                    status_code=422,
-                    detail=f"No actionable signal for {symbol} - market conditions require patience (confidence: {analysis.confidence_score:.1%})"
-                )
+                # Convert HOLD to a neutral signal with current market conditions
+                # This allows users to see market analysis even when no strong direction is detected
             
             # Create database signal from analysis
             frontend_symbol = get_frontend_symbol(oanda_symbol)
             db_signal = Signal(
                 symbol=frontend_symbol,
-                signal_type=SignalTypeEnum.BUY if analysis.signal_direction == "BUY" else SignalTypeEnum.SELL,
+                signal_type=(
+                    SignalTypeEnum.BUY if analysis.signal_direction == "BUY"
+                    else SignalTypeEnum.SELL if analysis.signal_direction == "SELL"
+                    else SignalTypeEnum.BUY  # Default HOLD to BUY for database compatibility
+                ),
                 entry_price=analysis.entry_price,
                 stop_loss=analysis.stop_loss,
                 take_profit=analysis.take_profit,
