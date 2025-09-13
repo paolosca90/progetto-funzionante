@@ -14,6 +14,9 @@ from dataclasses import dataclass
 from enum import Enum
 import os
 from decimal import Decimal
+import numpy as np
+import pandas as pd
+from typing import Tuple
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -477,6 +480,131 @@ class OANDAClient:
             return True
         except OANDAAPIError:
             return False
+
+    @staticmethod
+    def calculate_rsi(prices: np.ndarray, period: int = 14) -> float:
+        """Calculate RSI indicator"""
+        if len(prices) < period + 1:
+            return 50.0
+            
+        deltas = np.diff(prices)
+        gains = np.where(deltas > 0, deltas, 0)
+        losses = np.where(deltas < 0, -deltas, 0)
+        
+        avg_gain = np.mean(gains[-period:])
+        avg_loss = np.mean(losses[-period:])
+        
+        if avg_loss == 0:
+            return 100.0
+        
+        rs = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + rs))
+        return rsi
+    
+    @staticmethod
+    def calculate_macd(prices: np.ndarray, fast: int = 12, slow: int = 26, signal: int = 9) -> Tuple[float, float, float]:
+        """Calculate MACD indicator"""
+        if len(prices) < slow:
+            return 0.0, 0.0, 0.0
+        
+        exp1 = pd.Series(prices).ewm(span=fast).mean()
+        exp2 = pd.Series(prices).ewm(span=slow).mean()
+        
+        macd_line = exp1.iloc[-1] - exp2.iloc[-1]
+        
+        # Calculate signal line
+        macd_series = exp1 - exp2
+        signal_line = macd_series.ewm(span=signal).mean().iloc[-1]
+        
+        histogram = macd_line - signal_line
+        
+        return macd_line, signal_line, histogram
+
+    async def get_instrument_data(self, instrument: str, timeframes: List[str] = None) -> Dict[str, Any]:
+        """
+        Get comprehensive instrument data with technical analysis for multiple timeframes
+        
+        Args:
+            instrument: Instrument name (e.g., "EUR_USD")
+            timeframes: List of timeframes (e.g., ["M1", "M5", "M15", "M30"])
+            
+        Returns:
+            Dictionary with timeframe data containing technical indicators
+        """
+        if timeframes is None:
+            timeframes = ["M1", "M5", "M15", "M30"]
+        
+        # Normalize instrument symbol
+        normalized_instrument = self.normalize_instrument(instrument)
+        
+        result = {}
+        
+        for tf in timeframes:
+            try:
+                # Map timeframe strings to Granularity enum
+                granularity_map = {
+                    "M1": Granularity.M1,
+                    "M5": Granularity.M5,
+                    "M15": Granularity.M15,
+                    "M30": Granularity.M30,
+                    "H1": Granularity.H1,
+                    "H4": Granularity.H4,
+                    "D": Granularity.D
+                }
+                
+                granularity = granularity_map.get(tf, Granularity.M15)
+                
+                # Get candlestick data - fetch more candles for better technical analysis
+                candles = await self.get_candles(
+                    instrument=normalized_instrument,
+                    granularity=granularity,
+                    count=100  # Enough for technical indicators
+                )
+                
+                if not candles:
+                    logger.warning(f"No candles received for {normalized_instrument} {tf}")
+                    continue
+                
+                # Extract close prices for technical analysis
+                close_prices = np.array([candle.close for candle in candles])
+                
+                if len(close_prices) < 14:  # Minimum for RSI
+                    logger.warning(f"Insufficient data for {normalized_instrument} {tf}")
+                    continue
+                
+                # Calculate technical indicators
+                rsi = self.calculate_rsi(close_prices)
+                macd_line, signal_line, histogram = self.calculate_macd(close_prices)
+                
+                # Determine MACD signal
+                macd_signal = "BUY" if macd_line > signal_line else "SELL"
+                
+                # Get current price data
+                current_candle = candles[-1]
+                
+                result[tf] = {
+                    "rsi": round(rsi, 2),
+                    "macd_line": round(macd_line, 5),
+                    "macd_signal_line": round(signal_line, 5),
+                    "macd_histogram": round(histogram, 5),
+                    "macd_signal": macd_signal,
+                    "current_price": current_candle.close,
+                    "high": current_candle.high,
+                    "low": current_candle.low,
+                    "open": current_candle.open,
+                    "volume": current_candle.volume,
+                    "time": current_candle.time.isoformat(),
+                    "candles_count": len(candles)
+                }
+                
+                logger.debug(f"Generated data for {normalized_instrument} {tf}: RSI={rsi:.2f}, MACD={macd_signal}")
+                
+            except Exception as e:
+                logger.error(f"Error getting data for {normalized_instrument} {tf}: {e}")
+                continue
+        
+        logger.info(f"Retrieved instrument data for {normalized_instrument} across {len(result)} timeframes")
+        return result
 
 # Factory function for easy client creation
 def create_oanda_client(api_key: str, account_id: str, environment: str = "practice") -> OANDAClient:
