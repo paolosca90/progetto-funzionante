@@ -65,7 +65,7 @@ async function makeApiRequest(endpoint, options = {}) {
             localStorage.removeItem('access_token');
             localStorage.removeItem('token_type');
             if (window.location.pathname !== '/index.html' && window.location.pathname !== '/') {
-                window.location.href = 'index.html';
+                window.location.href = '/';
             }
             throw new Error('Authentication expired');
         }
@@ -128,7 +128,7 @@ async function logout() {
             showSuccessMessage('Logout effettuato con successo!');
             // Delay redirect to show message
             setTimeout(() => {
-                window.location.href = 'index.html';
+                window.location.href = '/';
             }, 1500);
         } else {
             // Create a simple success indicator for pages without showSuccessMessage
@@ -164,7 +164,7 @@ async function logout() {
             
             // Redirect after showing message
             setTimeout(() => {
-                window.location.href = 'index.html';
+                window.location.href = '/';
             }, 1500);
         }
     }

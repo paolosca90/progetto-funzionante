@@ -516,11 +516,11 @@ async function logout() {
             showSuccessMessage('Logout effettuato con successo!');
             // Delay redirect to show message
             setTimeout(() => {
-                window.location.href = 'index.html';
+                window.location.href = '/';
             }, 1500);
         } else {
             // Immediate redirect if no message function
-            window.location.href = 'index.html';
+            window.location.href = '/';
         }
     }
 }
