@@ -1,0 +1,32 @@
+{
+  "name": "aicash-revolution-monorepo",
+  "version": "1.0.0",
+  "description": "AI Cash Revolution - Mobile-First Trading Platform",
+  "scripts": {
+    "start": "cd server && npm start",
+    "build": "cd server && npm install && npx prisma generate",
+    "dev": "cd server && npm run dev",
+    "install:server": "cd server && npm install",
+    "install:web": "cd web && npm install",
+    "deploy": "cd server && npm install && npx prisma generate && npm start"
+  },
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paolosca90/progetto-funzionante.git"
+  },
+  "keywords": [
+    "trading",
+    "mobile-first",
+    "pwa",
+    "ai-signals",
+    "forex"
+  ]
+}

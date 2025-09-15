@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/USER/Desktop/specs/001-r-nfeaturedescription-specify/**)",
+      "Bash(dir:*)",
+      "Read(//c/Users/USER/Desktop/specs/**)",
+      "Bash(powershell.exe -Command \"Get-Content ''C:\\Users\\USER\\Desktop\\new project\\aicash-revolution\\specs\\001-aiutami-a-mettere\\spec.md''\")",
+      "Bash(railway login)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

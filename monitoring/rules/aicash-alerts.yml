@@ -1,0 +1,275 @@
+# AI Cash Revolution - Prometheus Alert Rules
+# Critical alerts for production monitoring
+
+groups:
+  # Application Health Alerts
+  - name: aicash.application
+    rules:
+      - alert: APIServerDown
+        expr: up{job="aicash-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: api-server
+        annotations:
+          summary: "AI Cash Revolution API server is down"
+          description: "The main API server has been down for more than 1 minute"
+          runbook_url: "https://runbooks.aicash-revolution.com/api-server-down"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: api-server
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors per second"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 10m
+        labels:
+          severity: warning
+          component: api-server
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s"
+
+      - alert: HighMemoryUsage
+        expr: process_memory_usage_bytes{job="aicash-api"} / process_memory_limit_bytes > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          component: api-server
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+  # Database Alerts
+  - name: aicash.database
+    rules:
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "PostgreSQL database has been down for more than 1 minute"
+
+      - alert: HighDatabaseConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High database connection usage"
+          description: "Database connection usage is {{ $value | humanizePercentage }}"
+
+      - alert: LongRunningQueries
+        expr: pg_stat_activity_max_tx_duration > 300
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Long-running database queries detected"
+          description: "Longest transaction has been running for {{ $value }}s"
+
+      - alert: DatabaseDiskSpaceHigh
+        expr: pg_database_size_bytes / pg_filesystem_size_bytes > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Database disk space usage high"
+          description: "Database disk usage is {{ $value | humanizePercentage }}"
+
+  # Redis Cache Alerts
+  - name: aicash.redis
+    rules:
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: cache
+        annotations:
+          summary: "Redis cache is down"
+          description: "Redis cache has been down for more than 1 minute"
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+
+      - alert: RedisHighConnections
+        expr: redis_connected_clients > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "High Redis connection count"
+          description: "Redis has {{ $value }} connected clients"
+
+  # Trading System Alerts
+  - name: aicash.trading
+    rules:
+      - alert: SignalGenerationFailed
+        expr: rate(trading_signal_generation_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          component: trading-engine
+        annotations:
+          summary: "Trading signal generation failing"
+          description: "Signal generation error rate is {{ $value }} per second"
+
+      - alert: OandaAPIDown
+        expr: external_api_up{service="oanda"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: external-api
+        annotations:
+          summary: "Oanda API is unreachable"
+          description: "Cannot connect to Oanda trading API"
+
+      - alert: HighTradingLatency
+        expr: trading_execution_duration_seconds > 5
+        for: 3m
+        labels:
+          severity: warning
+          component: trading-engine
+        annotations:
+          summary: "High trading execution latency"
+          description: "Trading execution taking {{ $value }}s"
+
+      - alert: MLOptimizationFailed
+        expr: ml_optimization_failures_total > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: ml-engine
+        annotations:
+          summary: "ML optimization failures detected"
+          description: "{{ $value }} ML optimization failures in the last 5 minutes"
+
+  # Infrastructure Alerts
+  - name: aicash.infrastructure
+    rules:
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: HighDiskUsage
+        expr: (node_filesystem_size_bytes - node_filesystem_avail_bytes) / node_filesystem_size_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High disk usage"
+          description: "Disk usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 10m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      - alert: SSLCertificateExpiringSoon
+        expr: ssl_cert_not_after - time() < 7 * 24 * 3600
+        for: 1h
+        labels:
+          severity: warning
+          component: ssl
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value | humanizeDuration }}"
+
+  # Security Alerts
+  - name: aicash.security
+    rules:
+      - alert: RateLimitExceeded
+        expr: rate(http_requests_total{status="429"}[5m]) > 1
+        for: 2m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "Rate limit exceeded frequently"
+          description: "Rate limit exceeded {{ $value }} times per second"
+
+      - alert: SuspiciousLogin
+        expr: rate(auth_failed_attempts_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "Suspicious login activity"
+          description: "{{ $value }} failed login attempts per second"
+
+      - alert: UnauthorizedAPIAccess
+        expr: rate(http_requests_total{status="401"}[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "High unauthorized access attempts"
+          description: "{{ $value }} unauthorized requests per second"
+
+  # Business Logic Alerts
+  - name: aicash.business
+    rules:
+      - alert: LowSignalAccuracy
+        expr: trading_signal_accuracy_percent < 70
+        for: 30m
+        labels:
+          severity: warning
+          component: trading-engine
+        annotations:
+          summary: "Trading signal accuracy below threshold"
+          description: "Signal accuracy is {{ $value }}% (threshold: 70%)"
+
+      - alert: HighUserChurn
+        expr: rate(user_cancellations_total[1h]) > 0.1
+        for: 1h
+        labels:
+          severity: warning
+          component: business
+        annotations:
+          summary: "High user churn rate detected"
+          description: "User cancellation rate is {{ $value }} per hour"
+
+      - alert: PaymentFailures
+        expr: rate(payment_failures_total[10m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: payments
+        annotations:
+          summary: "High payment failure rate"
+          description: "Payment failure rate is {{ $value }} per second"

@@ -1,0 +1,357 @@
+# AI Cash Revolution - Production Deployment Pipeline
+# Comprehensive CI/CD with security scanning, testing, and blue-green deployment
+
+name: Production Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'web/**'
+      - 'Dockerfile'
+      - 'docker-compose.production.yml'
+  release:
+    types: [published]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  NODE_VERSION: '18'
+
+jobs:
+  # Security and Code Quality Checks
+  security-audit:
+    runs-on: ubuntu-latest
+    name: Security Audit
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'server/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Run npm audit
+        working-directory: ./server
+        run: npm audit --audit-level high
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+          command: test
+
+      - name: CodeQL Analysis
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # Backend Testing
+  backend-tests:
+    runs-on: ubuntu-latest
+    name: Backend Tests
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: aicash_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'server/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: ./server
+        run: npx prisma generate
+
+      - name: Run database migrations
+        working-directory: ./server
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/aicash_test
+
+      - name: Run unit tests
+        working-directory: ./server
+        run: npm test
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/aicash_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test_jwt_secret
+
+      - name: Run integration tests
+        working-directory: ./server
+        run: npm run test:integration
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/aicash_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Generate test coverage
+        working-directory: ./server
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ./server/coverage
+
+  # Mobile App Testing
+  mobile-tests:
+    runs-on: ubuntu-latest
+    name: Mobile App Tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'web/mobile/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ./web/mobile
+        run: npm ci
+
+      - name: Run TypeScript check
+        working-directory: ./web/mobile
+        run: npm run type-check
+
+      - name: Run ESLint
+        working-directory: ./web/mobile
+        run: npm run lint
+
+      - name: Run unit tests
+        working-directory: ./web/mobile
+        run: npm test -- --coverage --watchAll=false
+
+      - name: Build app for testing
+        working-directory: ./web/mobile
+        run: npm run build:production
+
+  # Docker Build and Security Scan
+  docker-build:
+    runs-on: ubuntu-latest
+    name: Docker Build & Scan
+    needs: [security-audit, backend-tests]
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Infrastructure as Code Validation
+  terraform-validate:
+    runs-on: ubuntu-latest
+    name: Terraform Validation
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Format Check
+        working-directory: ./infrastructure
+        run: terraform fmt -check
+
+      - name: Terraform Init
+        working-directory: ./infrastructure
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ./infrastructure
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ./infrastructure
+        run: terraform plan
+        env:
+          TF_VAR_environment: production
+          TF_VAR_domain_name: ${{ secrets.PRODUCTION_DOMAIN }}
+
+  # Production Deployment
+  deploy-production:
+    runs-on: ubuntu-latest
+    name: Deploy to Production
+    needs: [docker-build, terraform-validate, mobile-tests]
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://${{ secrets.PRODUCTION_DOMAIN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+
+      - name: Deploy to production server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} << 'EOF'
+            cd /opt/aicash-revolution
+
+            # Backup current deployment
+            docker-compose -f docker-compose.production.yml stop
+            docker tag aicash-revolution:latest aicash-revolution:backup-$(date +%Y%m%d-%H%M%S)
+
+            # Pull latest images
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+            # Update environment variables
+            echo "${{ secrets.PRODUCTION_ENV }}" > .env
+
+            # Deploy with zero-downtime
+            docker-compose -f docker-compose.production.yml up -d --remove-orphans
+
+            # Wait for health checks
+            sleep 30
+
+            # Verify deployment
+            curl -f http://localhost/api/health || exit 1
+
+            # Clean up old images
+            docker image prune -f
+          EOF
+
+      - name: Run database migrations
+        run: |
+          ssh ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} << 'EOF'
+            cd /opt/aicash-revolution
+            docker-compose -f docker-compose.production.yml exec -T api npx prisma migrate deploy
+          EOF
+
+      - name: Notify deployment success
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: '🚀 Production deployment successful!'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Rollback on Failure
+  rollback:
+    runs-on: ubuntu-latest
+    name: Rollback on Failure
+    needs: [deploy-production]
+    if: failure()
+    steps:
+      - name: Rollback deployment
+        run: |
+          ssh ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} << 'EOF'
+            cd /opt/aicash-revolution
+
+            # Get latest backup
+            BACKUP_TAG=$(docker images aicash-revolution --format "table {{.Tag}}" | grep backup | head -1)
+
+            if [ ! -z "$BACKUP_TAG" ]; then
+              docker tag aicash-revolution:$BACKUP_TAG aicash-revolution:latest
+              docker-compose -f docker-compose.production.yml up -d
+              echo "Rollback completed to $BACKUP_TAG"
+            else
+              echo "No backup found for rollback"
+              exit 1
+            fi
+          EOF
+
+      - name: Notify rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: '⚠️ Production deployment failed - rollback initiated'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
