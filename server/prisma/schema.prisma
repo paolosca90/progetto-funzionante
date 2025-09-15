@@ -1,0 +1,409 @@
+// Prisma Schema for AI Cash Revolution Trading System
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Management
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  passwordHash      String
+  firstName         String?
+  lastName          String?
+  phoneNumber       String?
+  isActive          Boolean   @default(true)
+  emailVerified     Boolean   @default(false)
+  emailVerificationToken String?
+  passwordResetToken String?
+  passwordResetExpires DateTime?
+  lastLogin         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // OAuth fields
+  googleId          String?   @unique
+  avatarUrl         String?
+
+  // Relationships
+  profiles          UserProfile[]
+  subscription      UserSubscription?
+  tradingSignals    TradingSignal[]
+  signalExecutions  SignalExecution[]
+  auditLogs         AuditLog[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id                String    @id @default(cuid())
+  userId            String
+  profileType       String    // 'mt5', 'trading_preferences', etc.
+
+  // MT5 Configuration
+  mt5AccountNumber  String?
+  mt5Server         String?
+  mt5Login          String?
+  mt5Password       String?   // Encrypted
+  mt5AccountType    String?   // 'demo', 'live'
+
+  // Trading Preferences
+  riskPercentage    Float     @default(2.0)  // 2% per trade
+  maxDailyLoss      Float     @default(10.0) // 10% max daily loss
+  preferredInstruments Json?   // Array of preferred symbols
+  tradingHours      Json?     // Trading schedule preferences
+
+  // Risk Management
+  maxOpenPositions  Int       @default(5)
+  allowedInstrumentTypes Json? // ['forex', 'indices', 'commodities']
+
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, profileType])
+  @@map("user_profiles")
+}
+
+model UserSubscription {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  planType          String    // 'basic', 'pro', 'enterprise'
+  status            String    // 'active', 'cancelled', 'past_due'
+  stripeCustomerId  String?
+  stripeSubscriptionId String?
+
+  // Subscription limits
+  maxSignalsPerDay  Int       @default(10)
+  maxOpenPositions  Int       @default(3)
+  hasAdvancedAnalysis Boolean @default(false)
+  hasCustomIndicators Boolean @default(false)
+
+  currentPeriodStart DateTime
+  currentPeriodEnd  DateTime
+  cancelAtPeriodEnd Boolean   @default(false)
+
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_subscriptions")
+}
+
+// Trading Instruments
+model TradingInstrument {
+  id                String    @id @default(cuid())
+  symbol            String    @unique  // EURUSD, XAUUSD, NAS100, etc.
+  name              String    // Euro vs US Dollar
+  instrumentType    String    // 'forex', 'metal', 'index', 'commodity'
+
+  // Trading specifications
+  tickSize          Float     // Minimum price movement
+  contractSize      Float     // Standard lot size
+  marginRequirement Float     // Margin requirement percentage
+  spread            Float?    // Current spread
+  swapLong          Float?    // Overnight swap for long positions
+  swapShort         Float?    // Overnight swap for short positions
+
+  // Trading hours
+  tradingHours      Json?     // Daily trading schedule
+  marketCloseHours  Json?     // Market close times
+
+  // Data provider specific
+  oandaInstrument   String?   // Oanda instrument name
+  mt5Symbol         String?   // MT5 symbol name
+  cmeSymbol         String?   // CME symbol
+
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  tradingSignals    TradingSignal[]
+  volumeAnalysis    VolumeAnalysisData[]
+
+  @@map("trading_instruments")
+}
+
+// Trading Signals
+model TradingSignal {
+  id                String    @id @default(cuid())
+  signalId          String    @unique  // Human-readable signal ID
+  userId            String
+  instrumentId      String
+
+  // Signal details
+  direction         String    // 'BUY', 'SELL'
+  entryPrice        Float
+  stopLoss          Float
+  takeProfit        Float
+  confidence        Float     // 0-100
+  riskRewardRatio   Float     // 2.0 = 2:1 R:R
+
+  // Analysis results
+  analysisResults   Json      // Complete analysis from all modules
+  motivation        String?   // AI-generated explanation
+  expiresAt         DateTime  // Signal expiration
+
+  // Signal management
+  status            String    @default("active") // 'active', 'executed', 'expired', 'cancelled'
+  priority          String    @default("medium") // 'low', 'medium', 'high'
+
+  // ML tracking
+  mlModelVersion    String?
+  backtestScore     Float?
+
+  generatedAt       DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instrument        TradingInstrument @relation(fields: [instrumentId], references: [id])
+  executions        SignalExecution[]
+
+  @@index([userId, status, expiresAt])
+  @@index([instrumentId, generatedAt])
+  @@map("trading_signals")
+}
+
+// Signal Execution Records
+model SignalExecution {
+  id                String    @id @default(cuid())
+  signalId          String
+  userId            String
+
+  // Execution details
+  executionType     String    // 'manual', 'automatic'
+  orderType         String    // 'market', 'limit', 'stop'
+  lotSize           Float     // Position size
+  actualEntryPrice  Float?    // Actual fill price
+  executionTime     DateTime?
+
+  // MT5 Integration
+  mt5TicketNumber   String?   // MT5 order ticket
+  mt5Magic          Int?      // EA magic number
+  mt5Comment        String?
+
+  // Execution status
+  status            String    @default("pending") // 'pending', 'filled', 'rejected', 'cancelled'
+  rejectionReason   String?
+  slippage          Float?    // Price slippage
+
+  // Performance tracking
+  currentPnL        Float?    // Current P&L
+  finalPnL          Float?    // Final P&L when closed
+  closedAt          DateTime?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  signal            TradingSignal @relation(fields: [signalId], references: [id])
+  user              User      @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@index([signalId, executionTime])
+  @@map("signal_executions")
+}
+
+// Machine Learning & Analysis
+model MLAnalysisRun {
+  id                String    @id @default(cuid())
+  runId             String    @unique
+
+  // Analysis configuration
+  analysisType      String    // 'price_action', 'volume_profile', 'zero_dte', 'fundamental'
+  instrumentIds     Json      // Array of instrument IDs analyzed
+  timeframe         String    // '1m', '5m', '1h', '4h', '1d'
+
+  // ML Model info
+  modelVersion      String
+  parameters        Json      // Model hyperparameters
+
+  // Performance metrics
+  accuracy          Float?
+  precision         Float?
+  recall            Float?
+  f1Score          Float?
+
+  // Execution details
+  startTime         DateTime
+  endTime           DateTime?
+  status            String    @default("running") // 'running', 'completed', 'failed'
+  errorMessage      String?
+
+  // Results
+  analysisResults   Json?     // Raw analysis output
+  signalsGenerated  Int       @default(0)
+
+  createdAt         DateTime  @default(now())
+
+  @@index([analysisType, startTime])
+  @@map("ml_analysis_runs")
+}
+
+model MLSignalPerformance {
+  id                String    @id @default(cuid())
+  signalId          String
+
+  // Performance metrics
+  actualReturn      Float     // Actual return percentage
+  expectedReturn    Float     // Expected return from ML model
+  accuracy          Boolean   // Was prediction correct?
+
+  // Risk metrics
+  maxDrawdown       Float?    // Maximum drawdown during trade
+  timeToTarget      Int?      // Minutes to reach target
+  volatility        Float?    // Price volatility during trade
+
+  // Model attribution
+  modelVersion      String
+  confidenceScore   Float     // Original confidence score
+
+  // Market conditions
+  marketConditions  Json?     // Market state during signal
+
+  recordedAt        DateTime  @default(now())
+
+  @@index([signalId])
+  @@index([modelVersion, recordedAt])
+  @@map("ml_signal_performance")
+}
+
+// Market Data & Analysis
+model VolumeAnalysisData {
+  id                String    @id @default(cuid())
+  instrumentId      String
+
+  // Time and price data
+  timestamp         DateTime
+  timeframe         String    // '1m', '5m', etc.
+  openPrice         Float
+  highPrice         Float
+  lowPrice          Float
+  closePrice        Float
+
+  // Volume data
+  totalVolume       Float
+  buyVolume         Float?
+  sellVolume        Float?
+
+  // Volume profile data
+  pointOfControl    Float?    // POC price level
+  valueAreaHigh     Float?    // VA high
+  valueAreaLow      Float?    // VA low
+  volumeAtPrice     Json?     // Volume distribution by price
+
+  // Technical indicators
+  vwap              Float?    // Volume Weighted Average Price
+  volumeRate        Float?    // Volume rate of change
+
+  // Sierra Chart integration
+  sierraChartData   Json?     // Raw Sierra Chart data
+
+  createdAt         DateTime  @default(now())
+
+  // Relationships
+  instrument        TradingInstrument @relation(fields: [instrumentId], references: [id])
+
+  @@unique([instrumentId, timestamp, timeframe])
+  @@index([instrumentId, timestamp])
+  @@map("volume_analysis_data")
+}
+
+model NewsSentimentData {
+  id                String    @id @default(cuid())
+
+  // News source and content
+  headline          String
+  content           String?
+  source            String    // 'reuters', 'bloomberg', 'forexfactory'
+  url               String?
+  publishedAt       DateTime
+
+  // Sentiment analysis
+  sentimentScore    Float     // -1 (very negative) to +1 (very positive)
+  confidence        Float     // 0-1 confidence in sentiment
+
+  // Impact analysis
+  impactLevel       String    // 'low', 'medium', 'high'
+  affectedInstruments Json?   // Array of potentially affected symbols
+  keyTerms          Json?     // Important keywords extracted
+
+  // Processing status
+  processed         Boolean   @default(false)
+  processedAt       DateTime?
+
+  createdAt         DateTime  @default(now())
+
+  @@index([publishedAt, impactLevel])
+  @@index([processed, createdAt])
+  @@map("news_sentiment_data")
+}
+
+// System Management
+model SystemHealth {
+  id                String    @id @default(cuid())
+  service           String    // 'database', 'mt5_bridge', 'oanda_api', etc.
+
+  // Health status
+  status            String    // 'healthy', 'degraded', 'down'
+  lastCheck         DateTime
+  nextCheck         DateTime
+  responseTime      Float?    // Response time in milliseconds
+  errorMessage      String?
+
+  // Metadata
+  metadata          Json?     // Service-specific health data
+  version           String?   // Service version
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([service])
+  @@index([status, lastCheck])
+  @@map("system_health")
+}
+
+model AuditLog {
+  id                String    @id @default(cuid())
+  userId            String?
+
+  // Action details
+  action            String    // 'login', 'signal_generated', 'trade_executed'
+  resource          String    // 'user', 'trading_signal', 'signal_execution'
+  resourceId        String?   // ID of the affected resource
+
+  // Change tracking
+  oldValues         Json?     // Previous state
+  newValues         Json?     // New state
+
+  // Request context
+  ipAddress         String?
+  userAgent         String?
+  sessionId         String?
+
+  // Additional metadata
+  metadata          Json?
+  severity          String    @default("info") // 'info', 'warning', 'error'
+
+  timestamp         DateTime  @default(now())
+
+  // Relationships
+  user              User?     @relation(fields: [userId], references: [id])
+
+  @@index([userId, timestamp])
+  @@index([action, timestamp])
+  @@index([resource, resourceId])
+  @@map("audit_logs")
+}
