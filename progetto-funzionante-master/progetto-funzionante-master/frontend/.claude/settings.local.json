@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(python:*)",
+      "Bash(git remote add:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(curl:*)",
+      "Bash(node:*)",
+      "Bash(del test_error_handling.html)",
+      "WebFetch(domain:web-production-51f67.up.railway.app)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

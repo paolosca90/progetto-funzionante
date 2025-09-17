@@ -1,0 +1,2 @@
+# This file ensures the static directory is not empty and gets deployed to Railway
+# Needed for FastAPI StaticFiles mounting to work correctly

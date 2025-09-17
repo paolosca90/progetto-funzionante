@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Registrati gratuitamente ad AI Cash-Revolution e inizia a ricevere segnali di trading con IA">
+    <title>Registrazione - AI Cash-Revolution Trading System</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Source+Code+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="static/css/styles.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+</head>
+<body class="register-page">
+    <!-- Matrix Rain Canvas Background -->
+    <canvas id="matrix-rain"></canvas>
+    
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="index.html">
+                    <span class="logo-text">AI Cash-Revolution</span>
+                    <span class="logo-subtitle">Trading Matrix</span>
+                </a>
+            </div>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="index.html#features" class="nav-link">Caratteristiche</a>
+                <a href="index.html#pricing" class="nav-link">Prezzi</a>
+                <a href="login.html" class="nav-link">Accedi</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Registration Section -->
+    <section class="register-section">
+        <div class="container">
+            <div class="register-container">
+                <div class="register-left">
+                    <div class="register-visual">
+                        <h2 class="register-title">Entra nella <span class="matrix-text">Matrix</span> del Trading</h2>
+                        <p class="register-subtitle">Registrati gratuitamente e inizia subito con 7 giorni di trial completo</p>
+                        
+                        <div class="trial-benefits">
+                            <h3>Cosa ottieni con il Trial Gratuito:</h3>
+                            <div class="benefit-item">
+                                <div class="benefit-icon">✓</div>
+                                <div class="benefit-text">
+                                    <strong>Accesso completo</strong> a tutti i segnali IA per 7 giorni
+                                </div>
+                            </div>
+                            <div class="benefit-item">
+                                <div class="benefit-icon">✓</div>
+                                <div class="benefit-text">
+                                    <strong>Integrazione MT5</strong> diretta e configurazione assistita
+                                </div>
+                            </div>
+                            <div class="benefit-item">
+                                <div class="benefit-icon">✓</div>
+                                <div class="benefit-text">
+                                    <strong>Spiegazioni IA</strong> dettagliate per ogni segnale
+                                </div>
+                            </div>
+                            <div class="benefit-item">
+                                <div class="benefit-icon">✓</div>
+                                <div class="benefit-text">
+                                    <strong>Supporto 24/7</strong> e onboarding personalizzato
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="trust-badges">
+                            <div class="trust-badge">
+                                <div class="trust-icon">🔒</div>
+                                <span>Sicurezza SSL</span>
+                            </div>
+                            <div class="trust-badge">
+                                <div class="trust-icon">💳</div>
+                                <span>Nessuna Carta Richiesta</span>
+                            </div>
+                            <div class="trust-badge">
+                                <div class="trust-icon">⚡</div>
+                                <span>Attivazione Immediata</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="register-right">
+                    <div class="register-form-container">
+                        <div class="form-header">
+                            <h3>Crea il tuo Account</h3>
+                            <p>Bastano 2 minuti per iniziare</p>
+                        </div>
+                        
+                        <form id="register-form" class="register-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="username">Username *</label>
+                                    <input type="text" id="username" name="username" required>
+                                    <div class="input-icon">@</div>
+                                    <div class="input-help">Scegli un username unico</div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="email">Email *</label>
+                                    <input type="email" id="email" name="email" required>
+                                    <div class="input-icon">📧</div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="password">Password *</label>
+                                    <input type="password" id="password" name="password" required minlength="6">
+                                    <div class="input-icon">🔒</div>
+                                    <button type="button" class="password-toggle" onclick="togglePassword('password')">👁</button>
+                                    <div class="password-strength">
+                                        <div class="strength-bar"></div>
+                                        <span class="strength-text">Forza password</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-checkbox-group">
+                                <div class="form-checkbox">
+                                    <input type="checkbox" id="terms" name="terms" required>
+                                    <label for="terms">
+                                        Accetto i <a href="#terms" target="_blank">Termini di Servizio</a> e la 
+                                        <a href="#privacy" target="_blank">Privacy Policy</a> *
+                                    </label>
+                                </div>
+                                
+                                <div class="form-checkbox">
+                                    <input type="checkbox" id="newsletter" name="newsletter" checked>
+                                    <label for="newsletter">
+                                        Desidero ricevere newsletter e aggiornamenti sui segnali di trading
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="form-submit">
+                                <span class="submit-text">Crea Account e Inizia Trial</span>
+                                <span class="submit-icon">🚀</span>
+                                <div class="loading-spinner"></div>
+                            </button>
+                        </form>
+                        
+                        <div class="form-footer">
+                            <p>Hai già un account? <a href="login.html" class="login-link">Accedi qui</a></p>
+                            <div class="security-note">
+                                <div class="security-icon">🛡️</div>
+                                <span>I tuoi dati sono protetti con crittografia SSL e conformità GDPR</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Scripts -->
+    <script src="static/js/config.js"></script>
+    <script src="static/js/matrix.js"></script>
+    <script>
+        // Registration form handler
+        document.addEventListener('DOMContentLoaded', function() {
+            const registerForm = document.getElementById('register-form');
+            const passwordInput = document.getElementById('password');
+            const confirmPasswordInput = document.getElementById('confirmPassword');
+            
+            if (registerForm) {
+                registerForm.addEventListener('submit', handleRegistration);
+            }
+            
+            // Password strength checker
+            passwordInput.addEventListener('input', checkPasswordStrength);
+            confirmPasswordInput.addEventListener('input', checkPasswordMatch);
+            
+            async function handleRegistration(e) {
+                e.preventDefault();
+                
+                const submitButton = registerForm.querySelector('.form-submit');
+                const originalText = submitButton.querySelector('.submit-text').textContent;
+                const spinner = submitButton.querySelector('.loading-spinner');
+                
+                // Validate form
+                if (!validateForm()) {
+                    return;
+                }
+                
+                // Show loading state
+                submitButton.classList.add('loading');
+                submitButton.querySelector('.submit-text').textContent = 'Creazione account...';
+                submitButton.disabled = true;
+                spinner.style.display = 'block';
+                
+                const formData = new FormData(registerForm);
+                const data = {
+                    username: formData.get('username'),
+                    email: formData.get('email'),
+                    password: formData.get('password')
+                };
+                
+                try {
+                    const response = await fetch('/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        showSuccessMessage('Account creato con successo! Trial di 7 giorni attivato.');
+                        registerForm.reset();
+                        
+                        // Redirect to login after short delay
+                        setTimeout(() => {
+                            window.location.href = 'login.html?registered=true';
+                        }, 2000);
+                        
+                    } else {
+                        throw new Error(result.detail || 'Errore durante la registrazione');
+                    }
+                    
+                } catch (error) {
+                    console.error('Registration error:', error);
+                    showErrorMessage(error.message || 'Errore durante la registrazione. Riprova.');
+                } finally {
+                    // Reset button state
+                    submitButton.classList.remove('loading');
+                    submitButton.querySelector('.submit-text').textContent = originalText;
+                    submitButton.disabled = false;
+                    spinner.style.display = 'none';
+                }
+            }
+            
+            function validateForm() {
+                const password = passwordInput.value;
+                const confirmPassword = confirmPasswordInput.value;
+                
+                if (password !== confirmPassword) {
+                    showErrorMessage('Le password non coincidono');
+                    return false;
+                }
+                
+                if (password.length < 8) {
+                    showErrorMessage('La password deve essere di almeno 8 caratteri');
+                    return false;
+                }
+                
+                return true;
+            }
+        });
+        
+        function togglePassword(inputId) {
+            const passwordInput = document.getElementById(inputId);
+            const toggleBtn = passwordInput.parentElement.querySelector('.password-toggle');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleBtn.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                toggleBtn.textContent = '👁';
+            }
+        }
+        
+        function checkPasswordStrength() {
+            const password = document.getElementById('password').value;
+            const strengthBar = document.querySelector('.strength-bar');
+            const strengthText = document.querySelector('.strength-text');
+            
+            let strength = 0;
+            let text = 'Debole';
+            let color = '#ff4040';
+            
+            if (password.length >= 8) strength += 1;
+            if (/[a-z]/.test(password)) strength += 1;
+            if (/[A-Z]/.test(password)) strength += 1;
+            if (/[0-9]/.test(password)) strength += 1;
+            if (/[^A-Za-z0-9]/.test(password)) strength += 1;
+            
+            switch (strength) {
+                case 0:
+                case 1:
+                    text = 'Molto Debole';
+                    color = '#ff4040';
+                    break;
+                case 2:
+                    text = 'Debole';
+                    color = '#ff8040';
+                    break;
+                case 3:
+                    text = 'Media';
+                    color = '#ffff40';
+                    break;
+                case 4:
+                    text = 'Forte';
+                    color = '#80ff40';
+                    break;
+                case 5:
+                    text = 'Molto Forte';
+                    color = '#00ff41';
+                    break;
+            }
+            
+            strengthBar.style.width = (strength * 20) + '%';
+            strengthBar.style.backgroundColor = color;
+            strengthText.textContent = text;
+            strengthText.style.color = color;
+        }
+        
+        function checkPasswordMatch() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const confirmInput = document.getElementById('confirmPassword');
+            
+            if (confirmPassword && password !== confirmPassword) {
+                confirmInput.style.borderColor = '#ff4040';
+            } else if (confirmPassword) {
+                confirmInput.style.borderColor = '#00ff41';
+            } else {
+                confirmInput.style.borderColor = '#333';
+            }
+        }
+        
+        function showSuccessMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'success-message';
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <div class="message-icon">✓</div>
+                    <div class="message-text">
+                        <h3>Registrazione Completata!</h3>
+                        <p>${message}</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.style.opacity = '0';
+                setTimeout(() => messageDiv.remove(), 300);
+            }, 3000);
+        }
+        
+        function showErrorMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'error-message';
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <div class="message-icon">⚠</div>
+                    <div class="message-text">
+                        <h3>Errore</h3>
+                        <p>${message}</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.style.opacity = '0';
+                setTimeout(() => messageDiv.remove(), 300);
+            }, 5000);
+        }
+    </script>
+    
+    <!-- Register-specific styles -->
+    <style>
+        .register-page {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+        }
+        
+        .register-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 100px 0 50px 0;
+        }
+        
+        .register-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            max-width: 1400px;
+            width: 100%;
+            align-items: flex-start;
+        }
+        
+        .register-left {
+            padding: 40px;
+            position: sticky;
+            top: 100px;
+        }
+        
+        .register-title {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+        
+        .register-subtitle {
+            font-size: 1.2rem;
+            color: #b0b0b0;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+        
+        .trial-benefits {
+            margin-bottom: 40px;
+        }
+        
+        .trial-benefits h3 {
+            color: #00ff41;
+            margin-bottom: 25px;
+            font-size: 1.3rem;
+        }
+        
+        .benefit-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid rgba(0, 255, 65, 0.2);
+            border-radius: 10px;
+        }
+        
+        .benefit-icon {
+            color: #00ff41;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+        
+        .benefit-text {
+            flex: 1;
+            color: #e0e0e0;
+        }
+        
+        .trust-badges {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .trust-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #333;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #b0b0b0;
+        }
+        
+        .trust-icon {
+            font-size: 1.2rem;
+        }
+        
+        .register-right {
+            padding: 40px 40px 40px 0;
+        }
+        
+        .register-form-container {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #333;
+            border-radius: 20px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .form-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .form-header h3 {
+            color: #ffffff;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        
+        .form-header p {
+            color: #b0b0b0;
+        }
+        
+        .register-form .form-group {
+            position: relative;
+            margin-bottom: 25px;
+        }
+        
+        .register-form label {
+            display: block;
+            margin-bottom: 8px;
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+        
+        .register-form input,
+        .register-form select {
+            width: 100%;
+            padding: 15px 45px 15px 15px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #333;
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .register-form input:focus,
+        .register-form select:focus {
+            outline: none;
+            border-color: #00ff41;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+        
+        .register-form select {
+            cursor: pointer;
+        }
+        
+        .register-form select option {
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        
+        .input-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            font-size: 1.2rem;
+            margin-top: 12px;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 45px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 1.2rem;
+            margin-top: 12px;
+        }
+        
+        .input-help {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .password-strength {
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .strength-bar {
+            height: 4px;
+            width: 0%;
+            background-color: #ff4040;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+        
+        .strength-text {
+            font-size: 0.8rem;
+            color: #ff4040;
+            min-width: 80px;
+        }
+        
+        .form-checkbox-group {
+            margin-bottom: 30px;
+        }
+        
+        .form-checkbox {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .form-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin: 0;
+            margin-top: 2px;
+        }
+        
+        .form-checkbox label {
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin: 0;
+        }
+        
+        .form-checkbox a {
+            color: #00ff41;
+            text-decoration: none;
+        }
+        
+        .form-checkbox a:hover {
+            text-decoration: underline;
+        }
+        
+        .form-submit {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #00ff41 0%, #00cc33 100%);
+            border: none;
+            border-radius: 10px;
+            color: #000;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .form-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 255, 65, 0.3);
+        }
+        
+        .form-submit:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .form-submit.loading .submit-text {
+            opacity: 0.7;
+        }
+        
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid #000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .form-footer {
+            text-align: center;
+            color: #b0b0b0;
+            font-size: 0.9rem;
+            margin-top: 30px;
+        }
+        
+        .form-footer p {
+            margin-bottom: 15px;
+        }
+        
+        .form-footer a {
+            color: #00ff41;
+            text-decoration: none;
+        }
+        
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+        
+        .security-note {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: #888;
+        }
+        
+        .security-icon {
+            font-size: 1rem;
+        }
+        
+        .success-message, .error-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #00ff41;
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 400px;
+            opacity: 1;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .error-message {
+            border-color: #ff4040;
+        }
+        
+        .message-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .message-icon {
+            font-size: 2rem;
+            color: #00ff41;
+        }
+        
+        .error-message .message-icon {
+            color: #ff4040;
+        }
+        
+        .message-text h3 {
+            margin: 0 0 5px 0;
+            color: #00ff41;
+            font-size: 1.1rem;
+        }
+        
+        .error-message .message-text h3 {
+            color: #ff4040;
+        }
+        
+        .message-text p {
+            margin: 0;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .register-container {
+                grid-template-columns: 1fr;
+                gap: 30px;
+                padding: 20px;
+            }
+            
+            .register-left {
+                padding: 20px;
+                text-align: center;
+                position: static;
+            }
+            
+            .register-title {
+                font-size: 2rem;
+            }
+            
+            .trust-badges {
+                grid-template-columns: 1fr;
+            }
+            
+            .register-form-container {
+                padding: 30px 20px;
+            }
+            
+            .form-row {
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</body>
+</html>

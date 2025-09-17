@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl http://127.0.0.1:8000/health)",
+      "Bash(python -c \"import main; print(''Import successful'')\")",
+      "WebFetch(domain:docs.railway.app)",
+      "WebFetch(domain:docs.railway.com)",
+      "Bash(python -c \"import main; print(''Requirements test passed successfully!'')\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(python:*)",
+      "Bash(find:*)",
+      "Bash(git push:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

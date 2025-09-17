@@ -1,0 +1,70 @@
+# VPS Installation files - not needed for Railway deployment
+VPS INSTALLAZIONE/
+VPS*
+
+# Development files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+
+# Test files
+test_*
+*_test.py
+
+# Documentation
+*.md
+README*
+CHANGELOG*
+
+# Environment files (use Railway env vars instead)
+.env
+.env.local
+.env.production
+
+# Node modules (if any)
+node_modules/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Database files (use Railway Postgres)
+*.db
+*.sqlite3
+
+# Large data files
+*.csv
+*.xlsx
+*.json
+data/

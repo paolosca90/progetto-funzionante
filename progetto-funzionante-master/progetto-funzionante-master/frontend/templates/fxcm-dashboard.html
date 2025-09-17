@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FXCM Trading Dashboard - CashRevolution AI</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .status-connected { background: #27ae60; }
+        .status-disconnected { background: #e74c3c; }
+        .signal-buy { background: #27ae60; color: white; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .signal-sell { background: #e74c3c; color: white; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .signal-hold { background: #f39c12; color: white; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        button { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #2980b9; }
+        input, select { padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+        .price-display { font-size: 24px; font-weight: bold; color: #2c3e50; }
+        .error { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 FXCM AI Trading Dashboard</h1>
+            <p>Real-time market data and AI-powered trading signals</p>
+            <div id="connection-status">
+                <span class="status-indicator status-disconnected"></span>
+                FXCM Connection: <span id="status-text">Checking...</span>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <!-- Account Status -->
+            <div class="card">
+                <h3>🏦 Account Status</h3>
+                <div id="account-info">
+                    <p>Loading account information...</p>
+                </div>
+                <button onclick="checkAccountStatus()">Check Account</button>
+            </div>
+
+            <!-- Market Data -->
+            <div class="card">
+                <h3>💰 Market Data</h3>
+                <select id="symbol-select" onchange="fetchMarketData()">
+                    <option value="">Select Symbol</option>
+                    <option value="EURUSD">EUR/USD</option>
+                    <option value="GBPUSD">GBP/USD</option>
+                    <option value="USDJPY">USD/JPY</option>
+                    <option value="AUDUSD">AUD/USD</option>
+                    <option value="USDCAD">USD/CAD</option>
+                </select>
+                <div id="market-data">
+                    <p>Select a symbol to view real-time data</p>
+                </div>
+            </div>
+
+            <!-- Signal Generation -->
+            <div class="card">
+                <h3>🎯 AI Trading Signal</h3>
+                <input type="number" id="capital-input" placeholder="Capital (e.g., 1000)" value="1000">
+                <button onclick="generateSignal()">Generate Signal</button>
+                <div id="signal-result">
+                    <p>Click to generate AI-powered trading signal</p>
+                </div>
+            </div>
+
+            <!-- Available Instruments -->
+            <div class="card">
+                <h3>📊 Available Instruments</h3>
+                <button onclick="fetchInstruments()">Load Instruments</button>
+                <div id="instruments-list">
+                    <p>Click to load available trading instruments</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Signals Table -->
+        <div class="card">
+            <h3>📈 Recent Signals</h3>
+            <button onclick="loadRecentSignals()">Refresh Signals</button>
+            <table id="signals-table">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Signal</th>
+                        <th>Entry Price</th>
+                        <th>Reliability</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody id="signals-body">
+                    <tr>
+                        <td colspan="5">Loading signals...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Utility functions
+        function showError(message) {
+            return `<div class="error">❌ ${message}</div>`;
+        }
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(value);
+        }
+
+        function formatPrice(value, symbol) {
+            if (symbol && symbol.includes('JPY')) {
+                return value.toFixed(3);
+            }
+            return value.toFixed(5);
+        }
+
+        // API calls
+        async function checkAccountStatus() {
+            const accountInfo = document.getElementById('account-info');
+            accountInfo.innerHTML = 'Loading...';
+
+            try {
+                const response = await fetch('/api/fxcm/account-status');
+                const data = await response.json();
+
+                if (data.connected) {
+                    const statusIndicator = document.querySelector('.status-indicator');
+                    statusIndicator.className = 'status-indicator status-connected';
+                    document.getElementById('status-text').textContent = 'Connected';
+
+                    accountInfo.innerHTML = `
+                        <strong>Account ID:</strong> ${data.account_id}<br>
+                        <strong>Balance:</strong> ${formatCurrency(data.balance)}<br>
+                        <strong>Equity:</strong> ${formatCurrency(data.equity)}<br>
+                        <strong>Margin Used:</strong> ${formatCurrency(data.margin_used)}<br>
+                        <strong>Currency:</strong> ${data.currency}<br>
+                        <strong>Type:</strong> ${data.account_type}
+                    `;
+                } else {
+                    const statusIndicator = document.querySelector('.status-indicator');
+                    statusIndicator.className = 'status-indicator status-disconnected';
+                    document.getElementById('status-text').textContent = data.reason || 'Disconnected';
+                    accountInfo.innerHTML = `<p>❌ ${data.reason}</p>`;
+                }
+            } catch (error) {
+                accountInfo.innerHTML = showError('Failed to fetch account status');
+                console.error('Account status error:', error);
+            }
+        }
+
+        async function fetchMarketData() {
+            const symbolSelect = document.getElementById('symbol-select');
+            const symbol = symbolSelect.value;
+            const marketData = document.getElementById('market-data');
+
+            if (!symbol) {
+                marketData.innerHTML = '<p>Select a symbol to view real-time data</p>';
+                return;
+            }
+
+            marketData.innerHTML = 'Loading market data...';
+
+            try {
+                const response = await fetch(`/api/fxcm/market-data/${symbol}`);
+                const data = await response.json();
+
+                if (data.ok) {
+                    const priceData = data.data;
+                    marketData.innerHTML = `
+                        <div class="price-display">
+                            ${symbol}: <span style="color: #27ae60">${formatPrice(priceData.bid, symbol)}</span>
+                            / <span style="color: #e74c3c">${formatPrice(priceData.ask, symbol)}</span>
+                        </div>
+                        <small>Spread: ${priceData.spread.toFixed(5)} | Source: FXCM</small>
+                        <p><strong>High:</strong> ${formatPrice(priceData.high, symbol)}</p>
+                        <p><strong>Low:</strong> ${formatPrice(priceData.low, symbol)}</p>
+                    `;
+                } else {
+                    marketData.innerHTML = showError(data.error);
+                }
+            } catch (error) {
+                marketData.innerHTML = showError('Failed to fetch market data');
+                console.error('Market data error:', error);
+            }
+        }
+
+        async function generateSignal() {
+            const capital = document.getElementById('capital-input').value;
+            const symbol = document.getElementById('symbol-select').value;
+            const signalResult = document.getElementById('signal-result');
+
+            if (!symbol) {
+                signalResult.innerHTML = showError('Please select a symbol first');
+                return;
+            }
+
+            signalResult.innerHTML = 'Generating AI signal...';
+
+            try {
+                const response = await fetch('/api/fxcm/generate-signal', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        capital: parseFloat(capital)
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.ok) {
+                    const signal = data.signal;
+                    let signalClass = 'signal-hold';
+                    if (signal.signal_type === 'BUY') signalClass = 'signal-buy';
+                    if (signal.signal_type === 'SELL') signalClass = 'signal-sell';
+
+                    signalResult.innerHTML = `
+                        <div class="${signalClass}">
+                            <h4>${signal.signal_type} Signal - ${signal.symbol}</h4>
+                            <p><strong>Reliability:</strong> ${signal.reliability.toFixed(1)}%</p>
+                            <p><strong>Entry Price:</strong> ${signal.entry_price ? formatPrice(signal.entry_price, signal.symbol) : 'N/A'}</p>
+                            ${signal.stop_loss ? `<p><strong>Stop Loss:</strong> ${formatPrice(signal.stop_loss, signal.symbol)}</p>` : ''}
+                            ${signal.take_profit ? `<p><strong>Take Profit:</strong> ${formatPrice(signal.take_profit, signal.symbol)}</p>` : ''}
+                            ${signal.position_size ? `<p><strong>Position Size:</strong> ${signal.position_size} lots</p>` : ''}
+                            ${signal.risk_amount ? `<p><strong>Risk Amount:</strong> ${formatCurrency(signal.risk_amount)}</p>` : ''}
+                            <p><strong>AI Analysis:</strong> ${signal.ai_analysis}</p>
+                        </div>
+                    `;
+                } else {
+                    signalResult.innerHTML = showError(data.error);
+                }
+            } catch (error) {
+                signalResult.innerHTML = showError('Failed to generate signal');
+                console.error('Signal generation error:', error);
+            }
+        }
+
+        async function fetchInstruments() {
+            const instrumentsList = document.getElementById('instruments-list');
+            instrumentsList.innerHTML = 'Loading instruments...';
+
+            try {
+                const response = await fetch('/api/fxcm/instruments');
+                const data = await response.json();
+
+                if (data.ok) {
+                    let html = '<table>';
+                    data.instruments.forEach(instrument => {
+                        html += `<tr><td>${instrument.symbol}</td><td>${instrument.name}</td></tr>`;
+                    });
+                    html += '</table>';
+                    instrumentsList.innerHTML = html;
+                } else {
+                    instrumentsList.innerHTML = showError(data.error);
+                }
+            } catch (error) {
+                instrumentsList.innerHTML = showError('Failed to fetch instruments');
+                console.error('Instruments error:', error);
+            }
+        }
+
+        async function loadRecentSignals() {
+            const signalsBody = document.getElementById('signals-body');
+            signalsBody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+
+            try {
+                const response = await fetch('/api/signals/latest');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    let html = '';
+                    if (data.signals.length === 0) {
+                        html = '<tr><td colspan="5">No recent signals</td></tr>';
+                    } else {
+                        data.signals.forEach(signal => {
+                            html += `
+                                <tr>
+                                    <td>${signal.symbol}</td>
+                                    <td><strong>${signal.signal_type}</strong></td>
+                                    <td>${signal.entry_price ? formatPrice(signal.entry_price, signal.symbol) : 'N/A'}</td>
+                                    <td>${signal.reliability.toFixed(1)}%</td>
+                                    <td>${new Date(signal.created_at).toLocaleString()}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    signalsBody.innerHTML = html;
+                } else {
+                    signalsBody.innerHTML = showError('Failed to load signals');
+                }
+            } catch (error) {
+                signalsBody.innerHTML = showError('Failed to load signals');
+                console.error('Signals error:', error);
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAccountStatus();
+            loadRecentSignals();
+        });
+    </script>
+</body>
+</html>

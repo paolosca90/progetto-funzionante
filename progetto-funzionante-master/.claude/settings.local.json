@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for file in test_*.py)",
+      "Bash(do [ -f \"$file\" ])"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

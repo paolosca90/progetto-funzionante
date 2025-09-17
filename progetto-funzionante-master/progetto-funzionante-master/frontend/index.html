@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI Cash-Revolution: Advanced AI-powered trading signals with 95% accuracy. Start your 7-day free trial and revolutionize your trading with Matrix-level precision.">
+    <meta name="keywords" content="AI trading, forex signals, MT5 integration, automated trading, financial AI">
+    <meta property="og:title" content="AI Cash-Revolution - Unlock the Matrix of Trading Success">
+    <meta property="og:description" content="Join thousands of traders using AI-powered signals with 95% accuracy. 7-day free trial included.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ai-cash-revolution.com">
+    
+    <title>AI Cash-Revolution - Unlock the Matrix of Trading Success</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Source+Code+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="static/css/styles.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+</head>
+<body>
+    <!-- Matrix Rain Canvas Background -->
+    <canvas id="matrix-rain"></canvas>
+    
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <span class="logo-text">AI Cash-Revolution</span>
+                <span class="logo-subtitle">Trading Matrix</span>
+            </div>
+            <div class="nav-links">
+                <a href="dashboard.html" class="nav-link" data-translate="nav.dashboard">Dashboard</a>
+                <a href="signals.html" class="nav-link" data-translate="nav.signals">Segnali</a>
+                <a href="profile.html" class="nav-link" data-translate="nav.account">Account</a>
+                <a href="#features" class="nav-link" data-translate="nav.features">Caratteristiche</a>
+                <a href="#proof" class="nav-link" data-translate="nav.proof">Prova</a>
+                <a href="#pricing" class="nav-link" data-translate="nav.pricing">Prezzi</a>
+                <div class="auth-dropdown">
+                    <button class="auth-dropdown-btn" id="authDropdownBtn">
+                        <span data-translate="nav.account">Account</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="auth-dropdown-menu" id="authDropdownMenu">
+                        <div class="auth-option" data-action="login">
+                            <span data-translate="nav.login">Accedi</span>
+                        </div>
+                        <div class="auth-option" data-action="register">
+                            <span data-translate="nav.register">Registrati</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="language-selector">
+                    <div class="language-dropdown">
+                        <button class="language-btn" id="languageBtn">
+                            <span class="flag">🇮🇹</span>
+                            <span class="lang-code">IT</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="language-menu" id="languageMenu">
+                            <div class="language-option" data-lang="it">
+                                <span class="flag">🇮🇹</span>
+                                <span class="lang-name">Italiano</span>
+                            </div>
+                            <div class="language-option" data-lang="en">
+                                <span class="flag">🇺🇸</span>
+                                <span class="lang-name">English</span>
+                            </div>
+                            <div class="language-option" data-lang="es">
+                                <span class="flag">🇪🇸</span>
+                                <span class="lang-name">Español</span>
+                            </div>
+                            <div class="language-option" data-lang="fr">
+                                <span class="flag">🇫🇷</span>
+                                <span class="lang-name">Français</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mobile-menu-toggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero" class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <span class="badge-icon">🔮</span>
+                    <span data-translate="hero.badge">Rivoluzione del Trading Alimentata da IA</span>
+                </div>
+                
+                <h1 class="hero-title" data-translate="hero.title" data-translate-html="true">
+                    Sblocca La <span class="matrix-text">Matrix</span> del 
+                    <br>Successo nel Trading
+                </h1>
+                
+                <p class="hero-subtitle" data-translate="hero.subtitle" data-translate-html="true">
+                    Unisciti a oltre 10.000 trader che utilizzano i nostri segnali alimentati da IA con <strong>95% di accuratezza</strong>. 
+                    Integrazione MT5 in tempo reale, notifiche istantanee e spiegazioni IA per ogni segnale.
+                </p>
+                
+                <div class="hero-stats">
+                    <div class="stat">
+                        <div class="stat-number" data-target="10000">0</div>
+                        <div class="stat-label" data-translate="hero.stats.traders">Trader Attivi</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number" data-target="95">0</div>
+                        <div class="stat-label" data-translate="hero.stats.accuracy">% Tasso di Accuratezza</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number" data-target="24">0</div>
+                        <div class="stat-label" data-translate="hero.stats.support">Ore di Supporto</div>
+                    </div>
+                </div>
+                
+                <div class="hero-cta">
+                    <a href="#trial" class="cta-button primary-cta">
+                        <span class="cta-text" data-translate="hero.cta.main">Inizia Prova Gratuita 7 Giorni</span>
+                        <span class="cta-subtext" data-translate="hero.cta.sub">Nessuna Carta di Credito Richiesta</span>
+                    </a>
+                    <div class="trust-indicators">
+                        <div class="trust-item">
+                            <span class="trust-icon">🔒</span>
+                            <span data-translate="hero.trust.security">Sicurezza di Livello Bancario</span>
+                        </div>
+                        <div class="trust-item">
+                            <span class="trust-icon">⚡</span>
+                            <span data-translate="hero.trust.setup">Configurazione Istantanea</span>
+                        </div>
+                        <div class="trust-item">
+                            <span class="trust-icon">📱</span>
+                            <span data-translate="hero.trust.integration">Integrazione MT5</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="hero-visual">
+                <div class="trading-dashboard">
+                    <div class="dashboard-header">
+                        <div class="dashboard-title">AI Trading Dashboard</div>
+                        <div class="dashboard-status live">LIVE</div>
+                    </div>
+                    <div class="dashboard-content">
+                        <div class="signal-preview">
+                            <div class="signal-pair">EUR/USD</div>
+                            <div class="signal-direction buy">BUY</div>
+                            <div class="signal-confidence">95% Confidence</div>
+                            <div class="signal-ai-reason">
+                                AI Analysis: Strong bullish momentum detected. 
+                                Fed dovish stance + ECB hawkish signals = EUR strength.
+                            </div>
+                        </div>
+                        <div class="performance-chart">
+                            <canvas id="performance-chart" width="300" height="150"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Scroll Indicator -->
+        <div class="scroll-indicator">
+            <div class="scroll-dot"></div>
+            <div class="scroll-text">Scroll to discover the power</div>
+        </div>
+    </section>
+
+    <!-- Social Proof Section -->
+    <section id="social-proof" class="social-proof">
+        <div class="container">
+            <div class="proof-header">
+                <h2 data-translate="social.title">Fiducia dei Trader di Tutto il Mondo</h2>
+                <p data-translate="social.subtitle">Unisciti alle migliaia di persone che hanno già sbloccato la matrix del trading profittevole</p>
+            </div>
+            
+            <div class="testimonials-grid">
+                <div class="testimonial">
+                    <div class="testimonial-content" data-translate="testimonials.1.content">
+                        "Sono passato dal perdere 500$/mese al guadagnare 3.200$ di profitto nella mia prima settimana. Le spiegazioni dell'IA mi hanno aiutato a capire PERCHÉ ogni segnale funziona."
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">M.R.</div>
+                        <div class="author-info">
+                            <div class="author-name" data-translate="testimonials.1.name">Marco Rodriguez</div>
+                            <div class="author-title" data-translate="testimonials.1.title">Day Trader, Miami</div>
+                        </div>
+                    </div>
+                    <div class="testimonial-verified" data-translate="testimonials.verified">✓ Risultato Verificato</div>
+                </div>
+                
+                <div class="testimonial">
+                    <div class="testimonial-content" data-translate="testimonials.2.content">
+                        "Il 95% di accuratezza non è pubblicità ingannevole - è reale. Ho monitorato ogni segnale per 3 mesi. L'integrazione MT5 è perfetta."
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">S.K.</div>
+                        <div class="author-info">
+                            <div class="author-name" data-translate="testimonials.2.name">Sara Kim</div>
+                            <div class="author-title" data-translate="testimonials.2.title">Forex Trader, Singapore</div>
+                        </div>
+                    </div>
+                    <div class="testimonial-verified" data-translate="testimonials.verified">✓ Risultato Verificato</div>
+                </div>
+                
+                <div class="testimonial">
+                    <div class="testimonial-content" data-translate="testimonials.3.content">
+                        "L'IA non si limita a dare segnali - ti insegna. Ho imparato di più in 2 mesi che in 2 anni di corsi di trading tradizionali."
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">J.D.</div>
+                        <div class="author-info">
+                            <div class="author-name" data-translate="testimonials.3.name">James Davidson</div>
+                            <div class="author-title" data-translate="testimonials.3.title">Trader Professionale, Londra</div>
+                        </div>
+                    </div>
+                    <div class="testimonial-verified" data-translate="testimonials.verified">✓ Risultato Verificato</div>
+                </div>
+            </div>
+            
+            <div class="proof-numbers">
+                <div class="proof-stat">
+                    <div class="proof-number">€2.4M+</div>
+                    <div class="proof-label" data-translate="stats.profits">Profitti Totali Generati</div>
+                </div>
+                <div class="proof-stat">
+                    <div class="proof-number">127</div>
+                    <div class="proof-label" data-translate="stats.countries">Paesi Serviti</div>
+                </div>
+                <div class="proof-stat">
+                    <div class="proof-number">99.9%</div>
+                    <div class="proof-label" data-translate="stats.uptime">Garanzia di Uptime</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title" data-translate="features.title" data-translate-html="true">Perché AI Cash-Revolution <span class="matrix-text">Domina</span></h2>
+                <p class="section-subtitle" data-translate="features.subtitle">La tecnologia IA avanzata incontra l'infrastruttura di trading professionale</p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🧠</div>
+                    <h3 class="feature-title" data-translate="features.ai.title">Analisi Alimentata da IA</h3>
+                    <p class="feature-description" data-translate="features.ai.description">
+                        Le nostre reti neurali elaborano oltre 10.000 punti dati al secondo, analizzando il sentiment del mercato, 
+                        l'impatto delle notizie e i pattern tecnici per generare segnali ad alta affidabilità.
+                    </p>
+                    <div class="feature-highlight" data-translate="features.ai.highlight">95% Tasso di Accuratezza</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3 class="feature-title" data-translate="features.mt5.title">Integrazione MT5 in Tempo Reale</h3>
+                    <p class="feature-description" data-translate="features.mt5.description">
+                        Integrazione diretta con MetaTrader 5. I segnali appaiono istantaneamente nella tua piattaforma con 
+                        punti di entrata, stop loss e take profit calcolati automaticamente.
+                    </p>
+                    <div class="feature-highlight" data-translate="features.mt5.highlight">Esecuzione Istantanea</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3 class="feature-title" data-translate="features.risk.title">Gestione Intelligente del Rischio</h3>
+                    <p class="feature-description" data-translate="features.risk.description">
+                        L'IA calcola la dimensione ottimale delle posizioni basandosi sul saldo del tuo account, tolleranza al rischio 
+                        e volatilità del mercato. Non rischiare mai più di quello che puoi permetterti.
+                    </p>
+                    <div class="feature-highlight" data-translate="features.risk.highlight">Adattato al Rischio</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3 class="feature-title" data-translate="features.alerts.title">Avvisi Multi-Piattaforma</h3>
+                    <p class="feature-description" data-translate="features.alerts.description">
+                        Ricevi segnali tramite notifiche push, SMS, email e Telegram. Non perdere mai 
+                        un'opportunità profittevole, anche quando sei lontano dal computer.
+                    </p>
+                    <div class="feature-highlight" data-translate="features.alerts.highlight">Monitoraggio 24/7</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3 class="feature-title" data-translate="features.analytics.title">Analisi delle Performance</h3>
+                    <p class="feature-description" data-translate="features.analytics.description">
+                        Statistiche dettagliate tracciano il tuo tasso di vincita, rendimenti medi e metriche di rischio. 
+                        Comprendi le tue performance e ottimizza la tua strategia di trading.
+                    </p>
+                    <div class="feature-highlight" data-translate="features.analytics.highlight">Basato sui Dati</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🎓</div>
+                    <h3 class="feature-title" data-translate="features.education.title">Educazione al Trading IA</h3>
+                    <p class="feature-description" data-translate="features.education.description">
+                        Ogni segnale viene fornito con spiegazioni dettagliate dell'IA. Impara PERCHÉ il trade funziona, 
+                        migliorando la tua comprensione del mercato e le tue abilità di trading.
+                    </p>
+                    <div class="feature-highlight" data-translate="features.education.highlight">Educativo</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Proof Section -->
+    <section id="proof" class="proof-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">The Numbers Don't <span class="matrix-text">Lie</span></h2>
+                <p class="section-subtitle">Real results from real traders using our platform</p>
+            </div>
+            
+            <div class="proof-grid">
+                <div class="proof-card">
+                    <div class="proof-header">
+                        <h3>Last 30 Days Performance</h3>
+                        <div class="proof-status live">LIVE DATA</div>
+                    </div>
+                    <div class="proof-stats">
+                        <div class="proof-stat-item">
+                            <div class="stat-label">Total Signals</div>
+                            <div class="stat-value">847</div>
+                        </div>
+                        <div class="proof-stat-item">
+                            <div class="stat-label">Winning Signals</div>
+                            <div class="stat-value success">802</div>
+                        </div>
+                        <div class="proof-stat-item">
+                            <div class="stat-label">Success Rate</div>
+                            <div class="stat-value success">94.7%</div>
+                        </div>
+                        <div class="proof-stat-item">
+                            <div class="stat-label">Average Return</div>
+                            <div class="stat-value success">+247 pips</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="proof-card">
+                    <div class="proof-header">
+                        <h3>Recent Success Stories</h3>
+                    </div>
+                    <div class="success-stories">
+                        <div class="story">
+                            <div class="story-trade">
+                                <span class="pair">GBP/USD</span>
+                                <span class="direction buy">SELL</span>
+                                <span class="profit success">+312 pips</span>
+                            </div>
+                            <div class="story-time">2 hours ago</div>
+                        </div>
+                        <div class="story">
+                            <div class="story-trade">
+                                <span class="pair">EUR/JPY</span>
+                                <span class="direction sell">BUY</span>
+                                <span class="profit success">+189 pips</span>
+                            </div>
+                            <div class="story-time">6 hours ago</div>
+                        </div>
+                        <div class="story">
+                            <div class="story-trade">
+                                <span class="pair">USD/CAD</span>
+                                <span class="direction sell">SELL</span>
+                                <span class="profit success">+274 pips</span>
+                            </div>
+                            <div class="story-time">1 day ago</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="compliance-notice">
+                <div class="compliance-icon">⚖️</div>
+                <div class="compliance-text">
+                    <strong>Risk Disclosure:</strong> Trading involves substantial risk and is not suitable for all investors. 
+                    Past performance does not guarantee future results. All performance data is verified and audited.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="pricing">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Choose Your <span class="matrix-text">Path</span></h2>
+                <p class="section-subtitle">Start free, upgrade when you see the results</p>
+            </div>
+            
+            <div class="pricing-cards">
+                <div class="pricing-card trial">
+                    <div class="card-header">
+                        <div class="card-badge">RISK-FREE START</div>
+                        <h3 class="card-title">7-Day Free Trial</h3>
+                        <div class="card-price">
+                            <span class="price-amount">$0</span>
+                            <span class="price-period">for 7 days</span>
+                        </div>
+                    </div>
+                    <div class="card-features">
+                        <div class="feature" data-translate="pricing.trial.feature1">✓ Accesso completo a tutti i segnali</div>
+                        <div class="feature" data-translate="pricing.trial.feature2">✓ Integrazione MT5 inclusa</div>
+                        <div class="feature" data-translate="pricing.trial.feature3">✓ Spiegazioni IA per ogni trade</div>
+                        <div class="feature" data-translate="pricing.trial.feature4">✓ Notifiche in tempo reale</div>
+                        <div class="feature" data-translate="pricing.trial.feature5">✓ Analisi delle performance</div>
+                        <div class="feature" data-translate="pricing.trial.feature6">✓ Supporto 24/7</div>
+                    </div>
+                    <a href="#trial" class="card-cta trial-cta">
+                        <span data-translate="pricing.trial.cta">Inizia Prova Gratuita</span>
+                        <span class="cta-subtext" data-translate="pricing.trial.subcta">Nessuna Carta di Credito Richiesta</span>
+                    </a>
+                </div>
+                
+                <div class="pricing-card pro featured">
+                    <div class="card-header">
+                        <div class="card-badge popular" data-translate="pricing.pro.badge">PIÙ POPOLARE</div>
+                        <h3 class="card-title">Pro Trader</h3>
+                        <div class="card-price">
+                            <span class="price-amount">97€</span>
+                            <span class="price-period" data-translate="pricing.pro.period">al mese</span>
+                        </div>
+                    </div>
+                    <div class="card-features">
+                        <div class="feature" data-translate="pricing.pro.feature1">✓ Tutto della Prova Gratuita</div>
+                        <div class="feature" data-translate="pricing.pro.feature2">✓ Consegna segnali prioritaria</div>
+                        <div class="feature" data-translate="pricing.pro.feature3">✓ Gestione avanzata del rischio</div>
+                        <div class="feature" data-translate="pricing.pro.feature4">✓ Preferenze avvisi personalizzate</div>
+                        <div class="feature" data-translate="pricing.pro.feature5">✓ Canale supporto VIP</div>
+                        <div class="feature" data-translate="pricing.pro.feature6">✓ Chiamate strategiche mensili</div>
+                    </div>
+                    <a href="#trial" class="card-cta pro-cta">
+                        <span data-translate="pricing.pro.cta">Aggiorna a Pro</span>
+                        <span class="cta-subtext" data-translate="pricing.pro.subcta">Dopo la prova gratuita</span>
+                    </a>
+                </div>
+                
+                <div class="pricing-card enterprise">
+                    <div class="card-header">
+                        <div class="card-badge" data-translate="pricing.enterprise.badge">ISTITUZIONI</div>
+                        <h3 class="card-title">Enterprise</h3>
+                        <div class="card-price">
+                            <span class="price-amount" data-translate="pricing.enterprise.price">Personalizzato</span>
+                            <span class="price-period" data-translate="pricing.enterprise.period">prezzo</span>
+                        </div>
+                    </div>
+                    <div class="card-features">
+                        <div class="feature" data-translate="pricing.enterprise.feature1">✓ Tutto di Pro</div>
+                        <div class="feature" data-translate="pricing.enterprise.feature2">✓ Soluzioni white-label</div>
+                        <div class="feature" data-translate="pricing.enterprise.feature3">✓ Integrazione API personalizzata</div>
+                        <div class="feature" data-translate="pricing.enterprise.feature4">✓ Account manager dedicato</div>
+                        <div class="feature" data-translate="pricing.enterprise.feature5">✓ Parametri di rischio personalizzati</div>
+                        <div class="feature" data-translate="pricing.enterprise.feature6">✓ Conformità istituzionale</div>
+                    </div>
+                    <a href="#contact" class="card-cta enterprise-cta">
+                        <span data-translate="pricing.enterprise.cta">Contatta le Vendite</span>
+                        <span class="cta-subtext" data-translate="pricing.enterprise.subcta">Soluzioni personalizzate</span>
+                    </a>
+                </div>
+            </div>
+            
+        </div>
+    </section>
+
+    <!-- Trial Signup Section -->
+    <section id="trial" class="trial-signup">
+        <div class="container">
+            <div class="trial-content">
+                <div class="trial-left">
+                    <h2 class="trial-title">Ready to <span class="matrix-text">Enter the Matrix</span>?</h2>
+                    <p class="trial-subtitle">Join 10,000+ traders who've already unlocked AI-powered profits</p>
+                    
+                    <div class="trial-benefits">
+                        <div class="benefit">
+                            <div class="benefit-icon">🎯</div>
+                            <div class="benefit-text">
+                                <strong>Instant Access</strong><br>
+                                Start receiving signals within 60 seconds
+                            </div>
+                        </div>
+                        <div class="benefit">
+                            <div class="benefit-icon">📱</div>
+                            <div class="benefit-text">
+                                <strong>Easy Setup</strong><br>
+                                Connect your MT5 in under 5 minutes
+                            </div>
+                        </div>
+                        <div class="benefit">
+                            <div class="benefit-icon">🔒</div>
+                            <div class="benefit-text">
+                                <strong>Risk-Free</strong><br>
+                                No credit card required for trial
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="trial-right">
+                    <div class="signup-form-container">
+                        <div class="form-header">
+                            <h3>Start Your Free Trial</h3>
+                            <p>No credit card required • Instant access</p>
+                        </div>
+                        
+                        <form id="trial-signup-form" class="signup-form">
+                            <div class="form-group">
+                                <label for="username">Username</label>
+                                <input type="text" id="username" name="username" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="email">Email Address</label>
+                                <input type="email" id="email" name="email" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="password">Password</label>
+                                <input type="password" id="password" name="password" required minlength="6">
+                            </div>
+                            
+                            <div class="form-checkbox">
+                                <input type="checkbox" id="terms" name="terms" required>
+                                <label for="terms">
+                                    I agree to the <a href="#terms">Terms of Service</a> and 
+                                    <a href="#privacy">Privacy Policy</a>
+                                </label>
+                            </div>
+                            
+                            <a href="register.html" class="form-submit" style="display: inline-block; text-decoration: none; text-align: center;">
+                                <span class="submit-text">Start Free Trial</span>
+                                <span class="submit-icon">→</span>
+                            </a>
+                        </form>
+                        
+                        <div class="form-footer">
+                            <div class="security-badges">
+                                <div class="badge">🔒 SSL Encrypted</div>
+                                <div class="badge">🛡️ Privacy Protected</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="faq">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Frequently Asked <span class="matrix-text">Questions</span></h2>
+            </div>
+            
+            <div class="faq-list">
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3 data-translate="faq.1.question">Quanto sono accurati i vostri segnali di trading IA?</h3>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p data-translate="faq.1.answer">Il nostro sistema IA mantiene un tasso di accuratezza del 95% su tutte le principali coppie di valute. Questo viene raggiunto attraverso algoritmi di machine learning avanzati che elaborano oltre 10.000 punti dati al secondo, inclusi indicatori tecnici, sentiment del mercato, eventi di notizie e dati economici.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3 data-translate="faq.2.question">Ho bisogno di esperienza di trading per usare questo servizio?</h3>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p data-translate="faq.2.answer">Non è richiesta esperienza precedente. La nostra IA fornisce spiegazioni dettagliate per ogni segnale, aiutandoti a comprendere il ragionamento dietro ogni trade. Offriamo anche risorse educative e supporto per aiutare i principianti a iniziare in sicurezza.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3 data-translate="faq.3.question">Quanto velocemente ricevo i segnali di trading?</h3>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p data-translate="faq.3.answer">I segnali vengono consegnati istantaneamente attraverso canali multipli: notifiche push, SMS, email e direttamente alla tua piattaforma MT5. Il nostro sistema opera 24/5 durante le ore di mercato con latenza in millisecondi.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3 data-translate="faq.4.question">I miei soldi e dati sono sicuri?</h3>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p data-translate="faq.4.answer">Utilizziamo crittografia e protocolli di sicurezza di livello bancario. Non abbiamo mai accesso ai fondi del tuo conto di trading - il nostro sistema invia solo segnali alla tua piattaforma MT5. Tutti i dati personali sono protetti sotto la conformità GDPR.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3 data-translate="faq.5.question">Posso cancellare il mio abbonamento in qualsiasi momento?</h3>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p data-translate="faq.5.answer">Sì, puoi cancellare il tuo abbonamento in qualsiasi momento senza penali.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3 data-translate="faq.6.question">Cosa è incluso nella prova gratuita di 7 giorni?</h3>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p data-translate="faq.6.answer">La prova gratuita include accesso completo a tutte le funzionalità: segnali IA, integrazione MT5, analisi delle performance, contenuti educativi e supporto 24/7. Non è richiesta carta di credito per iniziare.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="footer-logo">
+                        <span class="logo-text">AI Cash-Revolution</span>
+                        <span class="logo-subtitle">Trading Matrix</span>
+                    </div>
+                    <p class="footer-description">
+                        Revolutionizing trading with AI-powered signals and advanced market analysis. 
+                        Join the financial matrix and unlock your profit potential.
+                    </p>
+                </div>
+                
+                <div class="footer-links">
+                    <div class="footer-section">
+                        <h4>Platform</h4>
+                        <a href="#features">Features</a>
+                        <a href="#pricing">Pricing</a>
+                        <a href="#trial">Free Trial</a>
+                        <a href="#faq">FAQ</a>
+                    </div>
+                    
+                    <div class="footer-section">
+                        <h4>Support</h4>
+                        <a href="#contact">Contact Us</a>
+                        <a href="#help">Help Center</a>
+                        <a href="#documentation">API Docs</a>
+                        <a href="#status">System Status</a>
+                    </div>
+                    
+                    <div class="footer-section">
+                        <h4>Legal</h4>
+                        <a href="#terms">Terms of Service</a>
+                        <a href="#privacy">Privacy Policy</a>
+                        <a href="#risk">Risk Disclosure</a>
+                        <a href="#compliance">Compliance</a>
+                    </div>
+                    
+                    <div class="footer-section">
+                        <h4>Connect</h4>
+                        <a href="mailto:support@ai-cash-revolution.com">support@ai-cash-revolution.com</a>
+                        <a href="tel:+1-555-MATRIX">+1-555-MATRIX</a>
+                        <div class="social-links">
+                            <a href="#twitter" class="social-link">Twitter</a>
+                            <a href="#telegram" class="social-link">Telegram</a>
+                            <a href="#discord" class="social-link">Discord</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <div class="footer-bottom-left">
+                    <p>&copy; 2024 AI Cash-Revolution. All rights reserved.</p>
+                </div>
+                <div class="footer-bottom-right">
+                    <p>Risk Warning: Trading involves substantial risk of loss and is not suitable for all investors.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="static/js/config.js"></script>
+    <script src="static/js/translations.js"></script>
+    <script src="static/js/matrix.js"></script>
+    <script src="static/js/main.js"></script>
+    
+    <!-- Analytics -->
+    <script>
+        // Add your analytics code here
+        // Example: Google Analytics, Facebook Pixel, etc.
+    </script>
+</body>
+</html>
