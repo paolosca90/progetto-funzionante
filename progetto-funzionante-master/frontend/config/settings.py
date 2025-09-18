@@ -9,6 +9,10 @@ from typing import Optional, List, Union, Dict, Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import validator, field_validator, Field
 from enum import Enum
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class Environment(str, Enum):

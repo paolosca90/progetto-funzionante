@@ -12,7 +12,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.exc import SQLAlchemyError
 import os
 
-from app.core.config import settings
+from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -36,15 +36,24 @@ if not DATABASE_URL:
 ASYNC_DATABASE_URL = get_async_database_url(DATABASE_URL)
 
 # Create async engine with optimized settings
-async_engine = create_async_engine(
-    ASYNC_DATABASE_URL,
-    echo=settings.is_development,
-    pool_size=20,
-    max_overflow=30,
-    pool_pre_ping=True,
-    pool_recycle=3600,
-    future=True
-)
+if "sqlite" in ASYNC_DATABASE_URL.lower():
+    # SQLite doesn't support connection pooling
+    async_engine = create_async_engine(
+        ASYNC_DATABASE_URL,
+        echo=settings.is_development,
+        future=True
+    )
+else:
+    # PostgreSQL and other databases support connection pooling
+    async_engine = create_async_engine(
+        ASYNC_DATABASE_URL,
+        echo=settings.is_development,
+        pool_size=20,
+        max_overflow=30,
+        pool_pre_ping=True,
+        pool_recycle=3600,
+        future=True
+    )
 
 # Create async session factory
 AsyncSessionLocal = async_sessionmaker(

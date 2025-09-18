@@ -1,12 +1,12 @@
 [phases.setup]
-aptPkgs = ['python3-dev', 'build-essential', 'python3-setuptools']
+aptPkgs = ['python3-dev', 'build-essential', 'python3-setuptools', 'gcc', 'g++']
 
 [phases.install]
 cmds = [
   'python -m venv /opt/venv',
   '/opt/venv/bin/python -m pip install --upgrade pip',
   '/opt/venv/bin/python -m pip install --upgrade setuptools wheel',
-  '/opt/venv/bin/python -m pip install -r frontend/requirements.txt'
+  '/opt/venv/bin/python -m pip install -r requirements.txt'
 ]
 
 [start]

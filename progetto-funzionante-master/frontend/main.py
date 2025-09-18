@@ -6,21 +6,20 @@ Clean architecture with proper separation of concerns and high-performance async
 from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, Response
 from fastapi import Depends
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, List
 import logging
 from datetime import datetime
 import os
 
 # Import routers
-from app.routers import (
-    auth_router,
-    signals_router,
-    users_router,
-    admin_router,
-    api_router,
-)
+from app.routers.auth_router import router as auth_router
+from app.routers.signals_router import router as signals_router
+from app.routers.users_router import router as users_router
+from app.routers.admin_router import router as admin_router
+from app.routers.api_router import router as api_router
+from app.routers.logging_router import router as logging_router
 from app.routers.async_health import router as health_router
 from app.routers.performance_dashboard import router as performance_router, add_performance_middleware
 from app.routers.enhanced_auth_router import router as enhanced_auth_router
@@ -45,7 +44,7 @@ from app.core.error_handling import error_handler, HTTP_STATUS_DOCUMENTATION, ER
 from app.core.documentation_generator import DocumentationGenerator
 from app.core.openapi_tags import ENHANCED_TAGS_METADATA, get_openapi_extensions
 from app.core.swagger_config import SwaggerUIEnhancer
-from app.core.documentation_website import DocumentationWebsiteGenerator
+# from app.core.documentation_website import DocumentationWebsiteGenerator  # TODO: Fix syntax error
 from app.core.openapi_validation import validation_router, ValidationMiddleware
 from app.core.api_testing import testing_router
 from app.core.test_runner import test_runner_router
@@ -198,11 +197,11 @@ async def performance_tracking_middleware(request: Request, call_next):
     return await add_performance_middleware(request, call_next)
 
 # Include routers
-app.include_router(auth_router.router)
-app.include_router(signals_router.router)
-app.include_router(users_router.router)
-app.include_router(admin_router.router)
-app.include_router(api_router.router)
+app.include_router(auth_router)
+app.include_router(signals_router)
+app.include_router(users_router)
+app.include_router(admin_router)
+app.include_router(api_router)
 app.include_router(health_router)
 app.include_router(performance_router)
 
@@ -223,8 +222,8 @@ swagger_enhancer = SwaggerUIEnhancer(app)
 swagger_enhancer.add_custom_routes()
 
 # Initialize documentation website
-website_generator = DocumentationWebsiteGenerator(app)
-website_generator.add_website_routes()
+# website_generator = DocumentationWebsiteGenerator(app)  # TODO: Fix syntax error
+# website_generator.add_website_routes()
 
 # Static files
 try:

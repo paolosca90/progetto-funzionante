@@ -197,12 +197,12 @@ class Settings:
     @property
     def is_development(self) -> bool:
         """Check if running in development mode."""
-        return settings.is_development
+        return settings.environment.value == "development"
 
     @property
     def is_production(self) -> bool:
         """Check if running in production mode."""
-        return settings.is_production
+        return settings.environment.value == "production"
 
     @property
     def is_staging(self) -> bool:
