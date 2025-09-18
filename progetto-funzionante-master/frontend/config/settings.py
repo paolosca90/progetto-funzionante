@@ -434,6 +434,31 @@ class Settings(BaseSettings):
 class DevelopmentSettings(Settings):
     """Development environment settings"""
     environment: Environment = Environment.DEVELOPMENT
+    # Override security settings for development with defaults
+    security: SecuritySettings = Field(default_factory=lambda: SecuritySettings(
+        jwt_secret_key="development_jwt_secret_key_change_this_in_production_abcdefghijk"
+    ))
+    # Override database settings for development
+    database: DatabaseSettings = Field(default_factory=lambda: DatabaseSettings(
+        database_url="sqlite:///./test.db"
+    ))
+    # Override email settings for development
+    email: EmailSettings = Field(default_factory=lambda: EmailSettings(
+        email_host="smtp.gmail.com",
+        email_user="test@example.com",
+        email_password="test_password",
+        email_from="test@example.com"
+    ))
+    # Override OANDA settings for development
+    oanda: OANDASettings = Field(default_factory=lambda: OANDASettings(
+        oanda_api_key="demo_api_key",
+        oanda_account_id="demo_account_id",
+        oanda_environment="demo"
+    ))
+    # Override AI settings for development
+    ai: AISettings = Field(default_factory=lambda: AISettings(
+        gemini_api_key="demo_gemini_key"
+    ))
     server: ServerSettings = Field(default_factory=lambda: ServerSettings(
         debug=True,
         reload=True,
