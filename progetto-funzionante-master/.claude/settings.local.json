@@ -1,8 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(for file in test_*.py)",
-      "Bash(do [ -f \"$file\" ])"
+      "Bash(python:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(git clean:*)",
+      "Read(//c/Users/USER/Desktop/**)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
