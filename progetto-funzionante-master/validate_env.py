@@ -48,9 +48,9 @@ def validate_environment():
         },
         "OANDA_ENVIRONMENT": {
             "required": True,
-            "description": "OANDA environment (demo or live)",
-            "validation": lambda x: x in ["demo", "live"],
-            "error_message": "OANDA_ENVIRONMENT must be 'demo' or 'live'"
+            "description": "OANDA environment (demo, live, or practice)",
+            "validation": lambda x: x in ["demo", "live", "practice"],
+            "error_message": "OANDA_ENVIRONMENT must be 'demo', 'live', or 'practice'"
         },
 
         # AI Integration
@@ -157,7 +157,7 @@ def show_env_template():
         "DATABASE_URL": "postgresql://user:password@host:port/database",
         "OANDA_API_KEY": "your-oanda-api-token-here",
         "OANDA_ACCOUNT_ID": "your-oanda-account-id",
-        "OANDA_ENVIRONMENT": "demo",
+        "OANDA_ENVIRONMENT": "demo",  # Can be "demo", "live", or "practice"
         "GEMINI_API_KEY": "your-gemini-api-key-here",
         "EMAIL_HOST": "smtp.gmail.com (optional)",
         "EMAIL_USER": "your-email@gmail.com (optional)",

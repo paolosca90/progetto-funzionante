@@ -142,7 +142,7 @@ class OANDASettings(BaseSettings):
     """OANDA API configuration"""
     oanda_api_key: str = Field(..., description="OANDA API key")
     oanda_account_id: str = Field(..., description="OANDA account ID")
-    oanda_environment: str = Field(default="demo", description="OANDA environment (demo or live)")
+    oanda_environment: str = Field(default="demo", description="OANDA environment (demo, live, or practice)")
     oanda_base_url: str = Field(default="https://api-fxpractice.oanda.com/v3", description="OANDA base URL")
     oanda_timeout: int = Field(default=30, description="OANDA API timeout in seconds")
     oanda_retry_attempts: int = Field(default=3, description="OANDA API retry attempts")
@@ -151,8 +151,8 @@ class OANDASettings(BaseSettings):
     @classmethod
     def validate_oanda_environment(cls, v: str) -> str:
         """Validate OANDA environment"""
-        if v not in ["demo", "live"]:
-            raise ValueError("OANDA environment must be 'demo' or 'live'")
+        if v not in ["demo", "live", "practice"]:
+            raise ValueError("OANDA environment must be 'demo', 'live', or 'practice'")
         return v
 
     @property

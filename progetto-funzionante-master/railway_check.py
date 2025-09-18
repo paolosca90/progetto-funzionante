@@ -45,8 +45,8 @@ def check_railway_environment():
 
     # Validate OANDA environment
     oanda_env = os.getenv("OANDA_ENVIRONMENT")
-    if oanda_env not in ["demo", "live"]:
-        print(f"ERROR: OANDA_ENVIRONMENT must be 'demo' or 'live' (current: {oanda_env})")
+    if oanda_env not in ["demo", "live", "practice"]:
+        print(f"ERROR: OANDA_ENVIRONMENT must be 'demo', 'live', or 'practice' (current: {oanda_env})")
         return False
 
     # Validate database URL format
