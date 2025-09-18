@@ -37,8 +37,7 @@ beautifulsoup4>=4.11.0,<5.0.0
 lxml>=4.9.0,<5.0.0
 
 # Redis caching for performance optimization
-redis>=4.5.0,<6.0.0
-aioredis>=2.0.0,<3.0.0
+redis>=5.0.0,<6.0.0
 
 # Advanced caching and performance
 cachetools>=5.3.0,<6.0.0

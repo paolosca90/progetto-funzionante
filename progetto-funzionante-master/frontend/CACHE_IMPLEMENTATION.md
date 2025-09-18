@@ -66,8 +66,7 @@ This document describes the production-ready caching system implemented for the 
 ### Requirements
 ```bash
 # Core dependencies (already in requirements.txt)
-redis>=4.5.0,<6.0.0
-aioredis>=2.0.0,<3.0.0
+redis>=5.0.0,<6.0.0
 cachetools>=5.3.0,<6.0.0
 cryptography>=41.0.0,<42.0.0
 ```

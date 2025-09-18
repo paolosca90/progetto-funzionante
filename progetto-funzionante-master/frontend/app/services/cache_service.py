@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-import aioredis
+import redis
 
 from config.settings import settings
 
@@ -78,8 +78,8 @@ class CacheService:
 
     def __init__(self, config: CacheConfig = None):
         self.config = config or CacheConfig()
-        self.redis: Optional[aioredis.Redis] = None
-        self._connection_pool: Optional[aioredis.ConnectionPool] = None
+        self.redis: Optional[redis.Redis] = None
+        self._connection_pool: Optional[redis.ConnectionPool] = None
         self._metrics = CacheMetrics()
         self._fallback_cache: Dict[str, Any] = {}
         self._connection_healthy = False
@@ -94,7 +94,7 @@ class CacheService:
         """
         try:
             # Create connection pool for better performance
-            self._connection_pool = aioredis.ConnectionPool.from_url(
+            self._connection_pool = redis.ConnectionPool.from_url(
                 self.config.redis_url,
                 max_connections=self.config.max_connections,
                 encoding=self.config.encoding,
@@ -104,7 +104,7 @@ class CacheService:
                 retry_on_timeout=self.config.retry_on_timeout
             )
 
-            self.redis = aioredis.Redis(connection_pool=self._connection_pool)
+            self.redis = redis.Redis(connection_pool=self._connection_pool)
 
             # Test connection and health
             if await self._ping():
@@ -153,7 +153,7 @@ class CacheService:
             str: Generated cache key
         """
         # Use application-specific prefix
-        app_prefix = settings.CACHE_PREFIX
+        app_prefix = settings.cache.cache_prefix
 
         # Create deterministic key from arguments
         key_data = f"{prefix}:{args}:{sorted(kwargs.items())}"
@@ -487,12 +487,12 @@ class CacheService:
             signals: List of signal dictionaries
             ttl: Cache TTL in seconds (uses config default if None)
         """
-        cache_key = f"{settings.CACHE_PREFIX_SIGNALS}{key_suffix}"
-        return await self.set(cache_key, signals, ttl or settings.CACHE_TTL_MEDIUM)
+        cache_key = f"{settings.cache.cache_prefix + "signals:"}{key_suffix}"
+        return await self.set(cache_key, signals, ttl or settings.cache.cache_ttl_medium)
 
     async def get_cached_signals(self, key_suffix: str) -> Optional[List[Dict]]:
         """Get cached signals data"""
-        cache_key = f"{settings.CACHE_PREFIX_SIGNALS}{key_suffix}"
+        cache_key = f"{settings.cache.cache_prefix + "signals:"}{key_suffix}"
         return await self.get(cache_key)
 
     async def cache_user_data(self, user_id: Union[int, str], user_data: Dict, ttl: Optional[int] = None) -> bool:
@@ -504,12 +504,12 @@ class CacheService:
             user_data: User data dictionary
             ttl: Cache TTL in seconds (uses config default if None)
         """
-        cache_key = f"{settings.CACHE_PREFIX_USERS}{user_id}"
-        return await self.set(cache_key, user_data, ttl or settings.CACHE_TTL_LONG)
+        cache_key = f"{settings.cache.cache_prefix + "users:"}{user_id}"
+        return await self.set(cache_key, user_data, ttl or settings.cache.cache_ttl_long)
 
     async def get_cached_user_data(self, user_id: Union[int, str]) -> Optional[Dict]:
         """Get cached user data"""
-        cache_key = f"{settings.CACHE_PREFIX_USERS}{user_id}"
+        cache_key = f"{settings.cache.cache_prefix + "users:"}{user_id}"
         return await self.get(cache_key)
 
     async def cache_market_data(self, symbol: str, timeframe: str, data: Dict, ttl: Optional[int] = None) -> bool:
@@ -522,12 +522,12 @@ class CacheService:
             data: Market data dictionary
             ttl: Cache TTL in seconds (uses config default if None)
         """
-        cache_key = f"{settings.CACHE_PREFIX_MARKET_DATA}{symbol}:{timeframe}"
-        return await self.set(cache_key, data, ttl or settings.CACHE_TTL_SHORT)
+        cache_key = f"{settings.cache.cache_prefix + "market_data:"}{symbol}:{timeframe}"
+        return await self.set(cache_key, data, ttl or settings.cache.cache_ttl_short)
 
     async def get_cached_market_data(self, symbol: str, timeframe: str) -> Optional[Dict]:
         """Get cached market data"""
-        cache_key = f"{settings.CACHE_PREFIX_MARKET_DATA}{symbol}:{timeframe}"
+        cache_key = f"{settings.cache.cache_prefix + "market_data:"}{symbol}:{timeframe}"
         return await self.get(cache_key)
 
     async def cache_api_response(self, endpoint: str, params: Dict, data: Any, ttl: Optional[int] = None) -> bool:
@@ -541,13 +541,13 @@ class CacheService:
             ttl: Cache TTL in seconds (uses config default if None)
         """
         param_hash = hashlib.md5(str(sorted(params.items())).encode()).hexdigest()
-        cache_key = f"{settings.CACHE_PREFIX_API}{endpoint}:{param_hash}"
-        return await self.set(cache_key, data, ttl or settings.CACHE_TTL_MEDIUM)
+        cache_key = f"{settings.cache.cache_prefix + "api:"}{endpoint}:{param_hash}"
+        return await self.set(cache_key, data, ttl or settings.cache.cache_ttl_medium)
 
     async def get_cached_api_response(self, endpoint: str, params: Dict) -> Optional[Any]:
         """Get cached API response"""
         param_hash = hashlib.md5(str(sorted(params.items())).encode()).hexdigest()
-        cache_key = f"{settings.CACHE_PREFIX_API}{endpoint}:{param_hash}"
+        cache_key = f"{settings.cache.cache_prefix + "api:"}{endpoint}:{param_hash}"
         return await self.get(cache_key)
 
     async def cache_signal_statistics(self, stats: Dict, ttl: Optional[int] = None) -> bool:
@@ -558,12 +558,12 @@ class CacheService:
             stats: Statistics dictionary
             ttl: Cache TTL in seconds (uses config default if None)
         """
-        cache_key = f"{settings.CACHE_PREFIX_SIGNALS}statistics"
-        return await self.set(cache_key, stats, ttl or settings.CACHE_TTL_MEDIUM)
+        cache_key = f"{settings.cache.cache_prefix + "signals:"}statistics"
+        return await self.set(cache_key, stats, ttl or settings.cache.cache_ttl_medium)
 
     async def get_cached_signal_statistics(self) -> Optional[Dict]:
         """Get cached signal statistics"""
-        cache_key = f"{settings.CACHE_PREFIX_SIGNALS}statistics"
+        cache_key = f"{settings.cache.cache_prefix + "signals:"}statistics"
         return await self.get(cache_key)
 
     async def cache_user_session(self, session_id: str, session_data: Dict, ttl: Optional[int] = None) -> bool:
@@ -575,17 +575,17 @@ class CacheService:
             session_data: Session data dictionary
             ttl: Cache TTL in seconds (uses config default if None)
         """
-        cache_key = f"{settings.CACHE_PREFIX_USERS}session:{session_id}"
-        return await self.set(cache_key, session_data, ttl or settings.CACHE_TTL_VERY_LONG)
+        cache_key = f"{settings.cache.cache_prefix + "users:"}session:{session_id}"
+        return await self.set(cache_key, session_data, ttl or settings.cache.cache_ttl_very_long)
 
     async def get_cached_user_session(self, session_id: str) -> Optional[Dict]:
         """Get cached user session data"""
-        cache_key = f"{settings.CACHE_PREFIX_USERS}session:{session_id}"
+        cache_key = f"{settings.cache.cache_prefix + "users:"}session:{session_id}"
         return await self.get(cache_key)
 
     async def invalidate_user_cache(self, user_id: Union[int, str]) -> bool:
         """Invalidate all cache entries for a specific user"""
-        pattern = f"{settings.CACHE_PREFIX_USERS}*{user_id}*"
+        pattern = f"{settings.cache.cache_prefix + "users:"}*{user_id}*"
         deleted_count = await self.invalidate_pattern(pattern)
         logger.info(f"Invalidated {deleted_count} cache entries for user {user_id}")
         return deleted_count > 0
@@ -598,9 +598,9 @@ class CacheService:
             pattern: Specific pattern to invalidate (all signals if None)
         """
         if pattern:
-            full_pattern = f"{settings.CACHE_PREFIX_SIGNALS}{pattern}"
+            full_pattern = f"{settings.cache.cache_prefix + "signals:"}{pattern}"
         else:
-            full_pattern = f"{settings.CACHE_PREFIX_SIGNALS}*"
+            full_pattern = f"{settings.cache.cache_prefix + "signals:"}*"
 
         deleted_count = await self.invalidate_pattern(full_pattern)
         logger.info(f"Invalidated {deleted_count} signals cache entries")
@@ -614,7 +614,7 @@ class CacheService:
             symbol: Specific symbol to invalidate (all if None)
             timeframe: Specific timeframe to invalidate (all if None)
         """
-        pattern_parts = [settings.CACHE_PREFIX_MARKET_DATA]
+        pattern_parts = [settings.cache.cache_prefix + "market_data:"]
         if symbol:
             pattern_parts.append(symbol)
         if timeframe:
@@ -633,9 +633,9 @@ class CacheService:
             endpoint: Specific endpoint to invalidate (all if None)
         """
         if endpoint:
-            pattern = f"{settings.CACHE_PREFIX_API}{endpoint}*"
+            pattern = f"{settings.cache.cache_prefix + "api:"}{endpoint}*"
         else:
-            pattern = f"{settings.CACHE_PREFIX_API}*"
+            pattern = f"{settings.cache.cache_prefix + "api:"}*"
 
         deleted_count = await self.invalidate_pattern(pattern)
         logger.info(f"Invalidated {deleted_count} API cache entries")

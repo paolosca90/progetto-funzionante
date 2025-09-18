@@ -18,8 +18,8 @@ from typing import Dict, Any, Optional, List, Union, Callable, AsyncContextManag
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime, timedelta
-import aioredis
-from aioredis import Redis, ConnectionPool
+import redis
+from redis import Redis, ConnectionPool
 from contextlib import asynccontextmanager
 
 from ..core.config import Settings as CoreSettings
@@ -80,7 +80,7 @@ class RedisService:
         self.config: Optional[RedisConfig] = None
         self._redis: Optional[Redis] = None
         self._connection_pool: Optional[ConnectionPool] = None
-        self._pubsub: Optional[aioredis.PubSub] = None
+        self._pubsub: Optional[redis.client.PubSub] = None
 
         # Metrics
         self._metrics = RedisMetrics()
@@ -689,7 +689,7 @@ class RedisService:
 
     # Pipeline operations
     @asynccontextmanager
-    async def pipeline(self) -> AsyncContextManager[aioredis.Redis]:
+    async def pipeline(self) -> AsyncContextManager[redis.Redis]:
         """Create Redis pipeline"""
         if not self._redis:
             raise RuntimeError("Redis client not initialized")
