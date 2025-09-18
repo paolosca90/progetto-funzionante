@@ -1,0 +1,325 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  # Code Quality and Security Checks
+  code-quality:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r frontend/requirements-test.txt
+
+    - name: Lint with flake8
+      run: |
+        flake8 frontend/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 frontend/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Check code formatting with black
+      run: |
+        black --check frontend/
+
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only frontend/
+
+    - name: Type checking with mypy
+      run: |
+        mypy frontend/ --ignore-missing-imports
+
+    - name: Security scanning with bandit
+      run: |
+        pip install bandit[toml]
+        bandit -r frontend/ -f json -o bandit-report.json || true
+
+    - name: Security scanning with safety
+      run: |
+        pip install safety
+        safety check --json --output safety-report.json || true
+
+    - name: Detect secrets
+      uses: detect-secrets/action@v1.0.0
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+
+  # Automated Testing
+  testing:
+    name: Automated Testing
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r frontend/requirements-test.txt
+
+    - name: Set up environment
+      run: |
+        cp frontend/.env.example frontend/.env
+        echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db" >> frontend/.env
+        echo "REDIS_URL=redis://localhost:6379" >> frontend/.env
+        echo "TESTING=true" >> frontend/.env
+
+    - name: Run database migrations
+      run: |
+        cd frontend
+        python -c "from database import engine; print('Database connection test')"
+
+    - name: Run unit tests
+      run: |
+        cd frontend
+        pytest tests/ -m "unit" --cov=app --cov-report=xml --cov-report=term-missing
+
+    - name: Run integration tests
+      run: |
+        cd frontend
+        pytest tests/ -m "integration" --cov=app --cov-report=xml --cov-report=term-missing --cov-append
+
+    - name: Run API tests
+      run: |
+        cd frontend
+        pytest tests/ -m "api" --cov=app --cov-report=xml --cov-report=term-missing --cov-append
+
+    - name: Generate coverage report
+      run: |
+        cd frontend
+        coverage html
+        coverage xml
+
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-reports
+        path: |
+          frontend/htmlcov/
+          frontend/coverage.xml
+
+  # Performance and Load Testing
+  performance:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    needs: testing
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install locust
+
+    - name: Run load tests
+      run: |
+        cd frontend
+        python -m locust --headless --users 10 --spawn-rate 2 --run-time 30s --host http://localhost:8000 || true
+
+    - name: Upload performance report
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-report
+        path: frontend/performance_report/
+
+  # Build and Security Scan
+  build:
+    name: Build & Security Scan
+    runs-on: ubuntu-latest
+    needs: [testing, performance]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ secrets.DOCKER_REGISTRY }}/trading-system
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./frontend/Dockerfile
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Scan Docker image for vulnerabilities
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ secrets.DOCKER_REGISTRY }}/trading-system:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Dependency Analysis
+  dependencies:
+    name: Dependency Analysis
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pip-audit safety
+
+    - name: Check for known vulnerabilities
+      run: |
+        pip-audit || true
+        safety check --json || true
+
+    - name: Generate SBOM
+      run: |
+        pip install cyclonedx-bom
+        cyclonedx-py -r requirements.txt -o sbom.xml
+
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v3
+      with:
+        name: sbom
+        path: sbom.xml
+
+  # Report Generation
+  report:
+    name: Generate CI Report
+    runs-on: ubuntu-latest
+    needs: [testing, build, dependencies]
+    if: always()
+
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Generate CI summary
+      run: |
+        echo "# CI Pipeline Report" >> ci-summary.md
+        echo "## Build: ${{ needs.build.result }}" >> ci-summary.md
+        echo "## Testing: ${{ needs.testing.result }}" >> ci-summary.md
+        echo "## Code Quality: ${{ needs.code-quality.result }}" >> ci-summary.md
+        echo "## Dependencies: ${{ needs.dependencies.result }}" >> ci-summary.md
+        echo "## Performance: ${{ needs.performance.result }}" >> ci-summary.md
+        echo "## Run ID: ${{ github.run_id }}" >> ci-summary.md
+        echo "## Run Number: ${{ github.run_number }}" >> ci-summary.md
+
+    - name: Upload CI report
+      uses: actions/upload-artifact@v3
+      with:
+        name: ci-summary
+        path: ci-summary.md

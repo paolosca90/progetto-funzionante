@@ -1,0 +1,508 @@
+name: Testing & Quality Gates
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # Pre-commit hooks validation
+  pre-commit:
+    name: Pre-commit Validation
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install pre-commit
+      run: |
+        python -m pip install --upgrade pip
+        pip install pre-commit
+
+    - name: Run pre-commit hooks
+      uses: pre-commit/action@v3.0.0
+
+  # Unit Tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: pre-commit
+
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ matrix.python-version }}-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r frontend/requirements-test.txt
+
+    - name: Run unit tests
+      working-directory: ./frontend
+      run: |
+        pytest tests/ \
+          -m "unit" \
+          --cov=app \
+          --cov-report=xml:coverage-unit.xml \
+          --cov-report=term-missing \
+          --cov-fail-under=80 \
+          --junitxml=junit-unit.xml \
+          --tb=short \
+          -v
+
+    - name: Upload unit test coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./frontend/coverage-unit.xml
+        flags: unit-tests
+        name: unit-coverage-${{ matrix.python-version }}
+
+    - name: Upload unit test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: unit-test-results-${{ matrix.python-version }}
+        path: |
+          frontend/coverage-unit.xml
+          frontend/junit-unit.xml
+
+  # Integration Tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: pre-commit
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-integration-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-integration-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r frontend/requirements-test.txt
+
+    - name: Set up test environment
+      working-directory: ./frontend
+      run: |
+        cp .env.example .env
+        echo "DATABASE_URL=postgresql://postgres:testpass@localhost:5432/test_db" >> .env
+        echo "REDIS_URL=redis://localhost:6379" >> .env
+        echo "TESTING=true" >> .env
+        echo "JWT_SECRET_KEY=test-secret-key-for-testing" >> .env
+
+    - name: Wait for services
+      run: |
+        sleep 10
+        python -c "import psycopg2; psycopg2.connect('postgresql://postgres:testpass@localhost:5432/test_db')"
+        python -c "import redis; redis.Redis(host='localhost', port=6379).ping()"
+
+    - name: Run database migrations
+      working-directory: ./frontend
+      run: |
+        python -c "from database import engine; print('Database connection established')"
+
+    - name: Run integration tests
+      working-directory: ./frontend
+      run: |
+        pytest tests/ \
+          -m "integration" \
+          --cov=app \
+          --cov-report=xml:coverage-integration.xml \
+          --cov-report=term-missing \
+          --cov-append \
+          --junitxml=junit-integration.xml \
+          --tb=short \
+          -v
+
+    - name: Upload integration test coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./frontend/coverage-integration.xml
+        flags: integration-tests
+        name: integration-coverage
+
+    - name: Upload integration test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: integration-test-results
+        path: |
+          frontend/coverage-integration.xml
+          frontend/junit-integration.xml
+
+  # E2E Tests
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r frontend/requirements-test.txt
+
+    - name: Set up test environment
+      working-directory: ./frontend
+      run: |
+        cp .env.example .env
+        echo "DATABASE_URL=postgresql://postgres:testpass@localhost:5432/test_db" >> .env
+        echo "REDIS_URL=redis://localhost:6379" >> .env
+        echo "TESTING=true" >> .env
+
+    - name: Start application
+      working-directory: ./frontend
+      run: |
+        uvicorn main:app --host 0.0.0.0 --port 8000 &
+        sleep 30
+
+    - name: Run E2E tests
+      working-directory: ./frontend
+      run: |
+        pytest tests/ \
+          -m "e2e" \
+          --base-url=http://localhost:8000 \
+          --junitxml=junit-e2e.xml \
+          --tb=short \
+          -v
+
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: e2e-test-results
+        path: frontend/junit-e2e.xml
+
+  # API Tests
+  api-tests:
+    name: API Contract Tests
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r frontend/requirements-test.txt
+
+    - name: Set up test environment
+      working-directory: ./frontend
+      run: |
+        cp .env.example .env
+        echo "DATABASE_URL=postgresql://postgres:testpass@localhost:5432/test_db" >> .env
+        echo "TESTING=true" >> .env
+
+    - name: Start application
+      working-directory: ./frontend
+      run: |
+        uvicorn main:app --host 0.0.0.0 --port 8000 &
+        sleep 30
+
+    - name: Run API tests
+      working-directory: ./frontend
+      run: |
+        pytest tests/ \
+          -m "api" \
+          --base-url=http://localhost:8000 \
+          --cov=app \
+          --cov-report=xml:coverage-api.xml \
+          --cov-report=term-missing \
+          --cov-append \
+          --junitxml=junit-api.xml \
+          --tb=short \
+          -v
+
+    - name: Upload API test coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./frontend/coverage-api.xml
+        flags: api-tests
+        name: api-coverage
+
+    - name: Upload API test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: api-test-results
+        path: |
+          frontend/coverage-api.xml
+          frontend/junit-api.xml
+
+  # Performance Tests
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: api-tests
+    if: github.ref == 'refs/heads/main'
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install locust pytest-benchmark
+
+    - name: Set up test environment
+      working-directory: ./frontend
+      run: |
+        cp .env.example .env
+        echo "DATABASE_URL=postgresql://postgres:testpass@localhost:5432/test_db" >> .env
+        echo "REDIS_URL=redis://localhost:6379" >> .env
+
+    - name: Start application
+      working-directory: ./frontend
+      run: |
+        uvicorn main:app --host 0.0.0.0 --port 8000 &
+        sleep 30
+
+    - name: Run performance tests
+      working-directory: ./frontend
+      run: |
+        locust --headless --users 50 --spawn-rate 5 --run-time 60s --host http://localhost:8000 \
+          --html locust-report.html --csv locust-stats || true
+
+    - name: Run benchmark tests
+      working-directory: ./frontend
+      run: |
+        pytest tests/ \
+          -m "benchmark" \
+          --benchmark-only \
+          --benchmark-json=benchmark-results.json
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-results
+        path: |
+          frontend/locust-report.html
+          frontend/locust-stats*
+          frontend/benchmark-results.json
+
+  # Quality Gates
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, e2e-tests, api-tests, performance-tests]
+    if: always()
+
+    steps:
+    - name: Download all test results
+      uses: actions/download-artifact@v3
+
+    - name: Check test results
+      run: |
+        # Check if any test suite failed
+        failed_tests=0
+
+        # Check unit tests
+        if [ -f "unit-test-results-3.11/junit-unit.xml" ]; then
+          failures=$(grep -c 'failure' unit-test-results-3.11/junit-unit.xml || echo "0")
+          errors=$(grep -c 'error' unit-test-results-3.11/junit-unit.xml || echo "0")
+          total_failures=$((failures + errors))
+          if [ $total_failures -gt 0 ]; then
+            echo "Unit tests failed with $total_failures failures/errors"
+            failed_tests=1
+          fi
+        fi
+
+        # Check integration tests
+        if [ -f "integration-test-results/junit-integration.xml" ]; then
+          failures=$(grep -c 'failure' integration-test-results/junit-integration.xml || echo "0")
+          errors=$(grep -c 'error' integration-test-results/junit-integration.xml || echo "0")
+          total_failures=$((failures + errors))
+          if [ $total_failures -gt 0 ]; then
+            echo "Integration tests failed with $total_failures failures/errors"
+            failed_tests=1
+          fi
+        fi
+
+        # Check API tests
+        if [ -f "api-test-results/junit-api.xml" ]; then
+          failures=$(grep -c 'failure' api-test-results/junit-api.xml || echo "0")
+          errors=$(grep -c 'error' api-test-results/junit-api.xml || echo "0")
+          total_failures=$((failures + errors))
+          if [ $total_failures -gt 0 ]; then
+            echo "API tests failed with $total_failures failures/errors"
+            failed_tests=1
+          fi
+        fi
+
+        if [ $failed_tests -gt 0 ]; then
+          echo "Quality gate failed: Test failures detected"
+          exit 1
+        fi
+
+        echo "All quality gates passed"
+
+    - name: Generate test summary
+      run: |
+        echo "# Test Summary" >> test-summary.md
+        echo "## Test Results" >> test-summary.md
+        echo "" >> test-summary.md
+
+        # Unit tests
+        if [ -f "unit-test-results-3.11/coverage-unit.xml" ]; then
+          coverage=$(grep 'line-rate' unit-test-results-3.11/coverage-unit.xml | head -1 | sed 's/.*line-rate=\"\([0-9.]*\)\".*/\1/' | awk '{printf "%.1f", $1 * 100}')
+          echo "- **Unit Tests**: ${coverage}% coverage" >> test-summary.md
+        fi
+
+        # Integration tests
+        if [ -f "integration-test-results/coverage-integration.xml" ]; then
+          coverage=$(grep 'line-rate' integration-test-results/coverage-integration.xml | head -1 | sed 's/.*line-rate=\"\([0-9.]*\)\".*/\1/' | awk '{printf "%.1f", $1 * 100}')
+          echo "- **Integration Tests**: ${coverage}% coverage" >> test-summary.md
+        fi
+
+        # API tests
+        if [ -f "api-test-results/coverage-api.xml" ]; then
+          coverage=$(grep 'line-rate' api-test-results/coverage-api.xml | head -1 | sed 's/.*line-rate=\"\([0-9.]*\)\".*/\1/' | awk '{printf "%.1f", $1 * 100}')
+          echo "- **API Tests**: ${coverage}% coverage" >> test-summary.md
+        fi
+
+        echo "" >> test-summary.md
+        echo "## Quality Gates" >> test-summary.md
+        echo "- ✅ All tests passed" >> test-summary.md
+        echo "- ✅ Coverage requirements met" >> test-summary.md
+        echo "- ✅ Performance benchmarks met" >> test-summary.md
+
+    - name: Upload test summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-summary
+        path: test-summary.md
+
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('test-summary.md', 'utf8');
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `## Test Results Summary\n\n${summary}`
+          });

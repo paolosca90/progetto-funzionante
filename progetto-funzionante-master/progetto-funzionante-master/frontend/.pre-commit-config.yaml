@@ -1,0 +1,330 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+        description: This hook trims trailing whitespace
+        entry: trailing-whitespace-fixer
+        language: python
+        types: [text]
+        stages: [commit, push, manual]
+      - id: end-of-file-fixer
+        name: Fix End of Files
+        description: Ensures that a file is either empty or ends with one newline
+        entry: end-of-file-fixer
+        language: python
+        types: [text]
+        stages: [commit, push, manual]
+      - id: check-yaml
+        name: Check YAML
+        description: This hook checks yaml files for parseable syntax
+        entry: check-yaml
+        language: python
+        files: \.(yaml|yml)$
+        stages: [commit, push, manual]
+      - id: check-json
+        name: Check JSON
+        description: This hook checks json files for parseable syntax
+        entry: check-json
+        language: python
+        files: \.json$
+        stages: [commit, push, manual]
+      - id: check-toml
+        name: Check TOML
+        description: This hook checks toml files for parseable syntax
+        entry: check-toml
+        language: python
+        files: \.toml$
+        stages: [commit, push, manual]
+      - id: check-xml
+        name: Check XML
+        description: This hook checks xml files for parseable syntax
+        entry: check-xml
+        language: python
+        files: \.xml$
+        stages: [commit, push, manual]
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+        description: Check for files that contain merge conflict strings
+        entry: check-merge-conflict
+        language: python
+        types: [text]
+        stages: [commit, push, manual]
+      - id: check-executables-have-shebangs
+        name: Check that executables have shebangs
+        description: Ensures that (non-binary) executables have a shebang
+        entry: check-executables-have-shebangs
+        language: python
+        types: [text, executable]
+        stages: [commit, push, manual]
+      - id: check-shebang-scripts-are-executable
+        name: Check that scripts with shebangs are executable
+        description: Ensures that files with a shebang are executable
+        entry: check-shebang-scripts-are-executable
+        language: python
+        types: [text]
+        stages: [commit, push, manual]
+      - id: check-added-large-files
+        name: Check for added large files
+        description: Prevent giant files from being committed
+        entry: check-added-large-files
+        language: python
+        args: ['--maxkb=1000']
+        stages: [commit, push, manual]
+      - id: check-case-conflict
+        name: Check for case conflicts
+        description: Check for files that would conflict in case-insensitive filesystems
+        entry: check-case-conflict
+        language: python
+        stages: [commit, push, manual]
+      - id: detect-private-key
+        name: Detect Private Keys
+        description: Detects the presence of private keys
+        entry: detect-private-key
+        language: python
+        types: [text]
+        stages: [commit, push, manual]
+      - id: mixed-line-ending
+        name: Mixed Line Ending
+        description: Replaces or checks mixed line ending
+        entry: mixed-line-ending
+        language: python
+        args: ['--fix=lf']
+        stages: [commit, push, manual]
+      - id: no-commit-to-branch
+        name: "Don't commit to main branch"
+        description: Protect specific branches from direct commits
+        entry: no-commit-to-branch
+        language: python
+        args: ['--branch', 'main', '--branch', 'master', '--branch', 'develop']
+        stages: [commit]
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        name: Detect Secrets
+        description: Detects secrets in your code
+        entry: detect-secrets-hook
+        language: python
+        stages: [commit, push, manual]
+        args: ['--baseline', '.secrets.baseline']
+
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+        name: Black - Code Formatting
+        description: Black - The uncompromising Python code formatter
+        entry: black
+        language: python
+        types: [python]
+        require_serial: true
+        stages: [commit, push, manual]
+        args: [--line-length=88, --target-version=py313]
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort - Import Sorting
+        description: isort your Python imports for you
+        entry: isort
+        language: python
+        types: [python]
+        require_serial: true
+        stages: [commit, push, manual]
+        args: [--profile=black, --line-length=88]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.1.0
+    hooks:
+      - id: flake8
+        name: Flake8 - Linting
+        description: Flake8 is a wrapper around these tools - PyFlakes, pycodestyle, and the McCabe script
+        entry: flake8
+        language: python
+        types: [python]
+        require_serial: true
+        stages: [commit, push, manual]
+        additional_dependencies:
+          - flake8-docstrings
+          - flake8-import-order
+          - flake8-bugbear
+          - flake8-comprehensions
+          - flake8-simplify
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.1
+    hooks:
+      - id: mypy
+        name: MyPy - Type Checking
+        description: Static type checker for Python
+        entry: mypy
+        language: python
+        types: [python]
+        require_serial: true
+        stages: [commit, push, manual]
+        additional_dependencies:
+          - types-requests
+          - types-aiofiles
+        args: [--ignore-missing-imports, --disallow-untyped-defs]
+
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.7.8
+    hooks:
+      - id: bandit
+        name: Bandit - Security Linter
+        description: Bandit is a tool designed to find common security issues in Python code
+        entry: bandit
+        language: python
+        types: [python]
+        stages: [commit, push, manual]
+        args: ['-r', '.', '--skip=B101,B601']
+
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+    rev: v1.3.2
+    hooks:
+      - id: python-safety-dependencies-check
+        name: Safety - Check Dependencies
+        description: Checks Python dependencies for known security vulnerabilities
+        entry: safety
+        language: python
+        files: requirements.*\.txt$|pyproject\.toml$|Pipfile.*$
+        stages: [commit, push, manual]
+        args: ['check', '--file']
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.15.2
+    hooks:
+      - id: pyupgrade
+        name: pyupgrade - Upgrade Python Syntax
+        description: Upgrade Python syntax for newer versions
+        entry: pyupgrade
+        language: python
+        types: [python]
+        stages: [commit, push, manual]
+        args: [--py313-plus]
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        name: yamllint - YAML Linting
+        description: This plugin runs yamllint
+        entry: yamllint
+        language: python
+        files: \.(yaml|yml)$
+        stages: [commit, push, manual]
+        args: ['-d', 'relaxed']
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.29.0
+    hooks:
+      - id: check-github-workflows
+        name: Check GitHub Workflows
+        description: Check GitHub workflow files
+        entry: check-jsonschema
+        language: python
+        files: ^\.github/workflows/.*\.yaml$
+        stages: [commit, push, manual]
+
+  - repo: https://github.com/econchick/interrogate
+    rev: 1.5.0
+    hooks:
+      - id: interrogate
+        name: interrogate - Documentation Coverage
+        description: Interrogate is a tool for checking Python code for missing docstrings
+        entry: interrogate
+        language: python
+        types: [python]
+        stages: [commit, push, manual]
+        args: [--verbose, --ignore-init-module, --ignore-magic, --ignore-module, --ignore-private, --ignore-property, --ignore-semiprivate]
+
+  # Optional: codemaster-cli hook (repository currently unavailable)
+# - repo: https://github.com/rhysd/codemaster-cli
+#   rev: v0.1.6
+#   hooks:
+#     - id: codemaster
+#       name: Codemaster - Code Quality
+#       description: Codemaster is a tool for improving code quality
+#       entry: codemaster
+#       language: python
+#       types: [python]
+#       stages: [commit, push, manual]
+#       args: [--check]
+
+  # Local hooks can be added here if needed
+# - repo: local
+#   hooks:
+#     - id: pytest-check
+#       name: pytest-check
+#       entry: pytest
+#       language: system
+#       types: [python]
+#       pass_filenames: false
+#       always_run: true
+#       stages: [push, manual]
+#       args: [tests/, --tb=short]
+
+# Default language version
+default_language_version:
+  python: python3.13
+
+# Default stages for hooks
+default_stages: [commit, push]
+
+# Exclude certain files/directories from all hooks
+exclude: |
+  (?x)^(
+    \.git/|
+    \.mypy_cache/|
+    \.pytest_cache/|
+    \.coverage|
+    \.tox/|
+    \.venv/|
+    venv/|
+    env/|
+    \.eggs/|
+    \.idea/|
+    \.vscode/|
+    node_modules/|
+    build/|
+    dist/|
+    \*.egg-info/|
+    __pycache__/|
+    \.pyc|
+    \.pyo|
+    \.pyd|
+    \.DS_Store|
+    Thumbs\.db|
+    \.env\..*|
+    \.env|
+    \.secrets\.baseline|
+    \*\.backup|
+    \*\.orig|
+    \*\.rej|
+    migrations/versions/.*\.py|
+    alembic/versions/.*\.py|
+    backend/.*|
+    \*_vps\.py|
+    \*_secret.*|
+    api_keys\.txt|
+    \*\.key|
+    \*\.pem|
+    \*\.p12|
+    trading_signals\.db|
+    .*\.db|
+    .*\.sqlite3?|
+    \.railway/|
+    VPS_INSTALLAZIONE/.*
+  )$
+
+# Fail fast if first hook fails
+fail_fast: false
+
+# Minimum pre-commit version
+minimum_pre_commit_version: '3.0.0'

@@ -1,0 +1,377 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM
+  workflow_dispatch:
+
+jobs:
+  # Code Security Analysis
+  code-security:
+    name: Code Security Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit[toml] safety semgrep
+
+    - name: Run Bandit security linter
+      run: |
+        bandit -r frontend/ -f json -o bandit-report.json || true
+        bandit -r frontend/ -f html -o bandit-report.html || true
+
+    - name: Run Safety dependency check
+      run: |
+        safety check --json --output safety-report.json || true
+        safety check --html --output safety-report.html || true
+
+    - name: Run Semgrep security analysis
+      uses: returntocorp/semgrep-action@v1
+      with:
+        config: p/security-audit
+        output: semgrep-report.json
+
+    - name: Run Gitleaks secret detection
+      uses: gitleaks/gitleaks-action@v2
+      with:
+        report-format: sarif
+        output: gitleaks-report.sarif
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-analysis
+        path: |
+          bandit-report.json
+          bandit-report.html
+          safety-report.json
+          safety-report.html
+          semgrep-report.json
+          gitleaks-report.sarif
+
+  # Container Security Scanning
+  container-security:
+    name: Container Security
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build test image
+      run: |
+        docker build -t trading-system-test:latest -f ./frontend/Dockerfile .
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'trading-system-test:latest'
+        format: 'sarif'
+        output: 'trivy-container-results.sarif'
+
+    - name: Run Snyk container scan
+      uses: snyk/actions/docker@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        image: trading-system-test:latest
+        args: --file=./frontend/Dockerfile --sarif-file-output=snyk-container.sarif
+
+    - name: Upload container security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: container-security
+        path: |
+          trivy-container-results.sarif
+          snyk-container.sarif
+
+  # Dependency Security Analysis
+  dependency-security:
+    name: Dependency Security
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pip-audit pip-licenses
+
+    - name: Run pip-audit
+      run: |
+        pip-audit --format json --output pip-audit-report.json || true
+        pip-audit --format html --output pip-audit-report.html || true
+
+    - name: Generate license report
+      run: |
+        pip-licenses --format json --output licenses.json
+        pip-licenses --format html --output licenses.html
+
+    - name: Run OWASP Dependency Check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'trading-system'
+        path: './frontend/requirements.txt'
+        format: 'SARIF'
+        out: 'dependency-check-report.sarif'
+
+    - name: Upload dependency security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: dependency-security
+        path: |
+          pip-audit-report.json
+          pip-audit-report.html
+          licenses.json
+          licenses.html
+          dependency-check-report.sarif
+
+  # API Security Testing
+  api-security:
+    name: API Security Testing
+    runs-on: ubuntu-latest
+    needs: [code-security, container-security, dependency-security]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r frontend/requirements-test.txt
+        pip install zaproxy
+
+    - name: Start application
+      run: |
+        cd frontend
+        cp .env.example .env
+        echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db" >> .env
+        echo "TESTING=true" >> .env
+        uvicorn main:app --host 0.0.0.0 --port 8000 &
+        sleep 30
+
+    - name: Run OWASP ZAP scan
+      run: |
+        zap-baseline.py -t http://localhost:8000 -J zap-report.json || true
+
+    - name: Run SQL injection tests
+      run: |
+        # Custom SQL injection tests
+        python -c "
+        import requests
+        import time
+        time.sleep(5)
+
+        # Test common SQL injection patterns
+        payloads = [
+            \"' OR '1'='1\",
+            \"'; DROP TABLE users; --\",
+            \"' UNION SELECT * FROM users --\",
+            \"admin' --\",
+            \"' OR 1=1#\",
+            \"' OR 1=1--\",
+            \"' OR 'a'='a\",
+            \"') OR ('a'='a\"
+        ]
+
+        base_url = 'http://localhost:8000'
+        vulnerable = False
+
+        for payload in payloads:
+            try:
+                # Test login endpoint
+                response = requests.post(f'{base_url}/auth/login', json={
+                    'email': payload,
+                    'password': payload
+                }, timeout=10)
+
+                if response.status_code == 200:
+                    print(f'Potential SQL injection vulnerability with payload: {payload}')
+                    vulnerable = True
+
+            except Exception as e:
+                print(f'Error testing payload {payload}: {e}')
+
+        if vulnerable:
+            exit(1)
+        print('SQL injection tests passed')
+        "
+
+    - name: Run XSS tests
+      run: |
+        python -c "
+        import requests
+        import time
+        time.sleep(5)
+
+        # Test XSS payloads
+        payloads = [
+            '<script>alert(\"XSS\")</script>',
+            'javascript:alert(\"XSS\")',
+            '<img src=\"x\" onerror=\"alert(1)\">',
+            '\"><script>alert(document.domain)</script>',
+            '<svg onload=alert(1)>'
+        ]
+
+        base_url = 'http://localhost:8000'
+        vulnerable = False
+
+        for payload in payloads:
+            try:
+                # Test registration endpoint
+                response = requests.post(f'{base_url}/auth/register', json={
+                    'email': f'test{payload}@example.com',
+                    'password': 'testpassword123',
+                    'full_name': payload
+                }, timeout=10)
+
+                if payload in response.text:
+                    print(f'Potential XSS vulnerability with payload: {payload}')
+                    vulnerable = True
+
+            except Exception as e:
+                print(f'Error testing payload {payload}: {e}')
+
+        if vulnerable:
+            exit(1)
+        print('XSS tests passed')
+        "
+
+    - name: Upload API security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: api-security
+        path: |
+          zap-report.json
+
+  # Security Score Calculation
+  security-score:
+    name: Security Score
+    runs-on: ubuntu-latest
+    needs: [code-security, container-security, dependency-security, api-security]
+    if: always()
+
+    steps:
+    - name: Download all security reports
+      uses: actions/download-artifact@v3
+
+    - name: Calculate security score
+      run: |
+        # Simple security scoring based on report analysis
+        echo "Analyzing security reports..."
+
+        # Check for critical vulnerabilities
+        critical_issues=0
+        high_issues=0
+        medium_issues=0
+        low_issues=0
+
+        # Analyze Bandit report
+        if [ -f "security-analysis/bandit-report.json" ]; then
+          bandit_issues=$(jq '.results | length' security-analysis/bandit-report.json 2>/dev/null || echo "0")
+          critical_issues=$((critical_issues + bandit_issues))
+        fi
+
+        # Analyze Safety report
+        if [ -f "security-analysis/safety-report.json" ]; then
+          safety_issues=$(jq '. | length' security-analysis/safety-report.json 2>/dev/null || echo "0")
+          high_issues=$((high_issues + safety_issues))
+        fi
+
+        # Calculate score (0-100)
+        total_issues=$((critical_issues * 10 + high_issues * 5 + medium_issues * 2 + low_issues))
+        security_score=$((100 - total_issues))
+
+        if [ $security_score -lt 0 ]; then
+          security_score=0
+        fi
+
+        echo "SECURITY_SCORE=$security_score" >> $GITHUB_ENV
+        echo "CRITICAL_ISSUES=$critical_issues" >> $GITHUB_ENV
+        echo "HIGH_ISSUES=$high_issues" >> $GITHUB_ENV
+        echo "MEDIUM_ISSUES=$medium_issues" >> $GITHUB_ENV
+        echo "LOW_ISSUES=$low_issues" >> $GITHUB_ENV
+
+    - name: Generate security summary
+      run: |
+        echo "# Security Scan Summary" >> security-summary.md
+        echo "## Security Score: ${{ env.SECURITY_SCORE }}/100" >> security-summary.md
+        echo "" >> security-summary.md
+        echo "### Issues Found:" >> security-summary.md
+        echo "- Critical: ${{ env.CRITICAL_ISSUES }}" >> security-summary.md
+        echo "- High: ${{ env.HIGH_ISSUES }}" >> security-summary.md
+        echo "- Medium: ${{ env.MEDIUM_ISSUES }}" >> security-summary.md
+        echo "- Low: ${{ env.LOW_ISSUES }}" >> security-summary.md
+        echo "" >> security-summary.md
+        echo "### Reports Generated:" >> security-summary.md
+        echo "- Code Security Analysis" >> security-summary.md
+        echo "- Container Security Scan" >> security-summary.md
+        echo "- Dependency Security Analysis" >> security-summary.md
+        echo "- API Security Testing" >> security-summary.md
+
+    - name: Upload security summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-summary
+        path: security-summary.md
+
+    - name: Fail on low security score
+      if: env.SECURITY_SCORE < 70
+      run: |
+        echo "Security score too low: ${{ env.SECURITY_SCORE }}/100"
+        exit 1
+
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('security-summary.md', 'utf8');
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `## Security Scan Results\n\n${summary}`
+          });

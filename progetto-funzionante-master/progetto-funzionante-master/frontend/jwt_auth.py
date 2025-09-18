@@ -9,11 +9,14 @@ from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import User
 
-# Configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 7
+# Import unified configuration
+from config.settings import settings
+
+# Configuration from unified settings
+SECRET_KEY = settings.security.jwt_secret_key
+ALGORITHM = settings.security.jwt_algorithm
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.security.jwt_access_token_expire_minutes
+REFRESH_TOKEN_EXPIRE_DAYS = settings.security.jwt_refresh_token_expire_days
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

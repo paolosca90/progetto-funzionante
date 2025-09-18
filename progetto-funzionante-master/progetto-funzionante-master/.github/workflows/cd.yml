@@ -1,0 +1,283 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [closed]
+    branches: [ main ]
+
+env:
+  PYTHON_VERSION: '3.11'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Staging Deployment
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+
+    permissions:
+      contents: read
+      packages: write
+      deployments: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=raw,value=staging,enable={{is_default_branch}}
+          type=sha,prefix=staging-
+
+    - name: Build and push staging image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./frontend/Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          ENVIRONMENT=staging
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Deploy to Railway (Staging)
+      uses: railwayapp/cli-action@v1
+      with:
+        command: up
+        service: ${{ secrets.RAILWAY_SERVICE_ID_STAGING }}
+        environment: staging
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+    - name: Health check staging
+      run: |
+        sleep 30
+        response=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.STAGING_URL }}/health)
+        if [ "$response" != "200" ]; then
+          echo "Staging health check failed with status: $response"
+          exit 1
+        fi
+        echo "Staging deployment healthy"
+
+    - name: Run post-deployment tests
+      run: |
+        # Run basic API tests against staging
+        curl -f ${{ secrets.STAGING_URL }}/health
+        curl -f ${{ secrets.STAGING_URL }}/docs
+
+    - name: Notify deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: '🚀 Staging deployment completed successfully!'
+        channel: '#deployments'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Production Deployment with Manual Approval
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: deploy-staging
+    environment: production
+
+    permissions:
+      contents: read
+      packages: write
+      deployments: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=sha,prefix=production-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push production image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./frontend/Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          ENVIRONMENT=production
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Pre-deployment backup
+      run: |
+        echo "Creating backup before production deployment..."
+        # Add backup commands here
+
+    - name: Deploy to Railway (Production)
+      uses: railwayapp/cli-action@v1
+      with:
+        command: up
+        service: ${{ secrets.RAILWAY_SERVICE_ID_PRODUCTION }}
+        environment: production
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+    - name: Health check production
+      run: |
+        sleep 60
+        response=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.PRODUCTION_URL }}/health)
+        if [ "$response" != "200" ]; then
+          echo "Production health check failed with status: $response"
+          exit 1
+        fi
+        echo "Production deployment healthy"
+
+    - name: Run comprehensive post-deployment tests
+      run: |
+        # API health checks
+        curl -f ${{ secrets.PRODUCTION_URL }}/health
+        curl -f ${{ secrets.PRODUCTION_URL }}/docs
+
+        # Test key endpoints
+        curl -f ${{ secrets.PRODUCTION_URL }}/api/signals/latest
+        curl -f ${{ secrets.PRODUCTION_URL }}/api/generate-signals-if-needed
+
+    - name: Performance validation
+      run: |
+        # Basic performance check
+        start_time=$(date +%s)
+        curl -f ${{ secrets.PRODUCTION_URL }}/health
+        end_time=$(date +%s)
+        response_time=$((end_time - start_time))
+
+        if [ "$response_time" -gt "10" ]; then
+          echo "Response time too slow: ${response_time}s"
+          exit 1
+        fi
+        echo "Response time acceptable: ${response_time}s"
+
+    - name: Create deployment tag
+      uses: rickstaa/action-create-tag@v1
+      with:
+        tag: "prod-${{ github.sha }}"
+        message: "Production deployment ${{ github.sha }}"
+
+    - name: Notify deployment success
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: '🎉 Production deployment completed successfully!'
+        channel: '#deployments'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Rollback Strategy
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: failure() && (needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure')
+    needs: [deploy-staging, deploy-production]
+
+    steps:
+    - name: Determine rollback target
+      id: rollback
+      run: |
+        # Get the last successful deployment
+        if [[ "${{ needs.deploy-production.result }}" == "failure" ]]; then
+          echo "environment=production" >> $GITHUB_OUTPUT
+        else
+          echo "environment=staging" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.before }}
+
+    - name: Deploy previous version
+      uses: railwayapp/cli-action@v1
+      with:
+        command: up
+        service: ${{ steps.rollback.outputs.environment == 'production' && secrets.RAILWAY_SERVICE_ID_PRODUCTION || secrets.RAILWAY_SERVICE_ID_STAGING }}
+        environment: ${{ steps.rollback.outputs.environment }}
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+    - name: Notify rollback
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: '🔄 Rollback initiated for ${{ steps.rollback.outputs.environment }} environment'
+        channel: '#deployments'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Cleanup
+  cleanup:
+    name: Cleanup Old Images
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [deploy-staging, deploy-production, rollback]
+
+    steps:
+    - name: Clean up old Docker images
+      uses: actions/delete-package-versions@v4
+      with:
+        package-name: ${{ env.IMAGE_NAME }}
+        package-type: container
+        num-old-versions-to-delete: 10
+
+  # Monitoring Setup
+  monitoring:
+    name: Setup Monitoring
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: needs.deploy-production.result == 'success'
+
+    steps:
+    - name: Setup Prometheus alerts
+      run: |
+        echo "Setting up monitoring alerts..."
+        # Add monitoring configuration here
+
+    - name: Update Grafana dashboards
+      run: |
+        echo "Updating Grafana dashboards..."
+        # Add Grafana update commands here

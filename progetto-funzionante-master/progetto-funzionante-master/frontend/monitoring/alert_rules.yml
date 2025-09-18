@@ -1,0 +1,165 @@
+groups:
+  - name: trading_system_alerts
+    rules:
+      # High response time alerts
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, http_request_duration_seconds_bucket) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected ({{ $value }}s)"
+          description: "95th percentile response time is above 2 seconds for 5 minutes"
+
+      - alert: VeryHighResponseTime
+        expr: histogram_quantile(0.95, http_request_duration_seconds_bucket) > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Very high response time detected ({{ $value }}s)"
+          description: "95th percentile response time is above 5 seconds for 2 minutes"
+
+      # Error rate alerts
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected ({{ $value }} errors/sec)"
+          description: "HTTP 5xx error rate is above 0.1 errors per second for 5 minutes"
+
+      - alert: CriticalErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[2m]) > 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical error rate detected ({{ $value }} errors/sec)"
+          description: "HTTP 5xx error rate is above 1 error per second for 1 minute"
+
+      # Database alerts
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database has been down for more than 1 minute"
+
+      - alert: PostgreSQLSlowQueries
+        expr: rate(pg_stat_database_calls_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL slow queries detected"
+          description: "PostgreSQL is experiencing slow queries ({{ $value }} calls/sec)"
+
+      # Redis alerts
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache has been down for more than 1 minute"
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is above 80% ({{ $value }}%)"
+
+      # Application health alerts
+      - alert: ApplicationUnhealthy
+        expr: up{job="trading-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Trading API is down"
+          description: "Trading API application has been unhealthy for more than 2 minutes"
+
+      - alert: HighMemoryUsage
+        expr: container_memory_usage_bytes{name="trading-api"} / container_spec_memory_limit_bytes{name="trading-api"} > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Trading API memory usage is above 90% of limit"
+
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total{name="trading-api"}[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "Trading API CPU usage is above 80% for 5 minutes"
+
+      # OANDA API alerts
+      - alert: OANDAAPIErrors
+        expr: rate(oanda_api_errors_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OANDA API errors detected"
+          description: "OANDA API error rate is above 5% for 5 minutes"
+
+      - alert: OANDAAPILatency
+        expr: histogram_quantile(0.95, oanda_api_request_duration_seconds_bucket) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OANDA API high latency"
+          description: "OANDA API 95th percentile latency is above 10 seconds"
+
+  - name: system_alerts
+    rules:
+      # Disk space alerts
+      - alert: LowDiskSpace
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space detected"
+          description: "Disk usage is above 85% on {{ $labels.instance }}"
+
+      - alert: CriticalDiskSpace
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical disk space detected"
+          description: "Disk usage is above 95% on {{ $labels.instance }}"
+
+      # System load alerts
+      - alert: HighSystemLoad
+        expr: node_load5 > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High system load detected"
+          description: "System 5-minute load average is above 2"
+
+      - alert: CriticalSystemLoad
+        expr: node_load5 > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical system load detected"
+          description: "System 5-minute load average is above 5"

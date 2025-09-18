@@ -1,8 +1,12 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -16,10 +20,115 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+test_*.db
+*.db-journal
+*.sqlite-journal
 
 # Environment variables
 .env
@@ -27,6 +136,8 @@ MANIFEST
 .env.development
 .env.test
 .env.production
+.env.staging
+.env.example
 
 # Virtual environments
 env/
@@ -34,12 +145,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-test_*.db
+.venv/
+.virtualenv/
 
 # IDE
 .vscode/
@@ -47,14 +154,29 @@ test_*.db
 *.swp
 *.swo
 *~
+*.swn
+*.swo
+*.swp
+*.tmp
+*.temp
+.netrwhist
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
 
 # Logs
 *.log
 logs/
+log/
 
 # Railway
 .railway/
@@ -62,7 +184,60 @@ logs/
 # Temporary files
 tmp/
 temp/
+*.tmp
+*.temp
+*.cache
 
 # VPS files - excluded from Railway deployment
 ../VPS INSTALLAZIONE/
 VPS_INSTALLAZIONE/
+
+# Black
+*.black*
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Test artifacts
+.pytest_cache/
+.cache/
+.tox/
+.nox/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Node.js (if used)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Mac
+.AppleDouble
+.LSOverride
+
+# Windows
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Linux
+*~
+
+# Project specific
+static/uploads/
+media/
+uploads/
+*.bak
+*.backup
+main_original_backup.py

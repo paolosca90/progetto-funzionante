@@ -1,0 +1,178 @@
+# Development Environment Configuration
+# This configuration is optimized for local development and debugging
+
+# Application Settings
+app:
+  name: "Trading Signals System"
+  version: "2.0.1"
+  environment: "development"
+  debug: true
+  testing: false
+
+# Server Configuration
+server:
+  host: "127.0.0.1"
+  port: 8000
+  reload: true
+  workers: 1
+  timeout: 60
+
+# Security Configuration (Development - less restrictive)
+security:
+  jwt_secret_key: "dev-secret-key-change-in-production-long-enough"
+  jwt_algorithm: "HS256"
+  jwt_access_token_expire_minutes: 1440  # 24 hours for development
+  jwt_refresh_token_expire_days: 30
+  allow_test_tokens: true
+  cors_origins: ["*"]
+  cors_allow_credentials: true
+  cors_allow_methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+  cors_allow_headers: ["*"]
+
+# Database Configuration (Development)
+database:
+  url: "postgresql://postgres:password@localhost:5432/trading_dev"
+  pool_size: 5
+  max_overflow: 10
+  pool_timeout: 30
+  pool_recycle: 3600
+  echo_sql: true  # Enable SQL logging for development
+  auto_create_tables: true
+
+# Redis Cache Configuration (Development)
+cache:
+  redis_url: "redis://localhost:6379/0"
+  redis_password: null
+  max_connections: 5
+  timeout: 5
+  ttl_short: 60    # 1 minute
+  ttl_medium: 300  # 5 minutes
+  ttl_long: 1800   # 30 minutes
+  prefix: "dev:trading:"
+  enable_cache_warming: false  # Disable for development
+  cache_debug: true
+
+# Email Configuration (Development - using console backend)
+email:
+  host: "localhost"
+  port: 1025  # MailHog default port
+  user: "dev@example.com"
+  password: "dev"
+  from_address: "dev@example.com"
+  use_tls: false
+  use_ssl: false
+  console_backend: true  # Print emails to console
+
+# OANDA API Configuration (Development)
+oanda:
+  api_key: "your-oanda-demo-api-key"
+  account_id: "your-demo-account-id"
+  environment: "demo"
+  base_url: "https://api-fxpractice.oanda.com/v3"
+  timeout: 30
+  retry_attempts: 2
+  rate_limit_requests: 100
+  rate_limit_window: 60
+
+# AI Configuration (Development)
+ai:
+  gemini_api_key: "your-gemini-api-key"
+  gemini_model: "gemini-pro"
+  temperature: 0.7
+  max_tokens: 1000
+  confidence_threshold: 0.5  # Lower threshold for development
+  enable_debug_logging: true
+
+# API Configuration (Development)
+api:
+  prefix: "/api/v1"
+  docs_url: "/docs"
+  redoc_url: "/redoc"
+  enable_swagger: true
+  enable_openapi_validation: false
+  rate_limit_requests: 1000  # High limit for development
+  rate_limit_window: 60
+
+# Monitoring and Logging (Development)
+monitoring:
+  log_level: "DEBUG"
+  log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  log_file: "logs/development.log"
+  enable_metrics: false
+  enable_health_checks: true
+  enable_profiling: true
+  enable_error_tracking: false
+  sentry_dsn: null
+
+# Trading Configuration (Development)
+trading:
+  max_daily_signals: 50
+  default_risk_level: "LOW"
+  default_position_size: 0.001
+  max_position_size: 0.01
+  enable_paper_trading: true
+  enable_real_trading: false
+  trading_hours_enabled: false  # Allow trading 24/7 for development
+  signal_generation_interval: 60  # Generate signals every minute for testing
+
+# Feature Flags (Development)
+feature_flags:
+  enable_ai_analysis: true
+  enable_real_time_data: true
+  enable_user_authentication: true
+  enable_email_notifications: false  # Disabled for development
+  enable_cache_warming: false
+  enable_performance_monitoring: false
+  enable_signal_execution: false
+  enable_paper_trading: true
+  enable_debug_endpoints: true
+  enable_test_data_generation: true
+  enable_database_migrations: true
+
+# Development Tools
+development:
+  enable_debug_toolbar: true
+  enable_sql_explorer: true
+  enable_api_browser: true
+  enable_test_runner: true
+  enable_code_coverage: true
+  auto_reload_templates: true
+  show_errors_detailed: true
+
+# Test Data
+test_data:
+  auto_generate: true
+  user_count: 10
+  signal_count: 50
+  execution_count: 100
+  seed_random: true
+
+# Rate Limiting (Development - permissive)
+rate_limiting:
+  enabled: false
+  requests_per_minute: 1000
+  burst_limit: 100
+
+# CORS (Development - permissive)
+cors:
+  allow_origins: ["*"]
+  allow_methods: ["*"]
+  allow_headers: ["*"]
+  allow_credentials: true
+
+# Session Configuration
+session:
+  secret_key: "dev-session-secret-key"
+  cookie_name: "trading_session"
+  cookie_secure: false
+  cookie_httponly: true
+  cookie_samesite: "lax"
+  lifetime: 86400  # 24 hours
+
+# WebSocket Configuration (Development)
+websocket:
+  enabled: true
+  max_connections: 100
+  ping_interval: 30
+  ping_timeout: 10
+  enable_debug_logging: true

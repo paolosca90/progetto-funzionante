@@ -1,0 +1,88 @@
+[flake8]
+# Line length (matches Black's default)
+max-line-length = 88
+
+# Error codes to ignore
+extend-ignore =
+    E203,  # whitespace before ':'
+    E501,  # line too long (handled by black)
+    W503,  # line break before binary operator (handled by black)
+    F401,  # imported but unused (selectively ignored)
+    F811,  # redefinition of unused name
+    E702,  # multiple statements on one line (x; y)
+    E704,  # multiple statements on one line (def foo(x): return 42)
+
+# Files and directories to exclude
+exclude =
+    .git,
+    __pycache__,
+    .tox,
+    .eggs,
+    *.egg,
+    build,
+    dist,
+    node_modules,
+    .venv,
+    venv,
+    env,
+    .mypy_cache,
+    .pytest_cache,
+    .coverage,
+    htmlcov,
+    .DS_Store,
+    Thumbs.db,
+    *.pyc,
+    *.pyo,
+    *.pyd,
+    .Python,
+    env,
+    pip-log.txt,
+    pip-delete-this-directory.txt,
+    .sass-cache,
+    *.egg-info,
+    .installed.cfg,
+    *.log,
+    local_settings.py,
+    db.sqlite3,
+    db.sqlite3-journal
+
+# Per-file ignore patterns
+per-file-ignores =
+    # Allow unused imports in __init__.py files
+    __init__.py:F401,
+    # Allow unused imports in test files
+    tests/*:F401,F811,
+    # Allow unused imports in conftest.py
+    conftest.py:F401,F811,
+    # Allow unused imports in migrations
+    migrations/*:F401,
+    # Allow unused imports in alembic files
+    alembic/*:F401,
+    # Allow unused imports in app/__init__.py
+    app/__init__.py:F401,
+    # Allow unused imports in app submodules
+    app/*/__init__.py:F401,
+    # Allow unused imports in main for development
+    main_original_backup.py:F401
+
+# Maximum complexity for McCabe complexity checker
+max-complexity = 10
+
+# Docstring conventions
+docstring-convention = google
+
+# Enable additional plugins
+# Note: These plugins need to be installed separately
+# enable-extensions = G, WPS
+
+# Plugin-specific settings (if plugins are installed)
+# [flake8-docstrings]
+# ignore-decorators = property
+# ignore-docstring-requirements = D100,D101,D102,D103,D104
+
+# [flake8-import-order]
+# application-import-names = app, database, models, schemas
+# known-third-party = fastapi, sqlalchemy, pydantic, passlib, jose, pandas, numpy, httpx, aiohttp, redis, sklearn
+
+# [flake8-bugbear]
+# accept-no-parens = True

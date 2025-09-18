@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error Tracking Dashboard - Trading System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+        }
+        .metric-card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-online { background-color: #28a745; }
+        .status-offline { background-color: #dc3545; }
+        .status-warning { background-color: #ffc107; }
+        .alert-item {
+            border-left: 4px solid;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0 5px 5px 0;
+        }
+        .alert-critical { border-left-color: #dc3545; background-color: #f8d7da; }
+        .alert-error { border-left-color: #fd7e14; background-color: #fff3cd; }
+        .alert-warning { border-left-color: #ffc107; background-color: #fff3cd; }
+        .alert-info { border-left-color: #17a2b8; background-color: #d1ecf1; }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 1rem 0;
+        }
+        .performance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+        }
+        .metric-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .refresh-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+        .refresh-btn:hover {
+            background-color: #0056b3;
+        }
+        .loading-spinner {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Spinner -->
+    <div class="loading-spinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-0">
+                        <i class="fas fa-bug me-3"></i>
+                        Error Tracking Dashboard
+                    </h1>
+                    <p class="mb-0 mt-2">Comprehensive error monitoring and performance analytics</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div id="system-status">
+                        <span class="status-indicator status-warning"></span>
+                        <span>Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Key Metrics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card metric-card">
+                    <div class="card-body text-center">
+                        <div class="metric-value text-primary" id="total-errors">0</div>
+                        <div class="metric-label">Total Errors</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card">
+                    <div class="card-body text-center">
+                        <div class="metric-value text-warning" id="error-rate">0%</div>
+                        <div class="metric-label">Error Rate</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card">
+                    <div class="card-body text-center">
+                        <div class="metric-value text-success" id="avg-response-time">0ms</div>
+                        <div class="metric-label">Avg Response Time</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card">
+                    <div class="card-body text-center">
+                        <div class="metric-value text-info" id="active-alerts">0</div>
+                        <div class="metric-label">Active Alerts</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Error Trends</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="error-trends-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Error Categories</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="error-categories-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>System Performance</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="performance-grid" id="performance-metrics">
+                            <!-- Performance metrics will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Alerts -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Recent Alerts</h5>
+                        <button class="btn btn-sm btn-outline-primary" onclick="refreshAlerts()">
+                            <i class="fas fa-refresh"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="alerts-container">
+                            <!-- Alerts will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Tracking Controls -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Error Tracking Controls</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <button class="btn btn-primary w-100" onclick="testErrorTracking()">
+                                    <i class="fas fa-bug me-2"></i>Test Error Tracking
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-warning w-100" onclick="testAlerting()">
+                                    <i class="fas fa-bell me-2"></i>Test Alerting
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-info w-100" onclick="refreshMetrics()">
+                                    <i class="fas fa-sync me-2"></i>Refresh Metrics
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-secondary w-100" onclick="exportData()">
+                                    <i class="fas fa-download me-2"></i>Export Data
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Refresh Button -->
+    <button class="refresh-btn" onclick="refreshAllData()" title="Refresh All Data">
+        <i class="fas fa-sync"></i>
+    </button>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let errorTrendsChart, errorCategoriesChart;
+        let refreshInterval;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            loadAllData();
+            startAutoRefresh();
+        });
+
+        // Initialize charts
+        function initializeCharts() {
+            // Error trends chart
+            const errorTrendsCtx = document.getElementById('error-trends-chart').getContext('2d');
+            errorTrendsChart = new Chart(errorTrendsCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Errors',
+                        data: [],
+                        borderColor: 'rgb(220, 53, 69)',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Error categories chart
+            const errorCategoriesCtx = document.getElementById('error-categories-chart').getContext('2d');
+            errorCategoriesChart = new Chart(errorCategoriesCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Database', 'API', 'Authentication', 'Validation', 'External Service', 'System'],
+                    datasets: [{
+                        data: [0, 0, 0, 0, 0, 0],
+                        backgroundColor: [
+                            '#FF6384',
+                            '#36A2EB',
+                            '#FFCE56',
+                            '#4BC0C0',
+                            '#9966FF',
+                            '#FF9F40'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load all data
+        async function loadAllData() {
+            showLoading();
+            try {
+                await Promise.all([
+                    loadErrorTrackingStatus(),
+                    loadErrorMetrics(),
+                    loadPerformanceMetrics(),
+                    loadAlerts()
+                ]);
+                updateSystemStatus('online');
+            } catch (error) {
+                console.error('Error loading data:', error);
+                updateSystemStatus('offline');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Load error tracking status
+        async function loadErrorTrackingStatus() {
+            try {
+                const response = await fetch('/error-tracking/status');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    updateSystemStatus(data.sentry_configured ? 'online' : 'warning');
+                }
+            } catch (error) {
+                console.error('Error loading error tracking status:', error);
+            }
+        }
+
+        // Load error metrics
+        async function loadErrorMetrics() {
+            try {
+                const response = await fetch('/error-tracking/metrics');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    updateMetrics(data.metrics, data.performance);
+                }
+            } catch (error) {
+                console.error('Error loading error metrics:', error);
+            }
+        }
+
+        // Load performance metrics
+        async function loadPerformanceMetrics() {
+            try {
+                const response = await fetch('/performance/metrics');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    updatePerformanceMetrics(data.metrics);
+                }
+            } catch (error) {
+                console.error('Error loading performance metrics:', error);
+            }
+        }
+
+        // Load alerts
+        async function loadAlerts() {
+            try {
+                const response = await fetch('/alerts/active');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    updateAlerts(data.alerts, data.summary);
+                }
+            } catch (error) {
+                console.error('Error loading alerts:', error);
+            }
+        }
+
+        // Update metrics display
+        function updateMetrics(metrics, performance) {
+            // Update key metrics
+            document.getElementById('total-errors').textContent = metrics.total_errors || 0;
+            document.getElementById('error-rate').textContent =
+                ((metrics.error_rate || 0) * 100).toFixed(1) + '%';
+            document.getElementById('avg-response-time').textContent =
+                Math.round((performance.summary?.avg_response_time || 0) * 1000) + 'ms';
+            document.getElementById('active-alerts').textContent =
+                performance.summary?.active_alerts || 0;
+
+            // Update charts (simulate data for demo)
+            updateCharts();
+        }
+
+        // Update performance metrics
+        function updatePerformanceMetrics(metrics) {
+            const container = document.getElementById('performance-metrics');
+            container.innerHTML = '';
+
+            if (metrics.current) {
+                const metrics_data = [
+                    { label: 'CPU Usage', value: metrics.current.cpu_percent.toFixed(1) + '%', type: 'primary' },
+                    { label: 'Memory Usage', value: metrics.current.memory_percent.toFixed(1) + '%', type: 'info' },
+                    { label: 'Disk Usage', value: metrics.current.disk_usage_percent.toFixed(1) + '%', type: 'warning' },
+                    { label: 'Active Requests', value: metrics.current.active_requests, type: 'success' },
+                    { label: 'Database Connections', value: metrics.current.database_connections, type: 'danger' },
+                    { label: 'Cache Hit Rate', value: (metrics.current.cache_hit_rate * 100).toFixed(1) + '%', type: 'info' }
+                ];
+
+                metrics_data.forEach(metric => {
+                    const metricDiv = document.createElement('div');
+                    metricDiv.className = 'text-center';
+                    metricDiv.innerHTML = `
+                        <div class="metric-value text-${metric.type}">${metric.value}</div>
+                        <div class="metric-label">${metric.label}</div>
+                    `;
+                    container.appendChild(metricDiv);
+                });
+            }
+        }
+
+        // Update alerts display
+        function updateAlerts(alerts, summary) {
+            const container = document.getElementById('alerts-container');
+            container.innerHTML = '';
+
+            if (alerts.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center">No active alerts</p>';
+                return;
+            }
+
+            alerts.forEach(alert => {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert-item alert-${alert.severity}`;
+                alertDiv.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">${alert.title}</h6>
+                            <p class="mb-1">${alert.message}</p>
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                ${new Date(alert.timestamp).toLocaleString()}
+                            </small>
+                        </div>
+                        <div>
+                            <span class="badge bg-${getSeverityColor(alert.severity)}">${alert.severity}</span>
+                            <button class="btn btn-sm btn-outline-success ms-2" onclick="resolveAlert('${alert.id}')">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(alertDiv);
+            });
+        }
+
+        // Update charts with simulated data
+        function updateCharts() {
+            // Generate sample data for demonstration
+            const now = new Date();
+            const labels = [];
+            const data = [];
+
+            for (let i = 11; i >= 0; i--) {
+                const time = new Date(now.getTime() - i * 5 * 60 * 1000);
+                labels.push(time.toLocaleTimeString());
+                data.push(Math.floor(Math.random() * 10) + 1);
+            }
+
+            errorTrendsChart.data.labels = labels;
+            errorTrendsChart.data.datasets[0].data = data;
+            errorTrendsChart.update();
+
+            // Update categories chart
+            const categoryData = [15, 8, 12, 6, 4, 10];
+            errorCategoriesChart.data.datasets[0].data = categoryData;
+            errorCategoriesChart.update();
+        }
+
+        // Test error tracking
+        async function testErrorTracking() {
+            try {
+                const response = await fetch('/error-tracking/test', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    alert('Test error sent successfully! Event ID: ' + data.event_id);
+                } else {
+                    alert('Failed to send test error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error testing error tracking: ' + error.message);
+            }
+        }
+
+        // Test alerting
+        async function testAlerting() {
+            try {
+                const response = await fetch('/alerts/test', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    alert('Test alert created successfully! Alert ID: ' + data.alert_id);
+                    loadAlerts(); // Refresh alerts
+                } else {
+                    alert('Failed to create test alert: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error testing alerting: ' + error.message);
+            }
+        }
+
+        // Resolve alert
+        async function resolveAlert(alertId) {
+            try {
+                const response = await fetch(`/alerts/${alertId}/resolve`, { method: 'POST' });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    alert('Alert resolved successfully!');
+                    loadAlerts(); // Refresh alerts
+                } else {
+                    alert('Failed to resolve alert: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error resolving alert: ' + error.message);
+            }
+        }
+
+        // Refresh functions
+        function refreshAllData() {
+            loadAllData();
+        }
+
+        function refreshAlerts() {
+            loadAlerts();
+        }
+
+        function refreshMetrics() {
+            loadErrorMetrics();
+            loadPerformanceMetrics();
+        }
+
+        // Export data
+        function exportData() {
+            const data = {
+                timestamp: new Date().toISOString(),
+                metrics: {
+                    total_errors: document.getElementById('total-errors').textContent,
+                    error_rate: document.getElementById('error-rate').textContent,
+                    avg_response_time: document.getElementById('avg-response-time').textContent,
+                    active_alerts: document.getElementById('active-alerts').textContent
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `error-dashboard-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Utility functions
+        function updateSystemStatus(status) {
+            const statusElement = document.getElementById('system-status');
+            const indicator = statusElement.querySelector('.status-indicator');
+            const text = statusElement.querySelector('span:last-child');
+
+            indicator.className = `status-indicator status-${status}`;
+            text.textContent = status === 'online' ? 'Online' :
+                            status === 'warning' ? 'Warning' : 'Offline';
+        }
+
+        function getSeverityColor(severity) {
+            const colors = {
+                'critical': 'danger',
+                'error': 'warning',
+                'warning': 'warning',
+                'info': 'info'
+            };
+            return colors[severity] || 'secondary';
+        }
+
+        function showLoading() {
+            document.querySelector('.loading-spinner').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.querySelector('.loading-spinner').style.display = 'none';
+        }
+
+        function startAutoRefresh() {
+            refreshInterval = setInterval(loadAllData, 30000); // Refresh every 30 seconds
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

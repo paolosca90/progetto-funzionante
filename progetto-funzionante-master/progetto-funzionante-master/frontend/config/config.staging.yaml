@@ -1,0 +1,200 @@
+# Staging Environment Configuration
+# This configuration is for testing in a production-like environment
+
+# Application Settings
+app:
+  name: "Trading Signals System"
+  version: "2.0.1"
+  environment: "staging"
+  debug: false
+  testing: false
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false
+  workers: 4
+  timeout: 30
+
+# Security Configuration (Staging - production-like but more permissive)
+security:
+  jwt_secret_key: "staging-secret-key-min-32-chars-long"
+  jwt_algorithm: "HS256"
+  jwt_access_token_expire_minutes: 120  # 2 hours
+  jwt_refresh_token_expire_days: 7
+  allow_test_tokens: false
+  cors_origins:
+    - "https://staging.trading-system.com"
+    - "https://*.railway.app"
+    - "http://localhost:3000"
+  cors_allow_credentials: true
+  cors_allow_methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+  cors_allow_headers: ["Authorization", "Content-Type", "X-API-Key"]
+
+# Database Configuration (Staging)
+database:
+  url: "${DATABASE_URL}"  # Railway provides this
+  pool_size: 20
+  max_overflow: 10
+  pool_timeout: 30
+  pool_recycle: 3600
+  echo_sql: false
+  auto_create_tables: false
+  ssl_mode: "require"
+
+# Redis Cache Configuration (Staging)
+cache:
+  redis_url: "${REDIS_URL}"  # Railway provides this
+  redis_password: "${REDIS_PASSWORD}"
+  max_connections: 10
+  timeout: 5
+  ttl_short: 300    # 5 minutes
+  ttl_medium: 1800  # 30 minutes
+  ttl_long: 3600   # 1 hour
+  prefix: "staging:trading:"
+  enable_cache_warming: true
+  cache_debug: false
+
+# Email Configuration (Staging)
+email:
+  host: "${EMAIL_HOST}"
+  port: 587
+  user: "${EMAIL_USER}"
+  password: "${EMAIL_PASSWORD}"
+  from_address: "staging@trading-system.com"
+  use_tls: true
+  use_ssl: false
+  console_backend: false
+
+# OANDA API Configuration (Staging)
+oanda:
+  api_key: "${OANDA_API_KEY}"
+  account_id: "${OANDA_ACCOUNT_ID}"
+  environment: "demo"
+  base_url: "https://api-fxpractice.oanda.com/v3"
+  timeout: 30
+  retry_attempts: 3
+  rate_limit_requests: 200
+  rate_limit_window: 60
+
+# AI Configuration (Staging)
+ai:
+  gemini_api_key: "${GEMINI_API_KEY}"
+  gemini_model: "gemini-pro"
+  temperature: 0.7
+  max_tokens: 1000
+  confidence_threshold: 0.6
+  enable_debug_logging: false
+
+# API Configuration (Staging)
+api:
+  prefix: "/api/v1"
+  docs_url: "/docs"
+  redoc_url: "/redoc"
+  enable_swagger: true
+  enable_openapi_validation: true
+  rate_limit_requests: 200
+  rate_limit_window: 60
+
+# Monitoring and Logging (Staging)
+monitoring:
+  log_level: "INFO"
+  log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  log_file: "logs/staging.log"
+  enable_metrics: true
+  enable_health_checks: true
+  enable_profiling: false
+  enable_error_tracking: true
+  sentry_dsn: "${SENTRY_DSN}"
+  traces_sample_rate: 0.2
+  profiles_sample_rate: 0.1
+
+# Trading Configuration (Staging)
+trading:
+  max_daily_signals: 100
+  default_risk_level: "MEDIUM"
+  default_position_size: 0.01
+  max_position_size: 0.05
+  enable_paper_trading: true
+  enable_real_trading: false
+  trading_hours_enabled: true
+  signal_generation_interval: 300  # 5 minutes
+
+# Feature Flags (Staging)
+feature_flags:
+  enable_ai_analysis: true
+  enable_real_time_data: true
+  enable_user_authentication: true
+  enable_email_notifications: true
+  enable_cache_warming: true
+  enable_performance_monitoring: true
+  enable_signal_execution: false
+  enable_paper_trading: true
+  enable_debug_endpoints: false
+  enable_test_data_generation: false
+  enable_database_migrations: true
+
+# Rate Limiting (Staging)
+rate_limiting:
+  enabled: true
+  requests_per_minute: 200
+  burst_limit: 50
+
+# CORS (Staging)
+cors:
+  allow_origins:
+    - "https://staging.trading-system.com"
+    - "https://*.railway.app"
+    - "http://localhost:3000"
+  allow_methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+  allow_headers: ["Authorization", "Content-Type", "X-API-Key"]
+  allow_credentials: true
+
+# Session Configuration
+session:
+  secret_key: "${SESSION_SECRET_KEY}"
+  cookie_name: "trading_session"
+  cookie_secure: true
+  cookie_httponly: true
+  cookie_samesite: "strict"
+  lifetime: 86400  # 24 hours
+
+# WebSocket Configuration (Staging)
+websocket:
+  enabled: true
+  max_connections: 1000
+  ping_interval: 30
+  ping_timeout: 10
+  enable_debug_logging: false
+
+# SSL/TLS Configuration
+ssl:
+  keyfile: "/etc/ssl/certs/staging.key"
+  certfile: "/etc/ssl/certs/staging.crt"
+  enabled: true
+
+# Backup Configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention_days: 7
+  s3_bucket: "staging-backups"
+  s3_prefix: "config/"
+
+# Health Checks
+health:
+  enabled: true
+  endpoints:
+    - "/health"
+    - "/health/database"
+    - "/health/cache"
+    - "/health/oanda"
+  timeout: 10
+
+# Deployment Configuration
+deployment:
+  auto_deploy: true
+  health_check_grace_period: 30
+  max_restarts: 3
+  restart_window: 60

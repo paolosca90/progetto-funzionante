@@ -1,0 +1,191 @@
+version: '3.8'
+
+services:
+  # FastAPI Trading System - Production
+  trading-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: trading-system-api:latest
+    container_name: trading-api-prod
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - OANDA_API_KEY=${OANDA_API_KEY}
+      - OANDA_ACCOUNT_ID=${OANDA_ACCOUNT_ID}
+      - OANDA_ENVIRONMENT=${OANDA_ENVIRONMENT}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      - SENTRY_DSN=${SENTRY_DSN}
+      - PROMETHEUS_MULTIPROC_DIR=/tmp
+    volumes:
+      - logs_volume:/app/logs
+      - data_volume:/app/data
+      - static_volume:/app/static
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - trading-network
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+
+  # External PostgreSQL (assumes external database)
+  # Redis (external or local based on REDIS_URL)
+
+  # Production Nginx with SSL
+  nginx:
+    image: nginx:alpine
+    container_name: trading-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - nginx_config:/etc/nginx/conf.d
+      - ssl_certs:/etc/nginx/ssl
+      - nginx_logs:/var/log/nginx
+      - static_volume:/var/www/static
+    depends_on:
+      - trading-api
+    restart: unless-stopped
+    networks:
+      - trading-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  # Redis for production (if not using external)
+  redis-prod:
+    image: redis:7-alpine
+    container_name: trading-redis-prod
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_prod_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trading-network
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.8'
+
+  # Production Monitoring Stack
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: trading-prometheus-prod
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_config:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=720h'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    restart: unless-stopped
+    networks:
+      - trading-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: trading-grafana-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET_KEY}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - grafana_config:/etc/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - trading-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.8'
+
+volumes:
+  logs_volume:
+    driver: local
+  data_volume:
+    driver: local
+  static_volume:
+    driver: local
+  redis_prod_data:
+    driver: local
+  nginx_config:
+    driver: local
+  ssl_certs:
+    driver: local
+  nginx_logs:
+    driver: local
+  prometheus_config:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  grafana_config:
+    driver: local
+
+networks:
+  trading-network:
+    driver: bridge
+    internal: false
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+          gateway: 172.21.0.1

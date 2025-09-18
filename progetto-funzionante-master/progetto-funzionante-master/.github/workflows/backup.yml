@@ -1,0 +1,303 @@
+name: Backup & Disaster Recovery
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM
+  workflow_dispatch:
+    inputs:
+      backup_type:
+        description: 'Backup type'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+        - full
+        - database
+        - config
+      environment:
+        description: 'Environment to backup'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+
+jobs:
+  # Database Backup
+  database-backup:
+    name: Database Backup
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.backup_type == 'full' || github.event.inputs.backup_type == 'database'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+        python3 -m pip install psycopg2-binary awscli
+
+    - name: Create database backup
+      env:
+        DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_S3_BUCKET: ${{ secrets.AWS_S3_BACKUP_BUCKET }}
+      run: |
+        # Extract database connection details
+        DB_NAME=$(echo $DATABASE_URL | sed 's/.*\/\(.*\)$/\1/')
+        timestamp=$(date +%Y%m%d_%H%M%S)
+        backup_file="database_backup_${DB_NAME}_${timestamp}.sql"
+
+        echo "Creating database backup for $DB_NAME..."
+
+        # Create backup
+        pg_dump $DATABASE_URL > $backup_file
+
+        # Compress backup
+        gzip $backup_file
+        backup_file="${backup_file}.gz"
+
+        echo "Backup created: $backup_file"
+
+        # Upload to S3
+        aws s3 cp $backup_file s3://$AWS_S3_BUCKET/database/$DB_NAME/
+
+        # Upload to GitHub artifacts
+        echo "DB_BACKUP_FILE=$backup_file" >> $GITHUB_ENV
+
+    - name: Verify backup integrity
+      env:
+        DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      run: |
+        # Test backup file integrity
+        if [ -f "${{ env.DB_BACKUP_FILE }}" ]; then
+          echo "Verifying backup file..."
+          gunzip -t ${{ env.DB_BACKUP_FILE }}
+          echo "✅ Backup file integrity verified"
+        else
+          echo "⚠️  Backup file not found locally (already uploaded to S3)"
+        fi
+
+    - name: Clean up old backups
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_S3_BUCKET: ${{ secrets.AWS_S3_BACKUP_BUCKET }}
+      run: |
+        # Keep last 30 days of backups
+        aws s3 ls s3://$AWS_S3_BUCKET/database/ --recursive | \
+          awk '{print $4}' | \
+          head -n -30 | \
+          while read -r file; do
+            if [ -n "$file" ]; then
+              echo "Deleting old backup: $file"
+              aws s3 rm s3://$AWS_S3_BUCKET/$file
+            fi
+          done
+
+    - name: Upload backup artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: database-backup
+        path: ${{ env.DB_BACKUP_FILE }}
+        retention-days: 30
+
+  # Configuration Backup
+  config-backup:
+    name: Configuration Backup
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.backup_type == 'full' || github.event.inputs.backup_type == 'config'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Create configuration backup
+      run: |
+        timestamp=$(date +%Y%m%d_%H%M%S)
+        config_backup_dir="config_backup_${timestamp}"
+
+        mkdir -p $config_backup_dir
+
+        # Backup configuration files
+        cp -r frontend/.env* $config_backup_dir/ 2>/dev/null || true
+        cp -r frontend/config/ $config_backup_dir/ 2>/dev/null || true
+        cp requirements.txt $config_backup_dir/ 2>/dev/null || true
+        cp -r .github/workflows/ $config_backup_dir/ 2>/dev/null || true
+
+        # Create backup archive
+        tar -czf "config_backup_${timestamp}.tar.gz" $config_backup_dir/
+
+        echo "CONFIG_BACKUP_FILE=config_backup_${timestamp}.tar.gz" >> $GITHUB_ENV
+
+    - name: Upload configuration backup to S3
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_S3_BUCKET: ${{ secrets.AWS_S3_BACKUP_BUCKET }}
+      run: |
+        aws s3 cp ${{ env.CONFIG_BACKUP_FILE }} s3://$AWS_S3_BUCKET/config/
+
+    - name: Upload configuration artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: config-backup
+        path: ${{ env.CONFIG_BACKUP_FILE }}
+        retention-days: 30
+
+  # Application State Backup
+  app-state-backup:
+    name: Application State Backup
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.backup_type == 'full'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Backup application state
+      run: |
+        timestamp=$(date +%Y%m%d_%H%M%S)
+        app_state_dir="app_state_backup_${timestamp}"
+
+        mkdir -p $app_state_dir
+
+        # Backup any state files
+        cp -r frontend/logs/ $app_state_dir/ 2>/dev/null || true
+        cp -r frontend/static/ $app_state_dir/ 2>/dev/null || true
+        cp -r frontend/templates/ $app_state_dir/ 2>/dev/null || true
+
+        # Create backup archive
+        tar -czf "app_state_backup_${timestamp}.tar.gz" $app_state_dir/
+
+        echo "APP_STATE_BACKUP_FILE=app_state_backup_${timestamp}.tar.gz" >> $GITHUB_ENV
+
+    - name: Upload application state backup to S3
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_S3_BUCKET: ${{ secrets.AWS_S3_BACKUP_BUCKET }}
+      run: |
+        aws s3 cp ${{ env.APP_STATE_BACKUP_FILE }} s3://$AWS_S3_BUCKET/app-state/
+
+    - name: Upload application state artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-state-backup
+        path: ${{ env.APP_STATE_BACKUP_FILE }}
+        retention-days: 30
+
+  # Disaster Recovery Test
+  disaster-recovery-test:
+    name: Disaster Recovery Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' && github.event.schedule == '0 2 * * 0'  # Weekly on Sunday
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Test backup restoration
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_S3_BUCKET: ${{ secrets.AWS_S3_BACKUP_BUCKET }}
+      run: |
+        echo "Testing disaster recovery procedures..."
+
+        # List recent backups
+        echo "Recent database backups:"
+        aws s3 ls s3://$AWS_S3_BUCKET/database/ --recursive | tail -5
+
+        echo "Recent configuration backups:"
+        aws s3 ls s3://$AWS_S3_BUCKET/config/ --recursive | tail -5
+
+        # Test downloading latest backup
+        latest_backup=$(aws s3 ls s3://$AWS_S3_BUCKET/config/ --recursive | sort | tail -1 | awk '{print $4}')
+
+        if [ -n "$latest_backup" ]; then
+          echo "Testing backup download: $latest_backup"
+          aws s3 cp s3://$AWS_S3_BUCKET/$latest_backup test_backup.tar.gz
+
+          # Test backup extraction
+          tar -tzf test_backup.tar.gz > /dev/null
+          if [ $? -eq 0 ]; then
+            echo "✅ Backup extraction test passed"
+          else
+            echo "❌ Backup extraction test failed"
+            exit 1
+          fi
+
+          rm test_backup.tar.gz
+        else
+          echo "⚠️  No backups found to test"
+        fi
+
+    - name: Test deployment from backup
+      run: |
+        echo "Testing deployment procedures..."
+
+        # Test if Docker build works
+        docker build -t disaster-recovery-test -f ./frontend/Dockerfile .
+
+        if [ $? -eq 0 ]; then
+          echo "✅ Docker build test passed"
+          docker rmi disaster-recovery-test
+        else
+          echo "❌ Docker build test failed"
+          exit 1
+        fi
+
+  # Generate Backup Report
+  backup-report:
+    name: Generate Backup Report
+    runs-on: ubuntu-latest
+    needs: [database-backup, config-backup, app-state-backup, disaster-recovery-test]
+    if: always()
+
+    steps:
+    - name: Generate backup summary
+      run: |
+        echo "# Backup Report" >> backup-summary.md
+        echo "## Generated: $(date)" >> backup-summary.md
+        echo "" >> backup-summary.md
+        echo "### Backup Status" >> backup-summary.md
+        echo "- **Database Backup**: ${{ needs.database-backup.result }}" >> backup-summary.md
+        echo "- **Configuration Backup**: ${{ needs.config-backup.result }}" >> backup-summary.md
+        echo "- **Application State Backup**: ${{ needs.app-state-backup.result }}" >> backup-summary.md
+        echo "- **Disaster Recovery Test**: ${{ needs.disaster-recovery-test.result }}" >> backup-summary.md
+        echo "" >> backup-summary.md
+        echo "### Backup Details" >> backup-summary.md
+        echo "- **Backup Type**: ${{ github.event.inputs.backup_type || 'scheduled' }}" >> backup-summary.md
+        echo "- **Environment**: ${{ github.event.inputs.environment || 'all' }}" >> backup-summary.md
+        echo "- **Trigger**: ${{ github.event_name }}" >> backup-summary.md
+
+    - name: Upload backup report
+      uses: actions/upload-artifact@v3
+      with:
+        name: backup-report
+        path: backup-summary.md
+
+    - name: Notify backup failures
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: '🚨 Backup process failed! Check the backup report for details.'
+        channel: '#alerts'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Notify backup success
+      if: success() && github.event_name == 'schedule'
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: '✅ Daily backup completed successfully'
+        channel: '#alerts'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -1,0 +1,257 @@
+# Test Environment Configuration
+# This configuration is optimized for automated testing
+
+# Application Settings
+app:
+  name: "Trading Signals System Test"
+  version: "2.0.1"
+  environment: "testing"
+  debug: true
+  testing: true
+
+# Server Configuration
+server:
+  host: "127.0.0.1"
+  port: 8001
+  reload: false
+  workers: 1
+  timeout: 10
+
+# Security Configuration (Test - permissive)
+security:
+  jwt_secret_key: "test-secret-key-for-testing-only"
+  jwt_algorithm: "HS256"
+  jwt_access_token_expire_minutes: 1440  # 24 hours for testing
+  jwt_refresh_token_expire_days: 30
+  allow_test_tokens: true
+  cors_origins: ["*"]
+  cors_allow_credentials: true
+  cors_allow_methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+  cors_allow_headers: ["*"]
+
+# Database Configuration (Test - in-memory SQLite)
+database:
+  url: "sqlite:///./test.db"
+  pool_size: 1
+  max_overflow: 1
+  pool_timeout: 5
+  pool_recycle: 3600
+  echo_sql: false
+  auto_create_tables: true
+  auto_drop_tables: true
+
+# Redis Cache Configuration (Test - mock or disable)
+cache:
+  redis_url: "redis://localhost:6379/15"  # Use test database
+  redis_password: null
+  max_connections: 1
+  timeout: 1
+  ttl_short: 1     # 1 second for testing
+  ttl_medium: 5   # 5 seconds
+  ttl_long: 10     # 10 seconds
+  prefix: "test:trading:"
+  enable_cache_warming: false
+  cache_debug: true
+  use_mock_cache: true
+
+# Email Configuration (Test - console backend)
+email:
+  host: "localhost"
+  port: 1025
+  user: "test@example.com"
+  password: "test"
+  from_address: "test@example.com"
+  use_tls: false
+  use_ssl: false
+  console_backend: true
+  capture_emails: true
+
+# OANDA API Configuration (Test - mock or use demo)
+oanda:
+  api_key: "test-oanda-api-key"
+  account_id: "test-account-id"
+  environment: "demo"
+  base_url: "https://api-fxpractice.oanda.com/v3"
+  timeout: 5
+  retry_attempts: 1
+  use_mock_api: true
+  mock_data_file: "tests/fixtures/oanda_mock_data.json"
+
+# AI Configuration (Test - mock responses)
+ai:
+  gemini_api_key: "test-gemini-api-key"
+  gemini_model: "gemini-pro"
+  temperature: 0.7
+  max_tokens: 1000
+  confidence_threshold: 0.5
+  enable_debug_logging: true
+  use_mock_responses: true
+  mock_responses_file: "tests/fixtures/ai_mock_responses.json"
+
+# API Configuration (Test)
+api:
+  prefix: "/api/v1"
+  docs_url: "/docs"
+  redoc_url: "/redoc"
+  enable_swagger: true
+  enable_openapi_validation: false
+  rate_limit_requests: 1000  # High limit for testing
+  rate_limit_window: 60
+
+# Monitoring and Logging (Test)
+monitoring:
+  log_level: "DEBUG"
+  log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  log_file: "logs/test.log"
+  enable_metrics: false
+  enable_health_checks: true
+  enable_profiling: false
+  enable_error_tracking: false
+  sentry_dsn: null
+
+# Trading Configuration (Test)
+trading:
+  max_daily_signals: 1000  # High limit for testing
+  default_risk_level: "LOW"
+  default_position_size: 0.001
+  max_position_size: 0.01
+  enable_paper_trading: true
+  enable_real_trading: false
+  trading_hours_enabled: false  # Allow 24/7 for testing
+  signal_generation_interval: 1  # Generate signals every second for testing
+
+# Feature Flags (Test - enable all features for testing)
+feature_flags:
+  enable_ai_analysis: true
+  enable_real_time_data: true
+  enable_user_authentication: true
+  enable_email_notifications: false  # Disable for testing
+  enable_cache_warming: false
+  enable_performance_monitoring: false
+  enable_signal_execution: false
+  enable_paper_trading: true
+  enable_debug_endpoints: true
+  enable_test_data_generation: true
+  enable_database_migrations: true
+  enable_maintenance_mode: false
+
+# Test Configuration
+test:
+  auto_generate_data: true
+  clear_database_before_tests: true
+  clear_cache_before_tests: true
+  use_fixtures: true
+  fixtures_directory: "tests/fixtures"
+  mock_external_services: true
+  enable_test_coverage: true
+  test_coverage_threshold: 80
+  parallel_tests: true
+  max_parallel_workers: 4
+  test_timeout: 30
+  enable_performance_tests: false
+  enable_load_tests: false
+
+# Rate Limiting (Test - disabled)
+rate_limiting:
+  enabled: false
+  requests_per_minute: 10000
+  burst_limit: 1000
+
+# CORS (Test - permissive)
+cors:
+  allow_origins: ["*"]
+  allow_methods: ["*"]
+  allow_headers: ["*"]
+  allow_credentials: true
+
+# Session Configuration
+session:
+  secret_key: "test-session-secret-key"
+  cookie_name: "trading_session_test"
+  cookie_secure: false
+  cookie_httponly: true
+  cookie_samesite: "lax"
+  lifetime: 86400  # 24 hours
+
+# WebSocket Configuration (Test)
+websocket:
+  enabled: true
+  max_connections: 100
+  ping_interval: 10
+  ping_timeout: 5
+  enable_debug_logging: true
+
+# Mock Services Configuration
+mock_services:
+  oanda:
+    enabled: true
+    response_delay: 0.1
+    error_rate: 0.01  # 1% error rate for testing
+    fixtures_file: "tests/fixtures/oanda_responses.json"
+
+  email:
+    enabled: true
+    capture_messages: true
+    deliver_instantly: true
+    simulate_failures: false
+
+  ai:
+    enabled: true
+    response_delay: 0.2
+    error_rate: 0.05  # 5% error rate for testing
+    fixtures_file: "tests/fixtures/ai_responses.json"
+
+# Test Data Configuration
+test_data:
+  users:
+    count: 10
+    prefix: "test_user"
+    password: "test123"
+
+  signals:
+    count: 50
+    symbols: ["EURUSD", "GBPUSD", "USDJPY"]
+    types: ["BUY", "SELL", "HOLD"]
+
+  executions:
+    count: 100
+    price_range: [1.0, 2.0]
+    quantity_range: [0.001, 0.01]
+
+# Performance Test Configuration
+performance_test:
+  enabled: false
+  concurrent_users: 100
+  duration: 60
+  ramp_up: 10
+  endpoints:
+    - path: "/api/v1/signals"
+      method: "GET"
+      weight: 3
+    - path: "/api/v1/users/login"
+      method: "POST"
+      weight: 1
+    - path: "/api/v1/health"
+      method: "GET"
+      weight: 1
+
+# Security Test Configuration
+security_test:
+  enabled: false
+  test_sql_injection: true
+  test_xss: true
+  test_csrf: true
+  test_rate_limiting: true
+  test_authentication: true
+  test_authorization: true
+  test_input_validation: true
+
+# Integration Test Configuration
+integration_test:
+  enabled: true
+  test_database_integration: true
+  test_cache_integration: true
+  test_email_integration: true
+  test_oanda_integration: true
+  test_ai_integration: true
+  test_websocket_integration: true

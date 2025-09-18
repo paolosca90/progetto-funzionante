@@ -1,0 +1,34 @@
+[run]
+source = app
+branch = true
+omit =
+    */tests/*
+    */venv/*
+    */env/*
+    */.env/*
+    */__pycache__/*
+    */migrations/*
+    */scripts/*
+    setup.py
+    conftest.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    class .*\bProtocol\):
+    @(abc\.)?abstractmethod
+
+show_missing = true
+precision = 2
+skip_covered = false
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml

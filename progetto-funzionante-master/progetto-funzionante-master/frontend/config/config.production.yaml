@@ -1,0 +1,286 @@
+# Production Environment Configuration
+# This configuration is optimized for production deployment
+
+# Application Settings
+app:
+  name: "Trading Signals System"
+  version: "2.0.1"
+  environment: "production"
+  debug: false
+  testing: false
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false
+  workers: 8
+  timeout: 20
+  max_requests: 1000
+  max_requests_jitter: 100
+
+# Security Configuration (Production - strict)
+security:
+  jwt_secret_key: "${JWT_SECRET_KEY}"
+  jwt_algorithm: "HS256"
+  jwt_access_token_expire_minutes: 30
+  jwt_refresh_token_expire_days: 7
+  allow_test_tokens: false
+  cors_origins:
+    - "https://trading-system.com"
+    - "https://www.trading-system.com"
+  cors_allow_credentials: true
+  cors_allow_methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+  cors_allow_headers: ["Authorization", "Content-Type", "X-API-Key"]
+  require_https: true
+  hsts_enabled: true
+  hsts_max_age: 31536000  # 1 year
+  hsts_include_subdomains: true
+  hsts_preload: true
+
+# Database Configuration (Production)
+database:
+  url: "${DATABASE_URL}"  # Railway provides this
+  pool_size: 50
+  max_overflow: 20
+  pool_timeout: 30
+  pool_recycle: 3600
+  echo_sql: false
+  auto_create_tables: false
+  ssl_mode: "verify-full"
+  connection_timeout: 30
+  command_timeout: 60
+  enable_connection_pooling: true
+  enable_health_checks: true
+
+# Redis Cache Configuration (Production)
+cache:
+  redis_url: "${REDIS_URL}"  # Railway provides this
+  redis_password: "${REDIS_PASSWORD}"
+  max_connections: 20
+  timeout: 5
+  ttl_short: 300    # 5 minutes
+  ttl_medium: 1800  # 30 minutes
+  ttl_long: 3600   # 1 hour
+  prefix: "prod:trading:"
+  enable_cache_warming: true
+  cache_debug: false
+  enable_redis_cluster: false
+  enable_redis_sentinel: false
+
+# Email Configuration (Production)
+email:
+  host: "${EMAIL_HOST}"
+  port: 587
+  user: "${EMAIL_USER}"
+  password: "${EMAIL_PASSWORD}"
+  from_address: "noreply@trading-system.com"
+  use_tls: true
+  use_ssl: false
+  console_backend: false
+  enable_rate_limiting: true
+  max_emails_per_minute: 60
+
+# OANDA API Configuration (Production)
+oanda:
+  api_key: "${OANDA_API_KEY}"
+  account_id: "${OANDA_ACCOUNT_ID}"
+  environment: "${OANDA_ENVIRONMENT}"  # Can be "demo" or "live"
+  base_url: "${OANDA_BASE_URL}"      # Different for demo/live
+  timeout: 30
+  retry_attempts: 3
+  rate_limit_requests: 500
+  rate_limit_window: 60
+  enable_circuit_breaker: true
+  circuit_breaker_timeout: 300
+
+# AI Configuration (Production)
+ai:
+  gemini_api_key: "${GEMINI_API_KEY}"
+  gemini_model: "gemini-pro"
+  temperature: 0.7
+  max_tokens: 1000
+  confidence_threshold: 0.7
+  enable_debug_logging: false
+  enable_rate_limiting: true
+  max_requests_per_minute: 60
+
+# API Configuration (Production)
+api:
+  prefix: "/api/v1"
+  docs_url: null  # Disable in production
+  redoc_url: null  # Disable in production
+  enable_swagger: false
+  enable_openapi_validation: true
+  rate_limit_requests: 100
+  rate_limit_window: 60
+  enable_api_key_auth: true
+  enable_jwt_auth: true
+  enable_rate_limiting: true
+
+# Monitoring and Logging (Production)
+monitoring:
+  log_level: "WARNING"
+  log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  log_file: "/var/log/trading-system/app.log"
+  log_max_size: 10485760  # 10MB
+  log_backup_count: 10
+  enable_metrics: true
+  enable_health_checks: true
+  enable_profiling: false
+  enable_error_tracking: true
+  sentry_dsn: "${SENTRY_DSN}"
+  traces_sample_rate: 0.1
+  profiles_sample_rate: 0.05
+  enable_performance_monitoring: true
+  enable_apm: true
+  apm_server_url: "${APM_SERVER_URL}"
+
+# Trading Configuration (Production)
+trading:
+  max_daily_signals: 200
+  default_risk_level: "MEDIUM"
+  default_position_size: 0.01
+  max_position_size: 0.05
+  enable_paper_trading: false
+  enable_real_trading: true
+  trading_hours_enabled: true
+  signal_generation_interval: 300  # 5 minutes
+  enable_risk_management: true
+  enable_position_sizing: true
+  enable_stop_loss: true
+  enable_take_profit: true
+
+# Feature Flags (Production)
+feature_flags:
+  enable_ai_analysis: true
+  enable_real_time_data: true
+  enable_user_authentication: true
+  enable_email_notifications: true
+  enable_cache_warming: true
+  enable_performance_monitoring: true
+  enable_signal_execution: true
+  enable_paper_trading: false
+  enable_debug_endpoints: false
+  enable_test_data_generation: false
+  enable_database_migrations: false
+  enable_maintenance_mode: false
+
+# Rate Limiting (Production)
+rate_limiting:
+  enabled: true
+  requests_per_minute: 100
+  burst_limit: 20
+  backend: "redis"
+  strategy: "fixed-window"
+
+# CORS (Production)
+cors:
+  allow_origins:
+    - "https://trading-system.com"
+    - "https://www.trading-system.com"
+  allow_methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+  allow_headers: ["Authorization", "Content-Type", "X-API-Key"]
+  allow_credentials: true
+  max_age: 600
+
+# Session Configuration
+session:
+  secret_key: "${SESSION_SECRET_KEY}"
+  cookie_name: "trading_session"
+  cookie_secure: true
+  cookie_httponly: true
+  cookie_samesite: "strict"
+  lifetime: 7200  # 2 hours
+
+# WebSocket Configuration (Production)
+websocket:
+  enabled: true
+  max_connections: 5000
+  ping_interval: 30
+  ping_timeout: 10
+  enable_debug_logging: false
+  enable_authentication: true
+  enable_rate_limiting: true
+
+# SSL/TLS Configuration
+ssl:
+  keyfile: "/etc/ssl/certs/production.key"
+  certfile: "/etc/ssl/certs/production.crt"
+  enabled: true
+  certificate_chain: "/etc/ssl/certs/chain.crt"
+
+# Backup Configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention_days: 30
+  s3_bucket: "production-backups"
+  s3_prefix: "config/"
+  encryption_enabled: true
+
+# Health Checks
+health:
+  enabled: true
+  endpoints:
+    - "/health"
+    - "/health/database"
+    - "/health/cache"
+    - "/health/oanda"
+    - "/health/redis"
+  timeout: 5
+  grace_period: 10
+
+# Deployment Configuration
+deployment:
+  auto_deploy: false
+  health_check_grace_period: 60
+  max_restarts: 3
+  restart_window: 60
+  enable_rolling_updates: true
+  max_unavailable: 1
+
+# Performance Configuration
+performance:
+  enable_compression: true
+  enable_gzip: true
+  enable_brotli: true
+  enable_http2: true
+  enable_caching: true
+  cache_static_files: true
+  cache_ttl_static: 86400  # 24 hours
+
+# Security Headers
+security_headers:
+  x_content_type_options: "nosniff"
+  x_frame_options: "DENY"
+  x_xss_protection: "1; mode=block"
+  referrer_policy: "strict-origin-when-cross-origin"
+  permissions_policy: "camera=(), microphone=(), geolocation=()"
+  content_security_policy: "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https://api-fxpractice.oanda.com https://api-fxtrade.oanda.com; frame-ancestors 'none';"
+
+# Error Handling
+error_handling:
+  show_detailed_errors: false
+  show_traceback: false
+  custom_error_pages: true
+  error_logging: true
+  error_reporting: true
+
+# Analytics Configuration
+analytics:
+  enabled: true
+  provider: "sentry"
+  track_page_views: true
+  track_events: true
+  track_performance: true
+  sample_rate: 0.1
+
+# CDN Configuration
+cdn:
+  enabled: true
+  provider: "cloudflare"
+  domain: "cdn.trading-system.com"
+  cache_ttl: 86400  # 24 hours
+  enable_compression: true
+  enable_http2: true
