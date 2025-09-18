@@ -110,12 +110,12 @@ class CacheSettings(BaseSettings):
 
 
 class EmailSettings(BaseSettings):
-    """Email configuration"""
-    email_host: str = Field(..., description="SMTP server host")
+    """Email configuration - Optional for deployment flexibility"""
+    email_host: Optional[str] = Field(default=None, description="SMTP server host")
     email_port: int = Field(default=587, description="SMTP server port")
-    email_user: str = Field(..., description="SMTP username")
-    email_password: str = Field(..., description="SMTP password")
-    email_from: str = Field(..., description="From email address")
+    email_user: Optional[str] = Field(default=None, description="SMTP username")
+    email_password: Optional[str] = Field(default=None, description="SMTP password")
+    email_from: Optional[str] = Field(default=None, description="From email address")
     email_use_tls: bool = Field(default=True, description="Use TLS for email")
     email_use_ssl: bool = Field(default=False, description="Use SSL for email")
 
@@ -126,6 +126,16 @@ class EmailSettings(BaseSettings):
         if v not in [25, 465, 587, 2525]:
             raise ValueError("Email port must be one of: 25, 465, 587, 2525")
         return v
+
+    @property
+    def is_configured(self) -> bool:
+        """Check if email is properly configured"""
+        return all([
+            self.email_host,
+            self.email_user,
+            self.email_password,
+            self.email_from
+        ])
 
 
 class OANDASettings(BaseSettings):
@@ -388,10 +398,6 @@ class Settings(BaseSettings):
         required_settings = [
             ('security.jwt_secret_key', self.security.jwt_secret_key),
             ('database.database_url', self.database.database_url),
-            ('email.email_host', self.email.email_host),
-            ('email.email_user', self.email.email_user),
-            ('email.email_password', self.email.email_password),
-            ('email.email_from', self.email.email_from),
             ('oanda.oanda_api_key', self.oanda.oanda_api_key),
             ('oanda.oanda_account_id', self.oanda.oanda_account_id),
             ('ai.gemini_api_key', self.ai.gemini_api_key),
@@ -400,6 +406,11 @@ class Settings(BaseSettings):
         for setting_name, value in required_settings:
             if not value or value in ["", "your-secret-key", "your-oanda-api-key", "your-gemini-api-key"]:
                 errors.append(f"Required setting '{setting_name}' is not configured")
+
+        # Check if email is configured (optional)
+        if not self.email.is_configured:
+            # Email is optional, so just add a warning, not an error
+            print(f"[WARNING] Email configuration is incomplete. Email functionality will be disabled.")
 
         return {
             "valid": len(errors) == 0,
@@ -446,12 +457,12 @@ class DevelopmentSettings(Settings):
     database: DatabaseSettings = Field(default_factory=lambda: DatabaseSettings(
         database_url="sqlite:///./test.db"
     ))
-    # Override email settings for development
+    # Override email settings for development (optional)
     email: EmailSettings = Field(default_factory=lambda: EmailSettings(
-        email_host="smtp.gmail.com",
-        email_user="test@example.com",
-        email_password="test_password",
-        email_from="test@example.com"
+        email_host=None,
+        email_user=None,
+        email_password=None,
+        email_from=None
     ))
     # Override OANDA settings for development
     oanda: OANDASettings = Field(default_factory=lambda: OANDASettings(

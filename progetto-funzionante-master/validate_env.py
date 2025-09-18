@@ -61,24 +61,24 @@ def validate_environment():
             "error_message": "GEMINI_API_KEY must be a valid API key"
         },
 
-        # Email Configuration
+        # Email Configuration (Optional)
         "EMAIL_HOST": {
-            "required": True,
+            "required": False,
             "description": "SMTP server host",
-            "validation": lambda x: '.' in x,
-            "error_message": "EMAIL_HOST must be a valid SMTP server"
+            "validation": lambda x: not x or '.' in x,
+            "error_message": "EMAIL_HOST must be a valid SMTP server if provided"
         },
         "EMAIL_USER": {
-            "required": True,
+            "required": False,
             "description": "SMTP username",
-            "validation": lambda x: '@' in x,
-            "error_message": "EMAIL_USER must be a valid email address"
+            "validation": lambda x: not x or '@' in x,
+            "error_message": "EMAIL_USER must be a valid email address if provided"
         },
         "EMAIL_PASSWORD": {
-            "required": True,
+            "required": False,
             "description": "SMTP password",
-            "validation": lambda x: len(x) > 0,
-            "error_message": "EMAIL_PASSWORD cannot be empty"
+            "validation": lambda x: True,
+            "error_message": ""
         },
 
         # Optional but recommended
@@ -159,9 +159,9 @@ def show_env_template():
         "OANDA_ACCOUNT_ID": "your-oanda-account-id",
         "OANDA_ENVIRONMENT": "demo",
         "GEMINI_API_KEY": "your-gemini-api-key-here",
-        "EMAIL_HOST": "smtp.gmail.com",
-        "EMAIL_USER": "your-email@gmail.com",
-        "EMAIL_PASSWORD": "your-app-password-here",
+        "EMAIL_HOST": "smtp.gmail.com (optional)",
+        "EMAIL_USER": "your-email@gmail.com (optional)",
+        "EMAIL_PASSWORD": "your-app-password-here (optional)",
         "REDIS_URL": "redis://localhost:6379",
         "PORT": "8000"
     }

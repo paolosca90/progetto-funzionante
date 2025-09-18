@@ -324,6 +324,7 @@ def example_configuration_in_context():
             'password': settings.email.email_password,
             'use_tls': settings.email.email_use_tls,
             'from_email': settings.email.email_from,
+            'is_configured': settings.email.is_configured,
         }
 
     # Example: API client configuration
@@ -338,7 +339,7 @@ def example_configuration_in_context():
         }
 
     print("Database Config:", get_database_config())
-    print("Email Config:", {k: v for k, v in get_email_config().items() if k != 'password'})
+    print("Email Config:", {k: v for k, v in get_email_config().items() if k not in ['password']})
     print("API Client Config:", {k: v for k, v in get_api_client_config().items() if k != 'api_key'})
 
 

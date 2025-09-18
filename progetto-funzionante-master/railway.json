@@ -30,6 +30,7 @@
 
         "GEMINI_API_KEY": "${{GEMINI_API_KEY}}",
 
+        # Email configuration is optional - if not provided, email functionality will be disabled
         "EMAIL_HOST": "${{EMAIL_HOST}}",
         "EMAIL_USER": "${{EMAIL_USER}}",
         "EMAIL_PASSWORD": "${{EMAIL_PASSWORD}}",

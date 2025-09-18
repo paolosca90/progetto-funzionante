@@ -57,7 +57,7 @@ class Settings:
     @property
     def EMAIL_HOST(self) -> str:
         """Get email host from new configuration"""
-        return settings.email.email_host
+        return settings.email.email_host or ""
 
     @property
     def EMAIL_PORT(self) -> int:
@@ -67,17 +67,22 @@ class Settings:
     @property
     def EMAIL_USER(self) -> str:
         """Get email user from new configuration"""
-        return settings.email.email_user
+        return settings.email.email_user or ""
 
     @property
     def EMAIL_PASSWORD(self) -> str:
         """Get email password from new configuration"""
-        return settings.email.email_password
+        return settings.email.email_password or ""
 
     @property
     def EMAIL_USE_TLS(self) -> bool:
         """Get email TLS setting from new configuration"""
         return settings.email.email_use_tls
+
+    @property
+    def EMAIL_IS_CONFIGURED(self) -> bool:
+        """Check if email is properly configured"""
+        return settings.email.is_configured
 
     @property
     def OANDA_API_KEY(self) -> str:
@@ -340,4 +345,4 @@ class Settings:
 
 
 # Global settings instance
-settings = Settings()
+legacy_settings = Settings()

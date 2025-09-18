@@ -19,10 +19,7 @@ def check_railway_environment():
         "OANDA_API_KEY",
         "OANDA_ACCOUNT_ID",
         "OANDA_ENVIRONMENT",
-        "GEMINI_API_KEY",
-        "EMAIL_HOST",
-        "EMAIL_USER",
-        "EMAIL_PASSWORD"
+        "GEMINI_API_KEY"
     ]
 
     missing_vars = []
