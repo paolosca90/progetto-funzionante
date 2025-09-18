@@ -1,0 +1,311 @@
+name: Test Automation
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Test type to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - unit
+          - integration
+          - api
+          - performance
+          - security
+
+jobs:
+  test-setup:
+    runs-on: ubuntu-latest
+    outputs:
+      python-version: ${{ steps.setup-python.outputs.python-version }}
+      cache-key: ${{ steps.setup-cache.outputs.cache-key }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      id: setup-python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Generate cache key
+      id: setup-cache
+      run: echo "cache-key=$(python -c 'import hashlib; import sys; print(hashlib.sha256((sys.version + open(\"frontend/requirements.txt\").read()).encode()).hexdigest()[:16]')"')" >> $GITHUB_OUTPUT
+
+  run-tests:
+    needs: test-setup
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-type: ['unit', 'integration', 'api', 'performance']
+      fail-fast: false
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ needs.test-setup.outputs.python-version }}
+        cache: 'pip'
+        cache-dependency-path: 'frontend/requirements.txt'
+
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.test-setup.outputs.cache-key }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r frontend/requirements.txt
+        pip install pytest pytest-cov pytest-asyncio pytest-html pytest-benchmark httpx pytest-httpx factory-boy faker responses aioresponses
+
+    - name: Setup test environment
+      run: |
+        python setup_test_environment.py
+        export TESTING=true
+        export ENVIRONMENT=testing
+
+    - name: Run ${{ matrix.test-type }} tests
+      run: |
+        pytest tests/${{ matrix.test-type }}/ \
+          -v \
+          --html=test_reports/html/${{ matrix.test-type }}-report.html \
+          --cov=frontend \
+          --cov-report=xml:coverage-${{ matrix.test-type }}.xml \
+          --cov-report=term-missing \
+          --junitxml=test-results-${{ matrix.test-type }}.xml \
+          --cov-fail-under=80
+      env:
+        TESTING: true
+        ENVIRONMENT: testing
+        DATABASE_URL: sqlite:///:memory:
+        JWT_SECRET_KEY: test-secret-key-for-github-actions
+        OANDA_API_KEY: test-oanda-api-key
+        OANDA_ACCOUNT_ID: test-account-id
+        OANDA_ENVIRONMENT: practice
+        GEMINI_API_KEY: test-gemini-api-key
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.test-type }}
+        path: |
+          test_reports/
+          coverage-*.xml
+          test-results-*.xml
+
+  security-tests:
+    needs: test-setup
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ needs.test-setup.outputs.python-version }}
+        cache: 'pip'
+        cache-dependency-path: 'frontend/requirements.txt'
+
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety semgrep pip-audit
+
+    - name: Run Bandit security scan
+      run: |
+        bandit -r frontend/ -f json -o bandit-report.json || true
+      continue-on-error: true
+
+    - name: Run Safety dependency check
+      run: |
+        safety check --json --output safety-report.json || true
+      continue-on-error: true
+
+    - name: Run Semgrep security scan
+      run: |
+        semgrep --config=auto --json --output=semgrep-report.json frontend/ || true
+      continue-on-error: true
+
+    - name: Run pip-audit
+      run: |
+        pip-audit --format json --output pip-audit-report.json || true
+      continue-on-error: true
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+          semgrep-report.json
+          pip-audit-report.json
+
+  performance-benchmark:
+    needs: test-setup
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ needs.test-setup.outputs.python-version }}
+        cache: 'pip'
+        cache-dependency-path: 'frontend/requirements.txt'
+
+    - name: Install performance testing tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r frontend/requirements.txt
+        pip install pytest pytest-benchmark locust
+
+    - name: Run load tests
+      run: |
+        python testsprite_config.py
+      env:
+        TESTING: true
+        ENVIRONMENT: testing
+
+    - name: Upload performance reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-reports
+        path: |
+          test_results.json
+          test_reports/performance/
+
+  coverage-report:
+    needs: [run-tests, security-tests, performance-benchmark]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Combine coverage reports
+      run: |
+        # Install coverage tools
+        pip install coverage
+
+        # Combine coverage files
+        coverage combine coverage-*.xml
+        coverage xml --fail-under=80
+
+    - name: Generate coverage report
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  publish-results:
+    needs: [run-tests, security-tests, performance-benchmark, coverage-report]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Publish Test Results
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      if: always()
+      with:
+        files: test-results-*.xml
+        comment_mode: create new
+        check_name: Test Results
+
+    - name: Comment PR with test results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+
+          // Read test results
+          const results = [];
+          const files = fs.readdirSync('.');
+
+          files.forEach(file => {
+            if (file.startsWith('test-results-') && file.endsWith('.xml')) {
+              try {
+                const content = fs.readFileSync(file, 'utf8');
+                // Parse XML and extract summary
+                results.push({
+                  type: file.replace('test-results-', '').replace('.xml', ''),
+                  content: content.substring(0, 500) + '...'
+                });
+              } catch (e) {
+                console.error(`Error reading ${file}:`, e);
+              }
+            }
+          });
+
+          const comment = `
+          🧪 **Test Results Summary**
+
+          ${results.map(r => `**${r.type} Tests:** ${r.content.includes('failures="0"') ? '✅ Passed' : '❌ Failed'}`).join('\n')}
+
+          ---
+          📊 **Detailed Reports:**
+          - Unit Tests: [View Results](test-results-unit.xml)
+          - Integration Tests: [View Results](test-results-integration.xml)
+          - API Tests: [View Results](test-results-api.xml)
+          - Performance Tests: [View Results](test-results-performance.xml)
+
+          🔒 **Security Scan:** [View Report](security-reports/)
+          📈 **Performance Report:** [View Report](performance-reports/)
+          `;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  deploy-staging:
+    needs: [run-tests, security-tests]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' && needs.run-tests.result == 'success'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment..."
+        # Add your deployment commands here
+        # Example: Railway deployment, Docker, etc.
+
+    - name: Run smoke tests on staging
+      run: |
+        echo "Running smoke tests on staging..."
+        # Add smoke test commands here
